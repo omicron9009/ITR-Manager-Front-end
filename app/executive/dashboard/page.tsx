@@ -1,0 +1,45 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card } from '@/components/ui/card';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { getSummary, getExecutiveAnalytics } from '@/lib/api';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import { TrendingUp, Users, ArrowRight } from 'lucide-react';
+
+const CARDS = [
+  { key: 'INITIATED', label: 'Initiated', color: 'border-l-slate-400 bg-slate-50', text: 'text-slate-700' },
+  { key: 'ON_BOARDING', label: 'On Boarding', color: 'border-l-blue-500 bg-blue-50', text: 'text-blue-700' },
+  { key: 'PROCESSING', label: 'Processing', color: 'border-l-indigo-500 bg-indigo-50', text: 'text-indigo-700' },
+  { key: 'COMPUTATION', label: 'Computation', color: 'border-l-violet-500 bg-violet-50', text: 'text-violet-700' },
+  { key: 'FILING', label: 'Filing', color: 'border-l-orange-500 bg-orange-50', text: 'text-orange-700' },
+  { key: 'PAYMENT', label: 'Payment', color: 'border-l-yellow-500 bg-yellow-50', text: 'text-yellow-700' },
+  { key: 'COMPLETED', label: 'Completed', color: 'border-l-emerald-500 bg-emerald-50', text: 'text-emerald-700' },
+];
+
+export default function ExecutiveDashboard() {
+  const router = useRouter();
+  const [summary, setSummary] = useState<any>({});
+  const [analytics, setAnalytics] = useState<any>(null);
+  useEffect(() => { getSummary().then(setSummary).catch(() => {}); getExecutiveAnalytics().then(setAnalytics).catch(() => {}); }, []);
+  const getCount = (k: string) => { const c = summary?.counts || summary?.filings_by_status || summary || {}; return c[k] ?? c[k.toLowerCase()] ?? 0; };
+  const barData = (analytics?.filings_by_status || []).map?.((x: any) => ({ name: x.status, count: x.count })) || CARDS.map(c => ({ name: c.label, count: getCount(c.key) }));
+  const lineData = analytics?.filings_over_time || [];
+  return (
+    <div className="space-y-6">
+      <div><h1 className="text-2xl font-bold text-slate-900">Executive Dashboard</h1><p className="text-sm text-slate-500 mt-1">Your assigned clients &middot; {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        {CARDS.map((c) => (
+          <Card key={c.key} className={`rounded-xl border-l-4 ${c.color} p-4 cursor-pointer hover:shadow-md transition-all`} onClick={() => router.push(`/executive/clients?status=${c.key}`)}>
+            <div className={`text-3xl font-bold ${c.text}`}>{getCount(c.key)}</div>
+            <div className="text-xs font-medium text-slate-600 mt-1">{c.label}</div>
+          </Card>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="rounded-xl p-5"><div className="flex items-center gap-2 mb-4"><Users className="h-4 w-4 text-indigo-600" /><h3 className="font-semibold text-slate-900">Filings by State</h3></div><div style={{ width: '100%', height: 260 }}><ResponsiveContainer><BarChart data={barData}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="name" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} /><Tooltip /><Bar dataKey="count" fill="hsl(239 84% 60%)" radius={[6,6,0,0]} /></BarChart></ResponsiveContainer></div></Card>
+        <Card className="rounded-xl p-5"><div className="flex items-center gap-2 mb-4"><TrendingUp className="h-4 w-4 text-emerald-600" /><h3 className="font-semibold text-slate-900">Filings Over Time</h3></div><div style={{ width: '100%', height: 260 }}><ResponsiveContainer><LineChart data={lineData}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="month" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} /><Tooltip /><Line type="monotone" dataKey="count" stroke="hsl(160 84% 39%)" strokeWidth={2} dot={{ r: 3 }} /></LineChart></ResponsiveContainer></div></Card>
+      </div>
+    </div>
+  );
+}
