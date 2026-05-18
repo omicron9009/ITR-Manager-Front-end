@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
-  title: 'FileTax Pro — The Smartest Way to Manage ITR Filings',
+  title: 'ITR Manager — The Smartest Way to Manage ITR Filings',
   description: 'A SaaS-grade platform for Chartered Accountants to manage the end-to-end ITR filing lifecycle for up to 2,000 clients.',
 };
 

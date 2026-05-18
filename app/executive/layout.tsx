@@ -1,3 +1,4 @@
+'use client';
 import AppShell from '@/components/shared/AppShell';
 import { LayoutDashboard, Users, Folder } from 'lucide-react';
 

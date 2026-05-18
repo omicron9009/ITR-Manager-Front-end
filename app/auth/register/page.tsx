@@ -63,7 +63,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-lg">
         <Link href="/" className="flex items-center justify-center gap-2 mb-8">
           <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md"><FileCheck2 className="h-6 w-6" /></span>
-          <span className="font-bold text-2xl text-slate-900">FileTax Pro</span>
+          <span className="font-bold text-2xl text-slate-900">ITR Manager</span>
         </Link>
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
           <h1 className="text-2xl font-bold text-slate-900">Create your client account</h1>

@@ -1,34 +1,27 @@
-import { Crown, Users2, User, Check } from 'lucide-react';
+import { Clock, Wallet, Users, BadgeCheck } from 'lucide-react';
 
-const ROLES = [
-  { icon: Crown, title: 'Partner', subtitle: 'CA Owner', tint: 'bg-indigo-50 border-indigo-200', badge: 'bg-indigo-600 text-white', features: ['Full client visibility', 'Executive management', 'Form builder', 'Audit log', 'Account activation queue'] },
-  { icon: Users2, title: 'Executive', subtitle: 'CA Staff', tint: 'bg-slate-50 border-slate-200', badge: 'bg-slate-700 text-white', features: ['Assigned client dashboard', 'Document review', 'Computation upload', 'Mark payment', 'Scoped notifications'] },
-  { icon: User, title: 'Client', subtitle: 'Taxpayer', tint: 'bg-emerald-50 border-emerald-200', badge: 'bg-emerald-600 text-white', features: ['Self-registration', 'Real-time filing status bar', 'Document upload', 'Computation approval', 'Invoice download'] },
+const BENEFITS = [
+  { icon: Clock, title: 'Save 10+ hours', desc: 'No coordination calls, email threads, or document chasing. Upload once and let your CA work.', tint: 'bg-indigo-50 border-indigo-200', iconBg: 'bg-indigo-600' },
+  { icon: Wallet, title: 'Transparent pricing', desc: 'Your CA sets the fee upfront. Pay only when your return is filed and you&rsquo;re satisfied.', tint: 'bg-emerald-50 border-emerald-200', iconBg: 'bg-emerald-600' },
+  { icon: Users, title: 'For every taxpayer', desc: 'Salaried, freelancer, business owner, or NRI &mdash; your CA configures your filing flow.', tint: 'bg-amber-50 border-amber-200', iconBg: 'bg-amber-600' },
+  { icon: BadgeCheck, title: 'Audit-ready trail', desc: 'Every document, approval, and timestamp is logged. Re-download anytime, anywhere.', tint: 'bg-violet-50 border-violet-200', iconBg: 'bg-violet-600' },
 ];
 
 export default function RoleCards() {
   return (
-    <section id="roles" className="py-24 bg-white">
+    <section id="benefits" className="py-24 bg-white">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold uppercase tracking-wide">For Every Stakeholder</div>
-          <h2 className="mt-4 text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">Built for every role.</h2>
-          <p className="mt-4 text-lg text-slate-600">Each portal tailored to the workflows of its user — nothing more, nothing less.</p>
+          <div className="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold uppercase tracking-wide">Why taxpayers love it</div>
+          <h2 className="mt-4 text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">Built for you, the taxpayer.</h2>
+          <p className="mt-4 text-lg text-slate-600">Your CA does the filing. You stay informed every step of the way.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {ROLES.map((r) => (
-            <div key={r.title} className={`rounded-xl border ${r.tint} p-8 shadow-sm`}>
-              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${r.badge}`}>
-                <r.icon className="h-3.5 w-3.5" /> {r.subtitle}
-              </div>
-              <h3 className="mt-4 text-2xl font-bold text-slate-900">{r.title}</h3>
-              <ul className="mt-6 space-y-3">
-                {r.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
-                    <Check className="h-4 w-4 mt-0.5 flex-shrink-0 text-emerald-600" /> {f}
-                  </li>
-                ))}
-              </ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          {BENEFITS.map((b) => (
+            <div key={b.title} className={`rounded-xl border ${b.tint} p-6 shadow-sm`}>
+              <div className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-white ${b.iconBg}`}><b.icon className="h-5 w-5" /></div>
+              <h3 className="mt-4 font-bold text-slate-900">{b.title}</h3>
+              <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{b.desc}</p>
             </div>
           ))}
         </div>
