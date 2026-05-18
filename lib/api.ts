@@ -40,8 +40,8 @@ export const login = (email: string, password: string) =>
 export const me = () => api.get('/api/v1/auth/me').then((r) => r.data);
 
 // ---------- CLIENTS ----------
-export const registerClient = (payload: FormData) =>
-  api.post('/api/v1/clients/register', payload, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data);
+export const registerClient = (payload: any) =>
+  api.post('/api/v1/clients/register', payload).then((r) => r.data);
 export const listClients = (params: any = {}) =>
   api.get('/api/v1/clients', { params }).then((r) => r.data);
 export const getClient = (id: string) => api.get(`/api/v1/clients/${id}`).then((r) => r.data);
@@ -70,18 +70,22 @@ export const haltFiling = (id: string, reason: string) => api.post(`/api/v1/fili
 export const submitDocs = (id: string) => api.post(`/api/v1/filings/${id}/submit-documents`).then((r) => r.data);
 export const markPayment = (id: string) => api.post(`/api/v1/filings/${id}/mark-payment`).then((r) => r.data);
 export const myTracking = () => api.get('/api/v1/filings/my/tracking').then((r) => r.data);
+export const getFilingHistory = (id: string) => api.get(`/api/v1/filings/${id}/history`).then((r) => r.data);
 
 // ---------- DOCUMENTS ----------
-export const listDocTypes = () => api.get('/api/v1/documents/types').then((r) => r.data);
+export const listDocTypes = (includeInactive = false) => api.get('/api/v1/documents/types', { params: { include_inactive: includeInactive } }).then((r) => r.data);
 export const createDocType = (data: any) => api.post('/api/v1/documents/types', data).then((r) => r.data);
-export const assignDocs = (filing_id: string, doc_type_ids: string[]) =>
-  api.post(`/api/v1/documents/filings/${filing_id}/assign`, { doc_type_ids }).then((r) => r.data);
+export const updateDocType = (id: string, data: any) => api.put(`/api/v1/documents/types/${id}`, data).then((r) => r.data);
+export const assignDocs = (filing_id: string, document_type_ids: string[]) =>
+  api.post(`/api/v1/documents/filings/${filing_id}/assign`, { document_type_ids }).then((r) => r.data);
 export const filingDocs = (filing_id: string) => api.get(`/api/v1/documents/filings/${filing_id}`).then((r) => r.data);
-export const docUploadUrl = (data: any) => api.post('/api/v1/documents/upload-url', data).then((r) => r.data);
+export const docUploadUrl = (data: { document_id: string; filename: string; content_type: string }) =>
+  api.post('/api/v1/documents/upload-url', data).then((r) => r.data);
 export const docConfirmUpload = (params: any) => api.post('/api/v1/documents/confirm-upload', null, { params }).then((r) => r.data);
 export const docDownloadUrl = (id: string) => api.get(`/api/v1/documents/${id}/download-url`).then((r) => r.data);
-export const approveDoc = (document_id: string) => api.post('/api/v1/documents/approve', { document_id }).then((r) => r.data);
-export const rejectDoc = (document_id: string, reason: string) => api.post('/api/v1/documents/reject', { document_id, reason }).then((r) => r.data);
+export const approveDoc = (document_ids: string[]) => api.post('/api/v1/documents/approve', { document_ids }).then((r) => r.data);
+export const rejectDoc = (rejections: { document_id: string; reason: string }[]) =>
+  api.post('/api/v1/documents/reject', { rejections }).then((r) => r.data);
 
 // ---------- COMPUTATIONS ----------
 export const compUploadUrl = (data: any) => api.post('/api/v1/computations/upload-url', data).then((r) => r.data);
@@ -100,28 +104,29 @@ export const deactivateExec = (id: string) => api.post(`/api/v1/executives/${id}
 export const reactivateExec = (id: string) => api.post(`/api/v1/executives/${id}/reactivate`).then((r) => r.data);
 export const execClients = (id: string) => api.get(`/api/v1/executives/${id}/clients`).then((r) => r.data);
 
-// ---------- NOTIFICATIONS ----------
-export const listNotifications = (params: any = {}) => api.get('/api/v1/notifications', { params }).then((r) => r.data);
-export const unreadCount = () => api.get('/api/v1/notifications/unread-count').then((r) => r.data);
-export const markRead = (notification_id: string) => api.post('/api/v1/notifications/mark-read', { notification_id }).then((r) => r.data);
-export const markAllRead = () => api.post('/api/v1/notifications/mark-all-read').then((r) => r.data);
-
-// ---------- ONBOARDING / FORM BUILDER ----------
-export const listFields = () => api.get('/api/v1/onboarding/fields').then((r) => r.data);
+// ---------- ONBOARDING ----------
+export const listFields = (includeInactive = false) => api.get('/api/v1/onboarding/fields', { params: { include_inactive: includeInactive } }).then((r) => r.data);
 export const createField = (data: any) => api.post('/api/v1/onboarding/fields', data).then((r) => r.data);
 export const updateField = (id: string, data: any) => api.put(`/api/v1/onboarding/fields/${id}`, data).then((r) => r.data);
 export const deleteField = (id: string) => api.delete(`/api/v1/onboarding/fields/${id}`).then((r) => r.data);
-export const myForm = () => api.get('/api/v1/onboarding/form').then((r) => r.data);
-export const clientForm = (client_id: string) => api.get(`/api/v1/onboarding/form/${client_id}`).then((r) => r.data);
-export const submitForm = (data: any) => api.post('/api/v1/onboarding/form/submit', data).then((r) => r.data);
+export const getOnboardingForm = () => api.get('/api/v1/onboarding/form').then((r) => r.data);
+export const getClientOnboardingForm = (client_id: string) => api.get(`/api/v1/onboarding/form/${client_id}`).then((r) => r.data);
+export const submitOnboardingForm = (form_data: any) => api.post('/api/v1/onboarding/form/submit', { form_data }).then((r) => r.data);
+
+// ---------- NOTIFICATIONS ----------
+export const listNotifications = (params: any = {}) => api.get('/api/v1/notifications', { params }).then((r) => r.data);
+export const getUnreadCount = () => api.get('/api/v1/notifications/unread-count').then((r) => r.data);
+export const markRead = (notification_ids: string[]) => api.post('/api/v1/notifications/mark-read', { notification_ids }).then((r) => r.data);
+export const markAllRead = () => api.post('/api/v1/notifications/mark-all-read').then((r) => r.data);
 
 // ---------- AUDIT ----------
 export const listAudit = (params: any = {}) => api.get('/api/v1/audit/logs', { params }).then((r) => r.data);
-export const generateAuditReport = (params: any = {}) =>
-  api.post('/api/v1/audit/generate-report', null, { params, responseType: 'blob' }).then((r) => r);
+export const generateAuditReport = (params: any = {}) => api.post('/api/v1/audit/generate-report', null, { params, responseType: 'blob' });
 
 // ---------- STORAGE ----------
 export const storageDownloadUrl = (file_id: string) => api.get(`/api/v1/storage/${file_id}/download-url`).then((r) => r.data);
 export const completedDocs = (filing_id: string) => api.get(`/api/v1/storage/completed-docs/${filing_id}`).then((r) => r.data);
 export const completedDocUploadUrl = (params: any) => api.post('/api/v1/storage/completed-doc/upload-url', null, { params }).then((r) => r.data);
 export const completedDocConfirm = (params: any) => api.post('/api/v1/storage/completed-doc/confirm', null, { params }).then((r) => r.data);
+export const onboardingUploadUrl = (params: any) => api.post('/api/v1/storage/onboarding-upload-url', null, { params }).then((r) => r.data);
+export const confirmOnboardingUpload = (params: any) => api.post('/api/v1/storage/confirm-onboarding-upload', null, { params }).then((r) => r.data);

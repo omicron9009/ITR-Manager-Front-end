@@ -108,12 +108,12 @@ export default function ClientsListPage() {
                       ) : (
                         <Select onValueChange={(v) => onAssign(c.id, v)}>
                           <SelectTrigger className="h-8 w-[160px] text-xs border-amber-300 bg-amber-50 text-amber-700"><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                          <SelectContent>{execs.filter((e) => (e.status || 'ACTIVE') === 'ACTIVE').map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name || e.name}</SelectItem>)}</SelectContent>
+                          <SelectContent>{execs.filter((e) => e.is_active !== false).map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name || e.name}</SelectItem>)}</SelectContent>
                         </Select>
                       )}
                     </td>
                     <td className="px-5 py-3">{(c.current_state || c.filing_state) ? <StatusBadge status={c.current_state || c.filing_state} /> : <span className="text-xs text-slate-400">—</span>}</td>
-                    <td className="px-5 py-3 text-xs text-slate-500">{c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '—'}</td>
+                    <td className="px-5 py-3 text-xs text-slate-500">{c.last_updated ? new Date(c.last_updated).toLocaleDateString() : '—'}</td>
                     <td className="px-5 py-3 text-right">
                       <Link href={`/partner/clients/${c.id}`}><Button size="sm" variant="outline"><Eye className="h-3.5 w-3.5 mr-1" /> View</Button></Link>
                     </td>

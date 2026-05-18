@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { listNotifications, unreadCount, markAllRead, markRead } from '@/lib/api';
+import { listNotifications, getUnreadCount, markAllRead, markRead } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 
@@ -14,7 +14,7 @@ export default function NotificationBell() {
 
   const refresh = async () => {
     try {
-      const c = await unreadCount();
+      const c = await getUnreadCount();
       setCount(c?.count ?? c?.unread_count ?? 0);
     } catch {}
   };
@@ -52,7 +52,7 @@ export default function NotificationBell() {
             <div className="py-8 text-center text-sm text-slate-500">No notifications yet</div>
           )}
           {items.map((n: any) => (
-            <button key={n.id} onClick={async () => { await markRead(n.id); refresh(); load(); }} className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0">
+            <button key={n.id} onClick={async () => { await markRead([n.id]); refresh(); load(); }} className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0">
               <div className="flex items-start gap-3">
                 <span className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${n.is_read ? 'bg-slate-300' : 'bg-indigo-500'}`} />
                 <div className="flex-1 min-w-0">

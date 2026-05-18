@@ -17,10 +17,10 @@ export default function ClientDocumentsPage() {
   const load = async () => {
     try {
       const r = await myTracking();
-      const list = r?.filings || r?.items || r || [];
+      const list = r?.items || [];
       setFilings(list);
       for (const f of list) {
-        try { const d = await filingDocs(f.id); setDocs((p) => ({ ...p, [f.id]: d?.items || d?.documents || d || [] })); } catch {}
+        try { const d = await filingDocs(f.id); setDocs((p) => ({ ...p, [f.id]: d?.items || [] })); } catch {}
         if ((f.status || f.current_state) === 'COMPLETED') { try { const c = await completedDocs(f.id); setCompleted((p) => ({ ...p, [f.id]: c || [] })); } catch {} }
       }
     } catch {}
@@ -30,7 +30,7 @@ export default function ClientDocumentsPage() {
   const onUpload = async (filing_id: string, placeholder_id: string, file: File) => {
     setUploading(placeholder_id);
     try {
-      const url = await docUploadUrl({ filing_id, document_id: placeholder_id, filename: file.name, content_type: file.type, file_size: file.size });
+      const url = await docUploadUrl({ document_id: placeholder_id, filename: file.name, content_type: file.type });
       await axios.put(url.upload_url || url.url, file, { headers: { 'Content-Type': file.type } });
       await docConfirmUpload({ document_id: placeholder_id, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
       toast.success('Uploaded');
@@ -97,7 +97,7 @@ function DocCard({ doc, onUpload, onDownload, uploading }: { doc: any; onUpload:
       <label className="cursor-pointer rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/50 p-4 hover:border-indigo-400 hover:bg-indigo-50/40 transition-colors">
         <div className="flex items-center gap-3">
           {uploading ? <RefreshCw className="h-5 w-5 text-indigo-600 animate-spin" /> : <Upload className="h-5 w-5 text-slate-500" />}
-          <div className="flex-1"><div className="font-medium text-sm text-slate-900">{doc.doc_type_name || doc.placeholder_name}</div><div className="text-xs text-slate-500">Pending upload • PDF / JPG / PNG / XLS</div></div>
+          <div className="flex-1"><div className="font-medium text-sm text-slate-900">{doc.document_type_name || doc.original_filename}</div><div className="text-xs text-slate-500">Pending upload • PDF / JPG / PNG / XLS</div></div>
         </div>
         <input type="file" hidden onChange={handle} accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.csv,.doc,.docx" />
       </label>
@@ -106,7 +106,7 @@ function DocCard({ doc, onUpload, onDownload, uploading }: { doc: any; onUpload:
   if (status === 'REJECTED') {
     return (
       <label className="cursor-pointer rounded-lg border-2 border-rose-300 bg-rose-50/60 p-4 hover:bg-rose-50">
-        <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2 min-w-0"><FileText className="h-4 w-4 text-rose-600 flex-shrink-0" /><div className="min-w-0"><div className="font-medium text-sm text-rose-900 truncate">{doc.doc_type_name || doc.placeholder_name}</div>{doc.rejection_reason && <div className="text-xs text-rose-700 mt-0.5">Reason: {doc.rejection_reason}</div>}</div></div><StatusBadge status="REJECTED" size="sm" /></div>
+        <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2 min-w-0"><FileText className="h-4 w-4 text-rose-600 flex-shrink-0" /><div className="min-w-0"><div className="font-medium text-sm text-rose-900 truncate">{doc.document_type_name || doc.original_filename}</div>{doc.rejection_reason && <div className="text-xs text-rose-700 mt-0.5">Reason: {doc.rejection_reason}</div>}</div></div><StatusBadge status="REJECTED" size="sm" /></div>
         <div className="mt-3"><Button size="sm" className="bg-rose-600 hover:bg-rose-700" onClick={(e) => { e.preventDefault(); (e.currentTarget.parentElement?.parentElement?.querySelector('input[type=file]') as HTMLInputElement)?.click(); }}><Upload className="h-3.5 w-3.5 mr-1" /> Re-upload</Button></div>
         <input type="file" hidden onChange={handle} accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.csv,.doc,.docx" />
       </label>
@@ -114,7 +114,7 @@ function DocCard({ doc, onUpload, onDownload, uploading }: { doc: any; onUpload:
   }
   return (
     <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0"><FileText className="h-4 w-4 text-emerald-600 flex-shrink-0" /><div className="min-w-0"><div className="font-medium text-sm text-slate-900 truncate">{doc.doc_type_name || doc.placeholder_name}</div><div className="text-xs text-slate-500 truncate">{doc.filename}</div></div></div>
+      <div className="flex items-center gap-2 min-w-0"><FileText className="h-4 w-4 text-emerald-600 flex-shrink-0" /><div className="min-w-0"><div className="font-medium text-sm text-slate-900 truncate">{doc.document_type_name || doc.original_filename}</div><div className="text-xs text-slate-500 truncate">{doc.original_filename}</div></div></div>
       <div className="flex items-center gap-2"><StatusBadge status={status} size="sm" /><Button size="sm" variant="ghost" onClick={onDownload}><Download className="h-3.5 w-3.5" /></Button></div>
     </div>
   );

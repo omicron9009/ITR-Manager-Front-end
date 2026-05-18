@@ -25,7 +25,7 @@ export default function ExecutivesPage() {
   };
 
   const toggle = async (ex: any) => {
-    try { if ((ex.status || 'ACTIVE') === 'ACTIVE') { await deactivateExec(ex.id); toast.success('Deactivated'); } else { await reactivateExec(ex.id); toast.success('Reactivated'); } load(); } catch { toast.error('Failed'); }
+    try { if (ex.is_active) { await deactivateExec(ex.id); toast.success('Deactivated'); } else { await reactivateExec(ex.id); toast.success('Reactivated'); } load(); } catch { toast.error('Failed'); }
   };
 
   return (
@@ -43,9 +43,9 @@ export default function ExecutivesPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="text-right"><div className="text-xs text-slate-500">Clients</div><div className="font-bold text-slate-900">{e.client_count ?? e.assigned_clients_count ?? 0}</div></div>
-              <StatusBadge status={e.status || 'ACTIVE'} />
-              <Button size="sm" variant="outline" onClick={() => toggle(e)}>{(e.status || 'ACTIVE') === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}</Button>
+              <div className="text-right"><div className="text-xs text-slate-500">Clients</div><div className="font-bold text-slate-900">{e.assigned_client_count ?? 0}</div></div>
+              <StatusBadge status={e.account_status || (e.is_active ? 'ACTIVE' : 'DEACTIVATED')} />
+              <Button size="sm" variant="outline" onClick={() => toggle(e)}>{e.is_active ? 'Deactivate' : 'Reactivate'}</Button>
             </div>
           </Card>
         ))}

@@ -62,8 +62,8 @@ export default function AuditPage() {
                 <tr key={l.id} className="border-t border-slate-100">
                   <td className="px-5 py-3 text-xs text-slate-500 whitespace-nowrap">{l.created_at ? new Date(l.created_at).toLocaleString() : '—'}</td>
                   <td className="px-5 py-3"><span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${EVENT_COLORS[l.event_type] || 'bg-slate-100 text-slate-700'}`}>{l.event_type}</span></td>
-                  <td className="px-5 py-3 text-slate-700">{l.actor_name || l.actor || '—'}</td>
-                  <td className="px-5 py-3 text-slate-600">{l.description || l.message || '—'}</td>
+                  <td className="px-5 py-3 text-slate-700">{l.actor_name || '—'}</td>
+                  <td className="px-5 py-3 text-slate-600">{l.client_name ? `Client: ${l.client_name}` : ''}{l.details && Object.keys(l.details).length > 0 ? ` ${JSON.stringify(l.details)}` : ''}</td>
                 </tr>
               ))}
             </tbody>

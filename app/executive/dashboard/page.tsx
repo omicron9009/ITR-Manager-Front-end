@@ -22,9 +22,9 @@ export default function ExecutiveDashboard() {
   const [summary, setSummary] = useState<any>({});
   const [analytics, setAnalytics] = useState<any>(null);
   useEffect(() => { getSummary().then(setSummary).catch(() => {}); getExecutiveAnalytics().then(setAnalytics).catch(() => {}); }, []);
-  const getCount = (k: string) => { const c = summary?.counts || summary?.filings_by_status || summary || {}; return c[k] ?? c[k.toLowerCase()] ?? 0; };
-  const barData = (analytics?.filings_by_status || []).map?.((x: any) => ({ name: x.status, count: x.count })) || CARDS.map(c => ({ name: c.label, count: getCount(c.key) }));
-  const lineData = analytics?.filings_over_time || [];
+  const getCount = (k: string) => { const counters = summary?.counters || []; const found = counters.find((c: any) => c.status === k); return found?.count ?? 0; };
+  const barData = (analytics?.filing_status_breakdown || []).map?.((x: any) => ({ name: x.status, count: x.count })) || CARDS.map(c => ({ name: c.label, count: getCount(c.key) }));
+  const lineData = (analytics?.fy_distribution || []).map?.((x: any) => ({ month: x.financial_year, count: x.total_filings })) || [];
   return (
     <div className="space-y-6">
       <div><h1 className="text-2xl font-bold text-slate-900">Executive Dashboard</h1><p className="text-sm text-slate-500 mt-1">Your assigned clients &middot; {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>

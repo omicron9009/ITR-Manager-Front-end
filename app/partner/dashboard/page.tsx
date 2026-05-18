@@ -39,7 +39,7 @@ export default function PartnerDashboardPage() {
     try {
       const [s, p, a] = await Promise.allSettled([getSummary(), getPendingVerification(), getPartnerAnalytics()]);
       if (s.status === 'fulfilled') setSummary(s.value || {});
-      if (p.status === 'fulfilled') setPending(p.value?.items || p.value?.clients || p.value || []);
+      if (p.status === 'fulfilled') setPending(p.value?.items || []);
       if (a.status === 'fulfilled') setAnalytics(a.value);
     } finally { setLoading(false); }
   };
@@ -47,9 +47,10 @@ export default function PartnerDashboardPage() {
   useEffect(() => { load(); }, []);
 
   const getCount = (key: string) => {
-    const counts = summary?.counts || summary?.filings_by_status || summary || {};
     if (key === 'PENDING_VERIFICATION') return summary?.pending_verification_count ?? pending.length ?? 0;
-    return counts[key] ?? counts[key.toLowerCase()] ?? 0;
+    const counters = summary?.counters || [];
+    const found = counters.find((c: any) => c.status === key);
+    return found?.count ?? 0;
   };
 
   const onActivate = async (id: string) => {
@@ -66,8 +67,8 @@ export default function PartnerDashboardPage() {
   };
 
   // Analytics data shaping
-  const barData = (analytics?.filings_by_status || analytics?.by_status || []).map?.((x: any) => ({ name: x.status || x.name, count: x.count || x.value })) || CARDS.slice(0, 7).map(c => ({ name: c.label, count: getCount(c.key) }));
-  const lineData = analytics?.filings_over_time || analytics?.by_month || [];
+  const barData = (analytics?.filing_status_breakdown || []).map?.((x: any) => ({ name: x.status, count: x.count })) || CARDS.slice(0, 7).map(c => ({ name: c.label, count: getCount(c.key) }));
+  const lineData = (analytics?.fy_distribution || []).map?.((x: any) => ({ month: x.financial_year, count: x.total_filings })) || [];
 
   return (
     <div className="space-y-6">
@@ -121,7 +122,7 @@ export default function PartnerDashboardPage() {
                   <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                     <td className="px-5 py-3 font-medium text-slate-900">{c.full_name || c.name}</td>
                     <td className="px-5 py-3 text-slate-600">{c.email}</td>
-                    <td className="px-5 py-3 text-slate-500 text-xs">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+                    <td className="px-5 py-3 text-slate-500 text-xs">{c.registered_at ? new Date(c.registered_at).toLocaleDateString() : '—'}</td>
                     <td className="px-5 py-3">
                       <div className="flex gap-2 justify-end">
                         <Button size="sm" onClick={() => onActivate(c.id)} disabled={acting} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activate</Button>

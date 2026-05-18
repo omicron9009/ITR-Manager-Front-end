@@ -1,10 +1,10 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, FileCheck2, UploadCloud, FileText, CheckCircle2 } from 'lucide-react';
+import { Loader2, FileCheck2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,30 +15,25 @@ const schema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z.string().min(8, 'Min 8 characters'),
   confirm: z.string(),
-  phone: z.string().optional(),
+  phone_number: z.string().optional(),
 }).refine((d) => d.password === d.confirm, { message: 'Passwords do not match', path: ['confirm'] });
 
 export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
-  const [panFile, setPanFile] = useState<File | null>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
 
   const onSubmit = async (values: any) => {
     setErr('');
-    if (!panFile) { setErr('Please upload your PAN card document.'); return; }
     setSubmitting(true);
     try {
-      const fd = new FormData();
-      fd.append('full_name', values.full_name);
-      fd.append('email', values.email);
-      fd.append('password', values.password);
-      if (values.phone) fd.append('phone', values.phone);
-      fd.append('pan_document', panFile);
-      await registerClient(fd);
+      await registerClient({
+        full_name: values.full_name,
+        email: values.email,
+        password: values.password,
+        phone_number: values.phone_number || undefined,
+      });
       setDone(true);
     } catch (e: any) {
       setErr(e?.response?.data?.detail || e?.message || 'Registration failed.');
@@ -83,7 +78,7 @@ export default function RegisterPage() {
               </div>
               <div>
                 <Label>Phone <span className="text-slate-400">(optional)</span></Label>
-                <Input {...register('phone')} placeholder="+91 …" className="mt-1.5" />
+                <Input {...register('phone_number')} placeholder="+91 …" className="mt-1.5" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -96,27 +91,6 @@ export default function RegisterPage() {
                 <Label>Confirm Password</Label>
                 <Input type="password" {...register('confirm')} className="mt-1.5" />
                 {errors.confirm && <p className="text-xs text-rose-600 mt-1">{errors.confirm.message as string}</p>}
-              </div>
-            </div>
-            <div>
-              <Label>PAN Card</Label>
-              <div
-                onClick={() => inputRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) setPanFile(f); }}
-                className={`mt-1.5 cursor-pointer border-2 border-dashed rounded-xl p-6 text-center transition-colors ${dragOver ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/40'}`}
-              >
-                {panFile ? (
-                  <div className="inline-flex items-center gap-2 text-sm text-emerald-700 font-medium"><FileText className="h-4 w-4" /> {panFile.name} <span className="text-slate-400">({(panFile.size/1024).toFixed(0)} KB)</span></div>
-                ) : (
-                  <>
-                    <UploadCloud className="h-8 w-8 mx-auto text-indigo-500" />
-                    <p className="mt-2 text-sm text-slate-700"><span className="font-semibold text-indigo-600">Click to upload</span> or drag and drop</p>
-                    <p className="text-[11px] text-slate-500 mt-1">PDF, JPG or PNG</p>
-                  </>
-                )}
-                <input ref={inputRef} type="file" hidden accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPanFile(f); }} />
               </div>
             </div>
             <Button type="submit" disabled={submitting} className="w-full bg-indigo-600 hover:bg-indigo-700 h-11 rounded-lg font-semibold">

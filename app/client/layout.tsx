@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 const NAV = [
   { href: '/client/dashboard', label: 'My Filings' },
   { href: '/client/documents', label: 'Documents' },
+  { href: '/client/notifications', label: 'Notifications' },
   { href: '/client/profile', label: 'Profile' },
 ];
 
