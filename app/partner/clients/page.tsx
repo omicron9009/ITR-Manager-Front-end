@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
@@ -12,7 +12,15 @@ import { listClients, listExecutives, assignExecutive } from '@/lib/api';
 import { Search, Users, Eye, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function ClientsListPage() {
+export default function ClientsListPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-16"><div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>}>
+      <ClientsListPage />
+    </Suspense>
+  );
+}
+
+function ClientsListPage() {
   const params = useSearchParams();
   const pathname = usePathname();
   const routePrefix = pathname.startsWith('/executive') ? '/executive' : '/partner';

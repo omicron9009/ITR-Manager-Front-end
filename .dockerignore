@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+*.md
+test_reports
+tests
+memory
+transition
+__pycache__
+.env.local
+.env

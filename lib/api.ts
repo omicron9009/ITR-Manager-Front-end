@@ -3,7 +3,15 @@ import axios, { AxiosError, AxiosInstance } from 'axios';
 import { getToken, clearAuth } from './auth';
 import { toast } from 'sonner';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined') {
+    return `${window.location.protocol}//${window.location.hostname}:8000`;
+  }
+  return 'http://localhost:8000';
+}
+
+const BASE = getBaseUrl();
 
 export const api: AxiosInstance = axios.create({
   baseURL: BASE,
