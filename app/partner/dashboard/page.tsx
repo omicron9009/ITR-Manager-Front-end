@@ -67,7 +67,17 @@ export default function PartnerDashboardPage() {
   };
 
   // Analytics data shaping
-  const barData = (analytics?.filing_status_breakdown || []).map?.((x: any) => ({ name: x.status, count: x.count })) || CARDS.slice(0, 7).map(c => ({ name: c.label, count: getCount(c.key) }));
+  const STATUS_LABELS: Record<string, string> = {
+    INITIATED: 'Initiated',
+    ON_BOARDING: 'Onboarding',
+    PROCESSING: 'Processing',
+    COMPUTATION: 'Computation',
+    FILING: 'Filing',
+    PAYMENT: 'Payment',
+    COMPLETED: 'Completed',
+    HALTED: 'Halted',
+  };
+  const barData = (analytics?.filing_status_breakdown || []).map?.((x: any) => ({ name: STATUS_LABELS[x.status] || x.status, count: x.count })) || CARDS.slice(0, 7).map(c => ({ name: c.label, count: getCount(c.key) }));
   const lineData = (analytics?.fy_distribution || []).map?.((x: any) => ({ month: x.financial_year, count: x.total_filings })) || [];
 
   return (
@@ -142,7 +152,7 @@ export default function PartnerDashboardPage() {
         <Card className="rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4"><Users className="h-4 w-4 text-indigo-600" /><h3 className="font-semibold text-slate-900">Filings by State</h3></div>
           <div style={{ width: '100%', height: 260 }}>
-            <ResponsiveContainer><BarChart data={barData}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="name" tick={{ fontSize: 11 }} /><YAxis tick={{ fontSize: 11 }} /><Tooltip /><Bar dataKey="count" fill="hsl(239 84% 60%)" radius={[6,6,0,0]} /></BarChart></ResponsiveContainer>
+            <ResponsiveContainer><BarChart data={barData} margin={{ bottom: 20 }}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" /><YAxis tick={{ fontSize: 11 }} /><Tooltip /><Bar dataKey="count" fill="hsl(239 84% 60%)" radius={[6,6,0,0]} /></BarChart></ResponsiveContainer>
           </div>
         </Card>
         <Card className="rounded-xl p-5">

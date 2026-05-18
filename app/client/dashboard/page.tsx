@@ -66,7 +66,10 @@ export default function ClientDashboard() {
 
   useEffect(() => { load(); checkOnboarding(); }, []);
 
-  const accountStatus = dashData?.account_status || getUser()?.account_status || '';
+  const [clientUser, setClientUser] = useState<any>(null);
+  useEffect(() => { setClientUser(getUser()); }, []);
+
+  const accountStatus = dashData?.account_status || clientUser?.account_status || '';
   const pendingVerification = accountStatus === 'PENDING_VERIFICATION';
 
   const doInitiate = async () => {
