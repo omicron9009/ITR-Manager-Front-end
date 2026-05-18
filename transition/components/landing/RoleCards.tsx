@@ -2,8 +2,8 @@ import { Clock, Wallet, Users, BadgeCheck } from 'lucide-react';
 
 const BENEFITS = [
   { icon: Clock, title: 'Save 10+ hours', desc: 'No coordination calls, email threads, or document chasing. Upload once and let your CA work.', tint: 'bg-indigo-50 border-indigo-200', iconBg: 'bg-indigo-600' },
-  { icon: Wallet, title: 'Transparent pricing', desc: 'Your CA sets the fee upfront. Pay only when your return is filed and you\u2019re satisfied.', tint: 'bg-emerald-50 border-emerald-200', iconBg: 'bg-emerald-600' },
-  { icon: Users, title: 'For every taxpayer', desc: 'Salaried, freelancer, business owner, or NRI \u2014 your CA configures your filing flow.', tint: 'bg-amber-50 border-amber-200', iconBg: 'bg-amber-600' },
+  { icon: Wallet, title: 'Transparent pricing', desc: 'Your CA sets the fee upfront. Pay only when your return is filed and you&rsquo;re satisfied.', tint: 'bg-emerald-50 border-emerald-200', iconBg: 'bg-emerald-600' },
+  { icon: Users, title: 'For every taxpayer', desc: 'Salaried, freelancer, business owner, or NRI &mdash; your CA configures your filing flow.', tint: 'bg-amber-50 border-amber-200', iconBg: 'bg-amber-600' },
   { icon: BadgeCheck, title: 'Audit-ready trail', desc: 'Every document, approval, and timestamp is logged. Re-download anytime, anywhere.', tint: 'bg-violet-50 border-violet-200', iconBg: 'bg-violet-600' },
 ];
 

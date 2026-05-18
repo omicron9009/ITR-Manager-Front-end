@@ -1,19 +1,18 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
-import { myTracking, getClientDashboard, initiateFiling, submitDocs, approveComp, rejectComp, compForFiling, compDownloadUrl, completedDocs, storageDownloadUrl, getOnboardingForm, submitOnboardingForm } from '@/lib/api';
+import { getClientDashboard, initiateFiling, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload } from '@/lib/api';
 import { getUser } from '@/lib/auth';
+import axios from 'axios';
 import { toast } from 'sonner';
-import { Plus, FolderUp, IndianRupee, CheckCircle2, Calculator, Send, Download, AlertTriangle, Loader2, ClipboardList, X } from 'lucide-react';
+import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload } from 'lucide-react';
 
 function getFYOptions() {
   const d = new Date();
@@ -24,28 +23,29 @@ function getFYOptions() {
 }
 
 export default function ClientDashboard() {
+  const router = useRouter();
   const [filings, setFilings] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const [dashData, setDashData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [openInit, setOpenInit] = useState(false);
   const [fy, setFy] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Onboarding state
   const [onboardingFields, setOnboardingFields] = useState<any[]>([]);
   const [onboardingValues, setOnboardingValues] = useState<Record<string, any>>({});
-  const [onboardingComplete, setOnboardingComplete] = useState(true); // assume true until we know
+  const [onboardingComplete, setOnboardingComplete] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingSaving, setOnboardingSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const u = getUser(); setUser(u);
-      const r = await myTracking();
-      setFilings(r?.items || []);
+      const r = await getClientDashboard();
+      setDashData(r);
+      const items = (r?.active_filings || []).map((f: any) => ({ ...f, id: f.filing_id || f.id }));
+      setFilings(items);
     } catch {
-      try { const r = await getClientDashboard(); setFilings(r?.active_filings || []); } catch {}
+      setFilings([]);
     } finally { setLoading(false); }
   };
 
@@ -54,45 +54,42 @@ export default function ClientDashboard() {
       const r = await getOnboardingForm();
       const fields = r?.fields || [];
       setOnboardingFields(fields);
-      if (fields.length > 0 && (!r?.submitted_data || Object.keys(r.submitted_data).length === 0)) {
+      if (fields.length > 0 && !r?.submitted) {
         setOnboardingComplete(false);
         setShowOnboarding(true);
       } else {
         setOnboardingComplete(true);
         if (r?.submitted_data) setOnboardingValues(r.submitted_data);
       }
-    } catch {
-      // If API fails, don't block the user
-      setOnboardingComplete(true);
-    }
+    } catch { setOnboardingComplete(true); }
   };
 
   useEffect(() => { load(); checkOnboarding(); }, []);
 
-  const pendingVerification = (user?.account_status || '') === 'PENDING_VERIFICATION';
-  const canInitiate = !pendingVerification && onboardingComplete;
+  const accountStatus = dashData?.account_status || getUser()?.account_status || '';
+  const pendingVerification = accountStatus === 'PENDING_VERIFICATION';
 
   const doInitiate = async () => {
     if (!fy) return;
     setSubmitting(true);
-    try { await initiateFiling({ financial_year: fy }); toast.success('Filing initiated'); setOpenInit(false); setFy(''); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+    try {
+      await initiateFiling({ financial_year: fy });
+      toast.success('Filing initiated');
+      setOpenInit(false); setFy(''); load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
     finally { setSubmitting(false); }
   };
 
   const handleOnboardingSubmit = async () => {
-    // Validate required fields
     const missing = onboardingFields.filter((f) => f.is_required && !onboardingValues[f.field_key]?.toString().trim());
-    if (missing.length > 0) {
-      toast.error(`Please fill required fields: ${missing.map((f) => f.field_label).join(', ')}`);
-      return;
-    }
+    if (missing.length > 0) { toast.error(`Please fill: ${missing.map((f) => f.field_label).join(', ')}`); return; }
     setOnboardingSaving(true);
     try {
       await submitOnboardingForm(onboardingValues);
-      toast.success('Onboarding form submitted successfully!');
+      toast.success('Onboarding form submitted!');
       setOnboardingComplete(true);
       setShowOnboarding(false);
-    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to submit'); }
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
     finally { setOnboardingSaving(false); }
   };
 
@@ -103,7 +100,7 @@ export default function ClientDashboard() {
           <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
           <div>
             <p className="font-semibold text-amber-900">Your account is under verification.</p>
-            <p className="text-sm text-amber-800">You&rsquo;ll receive an email once activated. All filing actions are currently disabled.</p>
+            <p className="text-sm text-amber-800">You&rsquo;ll receive an email once activated.</p>
           </div>
         </div>
       )}
@@ -113,7 +110,7 @@ export default function ClientDashboard() {
           <ClipboardList className="h-5 w-5 text-blue-600 mt-0.5" />
           <div className="flex-1">
             <p className="font-semibold text-blue-900">Complete your onboarding form</p>
-            <p className="text-sm text-blue-800 mt-0.5">Please fill in your details before initiating a filing.</p>
+            <p className="text-sm text-blue-800 mt-0.5">Fill in your details before initiating a filing.</p>
             <Button size="sm" className="mt-2 bg-blue-600 hover:bg-blue-700" onClick={() => setShowOnboarding(true)}>Fill Onboarding Form</Button>
           </div>
         </div>
@@ -121,63 +118,72 @@ export default function ClientDashboard() {
 
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Filings</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Track every step of your tax return.</p>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {dashData?.full_name ? `Welcome, ${dashData.full_name}` : 'My Filings'}
+          </h1>
+          <p className="text-sm text-slate-500 mt-0.5">Click a filing to view documents and details.</p>
         </div>
-        <Button onClick={() => { if (!onboardingComplete) { setShowOnboarding(true); return; } setOpenInit(true); }} disabled={pendingVerification} className="bg-indigo-600 hover:bg-indigo-700"><Plus className="h-4 w-4 mr-1" /> Initiate ITR Filing</Button>
+        <Button onClick={() => { if (!onboardingComplete) { setShowOnboarding(true); return; } setOpenInit(true); }} disabled={pendingVerification} className="bg-indigo-600 hover:bg-indigo-700">
+          <Plus className="h-4 w-4 mr-1" /> Initiate ITR Filing
+        </Button>
       </div>
 
-      {loading ? <p className="text-sm text-slate-500">Loading…</p> : filings.length === 0 ? (
+      {/* Filing Directory Grid */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-indigo-600" /></div>
+      ) : filings.length === 0 ? (
         <Card className="rounded-xl p-10 text-center">
-          <div className="inline-flex h-14 w-14 rounded-full bg-indigo-50 text-indigo-600 items-center justify-center mb-3"><FolderUp className="h-7 w-7" /></div>
+          <div className="inline-flex h-14 w-14 rounded-full bg-indigo-50 text-indigo-600 items-center justify-center mb-3"><FolderOpen className="h-7 w-7" /></div>
           <h3 className="font-bold text-slate-900">No filings yet</h3>
           <p className="text-sm text-slate-500 mt-1">Start by initiating your first ITR filing.</p>
         </Card>
-      ) : filings.map((f: any) => <FilingPanel key={f.id} filing={f} onChange={load} />)}
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filings.map((f: any) => (
+            <FilingCard key={f.id} filing={f} onClick={() => router.push(`/client/filings/${f.id}`)} />
+          ))}
+        </div>
+      )}
 
       {/* Initiate Filing Dialog */}
       <Dialog open={openInit} onOpenChange={setOpenInit}>
         <DialogContent>
           <DialogHeader><DialogTitle>Initiate new ITR filing</DialogTitle></DialogHeader>
-          <div><label className="text-sm font-medium">Financial Year</label><Select value={fy} onValueChange={setFy}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Select FY" /></SelectTrigger><SelectContent>{getFYOptions().map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
-          <DialogFooter><Button variant="outline" onClick={() => setOpenInit(false)}>Cancel</Button><Button onClick={doInitiate} disabled={submitting || !fy} className="bg-indigo-600 hover:bg-indigo-700">{submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm &amp; Submit</Button></DialogFooter>
+          <div>
+            <label className="text-sm font-medium">Financial Year</label>
+            <Select value={fy} onValueChange={setFy}>
+              <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select FY" /></SelectTrigger>
+              <SelectContent>{getFYOptions().map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenInit(false)}>Cancel</Button>
+            <Button onClick={doInitiate} disabled={submitting || !fy} className="bg-indigo-600 hover:bg-indigo-700">
+              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Onboarding Form Dialog */}
+      {/* Onboarding Dialog */}
       <Dialog open={showOnboarding} onOpenChange={(o) => { if (onboardingComplete) setShowOnboarding(o); }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><ClipboardList className="h-5 w-5 text-indigo-600" /> Complete Your Onboarding</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-slate-500">Please fill in the following details. This is required before you can initiate a filing.</p>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><ClipboardList className="h-5 w-5 text-indigo-600" /> Complete Your Onboarding</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
             {onboardingFields.map((f) => (
               <div key={f.id}>
-                <Label className="flex items-center gap-1">
-                  {f.field_label}
-                  {f.is_required && <span className="text-rose-500">*</span>}
-                </Label>
-                {f.field_type === 'TEXT' && (
-                  <Input value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" placeholder={`Enter ${f.field_label.toLowerCase()}`} />
-                )}
-                {f.field_type === 'NUMBER' && (
-                  <Input type="number" value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" placeholder="0" />
-                )}
-                {f.field_type === 'DATE' && (
-                  <Input type="date" value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" />
-                )}
+                <Label>{f.field_label}{f.is_required && <span className="text-rose-500 ml-1">*</span>}</Label>
+                {f.field_type === 'TEXT' && <Input value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" />}
+                {f.field_type === 'NUMBER' && <Input type="number" value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" />}
+                {f.field_type === 'DATE' && <Input type="date" value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" />}
                 {f.field_type === 'DROPDOWN' && (
                   <Select value={onboardingValues[f.field_key] || ''} onValueChange={(v) => setOnboardingValues({ ...onboardingValues, [f.field_key]: v })}>
-                    <SelectTrigger className="mt-1.5"><SelectValue placeholder={`Select ${f.field_label.toLowerCase()}`} /></SelectTrigger>
+                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select..." /></SelectTrigger>
                     <SelectContent>{(f.field_options || []).map((opt: string) => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent>
                   </Select>
                 )}
                 {f.field_type === 'FILE' && (
-                  <Input type="file" className="mt-1.5" onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.files?.[0]?.name || '' })} />
-                )}
-                {!['TEXT', 'NUMBER', 'DATE', 'DROPDOWN', 'FILE'].includes(f.field_type) && (
-                  <Input value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" />
+                  <OnboardingFileInput fieldKey={f.field_key} value={onboardingValues[f.field_key]} onUploaded={(fileId, name) => setOnboardingValues({ ...onboardingValues, [f.field_key]: fileId })} />
                 )}
               </div>
             ))}
@@ -185,7 +191,7 @@ export default function ClientDashboard() {
           <DialogFooter className="mt-4">
             {onboardingComplete && <Button variant="outline" onClick={() => setShowOnboarding(false)}>Close</Button>}
             <Button onClick={handleOnboardingSubmit} disabled={onboardingSaving} className="bg-indigo-600 hover:bg-indigo-700">
-              {onboardingSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Submit Onboarding Form
+              {onboardingSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Submit
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -194,188 +200,103 @@ export default function ClientDashboard() {
   );
 }
 
-function FilingPanel({ filing, onChange }: { filing: any; onChange: () => void }) {
+function FilingCard({ filing, onClick }: { filing: any; onClick: () => void }) {
   const state = filing.status || filing.current_state;
-  const halted = state === 'HALTED';
-  const [acting, setActing] = useState(false);
-  const [computations, setComputations] = useState<any[]>([]);
-  const [currentVersion, setCurrentVersion] = useState<any>(null);
-  const [completed, setCompleted] = useState<any[]>([]);
-  const [rejectingComp, setRejectingComp] = useState<any>(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const progress = filing.progress_percentage || 0;
+  const docsApproved = filing.documents_approved || 0;
+  const docsTotal = filing.documents_total || 0;
+  const lastUpdated = filing.last_updated ? new Date(filing.last_updated).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
-  useEffect(() => {
-    if (state === 'COMPUTATION') {
-      compForFiling(filing.id).then((r) => {
-        setComputations(r?.items || []);
-        setCurrentVersion(r?.current_version || null);
-      }).catch(() => {});
-    }
-    if (['FILING', 'PAYMENT', 'COMPLETED'].includes(state)) {
-      completedDocs(filing.id).then((r) => setCompleted(r || [])).catch(() => {});
-    }
-  }, [state, filing.id]);
-
-  const submit = async () => { setActing(true); try { await submitDocs(filing.id); toast.success('Documents submitted'); onChange(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setActing(false); } };
-
-  const handleApproveComp = async (id: string) => {
-    setActing(true);
-    try { await approveComp(id); toast.success('Computation approved! Filing moves to next stage.'); onChange(); }
-    catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
-    finally { setActing(false); }
+  const stateColors: Record<string, string> = {
+    INITIATED: 'border-slate-200 bg-slate-50/80',
+    ON_BOARDING: 'border-blue-200 bg-blue-50/50',
+    PROCESSING: 'border-indigo-200 bg-indigo-50/50',
+    COMPUTATION: 'border-violet-200 bg-violet-50/50',
+    FILING: 'border-orange-200 bg-orange-50/50',
+    PAYMENT: 'border-amber-200 bg-amber-50/50',
+    COMPLETED: 'border-emerald-200 bg-emerald-50/50',
+    HALTED: 'border-rose-200 bg-rose-50/50',
   };
-
-  const handleRejectComp = async () => {
-    if (!rejectingComp || !rejectReason.trim()) { toast.error('Please provide a rejection reason'); return; }
-    setActing(true);
-    try {
-      await rejectComp(rejectingComp.id, rejectReason);
-      toast.success('Computation rejected. Your CA will upload a revised version.');
-      setRejectingComp(null);
-      setRejectReason('');
-      // Refresh computations
-      compForFiling(filing.id).then((r) => { setComputations(r?.items || []); setCurrentVersion(r?.current_version || null); }).catch(() => {});
-    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
-    finally { setActing(false); }
-  };
-
-  const downloadComp = async (compId: string) => {
-    try { const r = await compDownloadUrl(compId); window.open(r.download_url || r.url, '_blank'); } catch { toast.error('Download failed'); }
-  };
-  const download = async (file_id: string) => { try { const r = await storageDownloadUrl(file_id); window.open(r.url || r.download_url, '_blank'); } catch { toast.error('Failed'); } };
 
   return (
-    <Card className="rounded-xl p-6">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <div className="text-xs uppercase font-bold text-slate-400">{filing.financial_year}</div>
-          <h3 className="font-bold text-lg text-slate-900 mt-0.5">ITR Filing &middot; {filing.financial_year}</h3>
+    <div
+      className={`rounded-xl border-2 ${stateColors[state] || 'border-slate-200 bg-white'} p-5 cursor-pointer hover:shadow-lg hover:scale-[1.01] transition-all group`}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+            <FolderOpen className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm">ITR {filing.financial_year}</h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">{lastUpdated}</p>
+          </div>
         </div>
-        <StatusBadge status={state} />
+        <StatusBadge status={state} size="sm" />
       </div>
 
-      {halted && <div className="mt-4 rounded-lg bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800">This filing has been halted by the Partner. Please contact your CA.</div>}
-
-      <div className="mt-6"><FilingProgressBar currentState={state} /></div>
-
-      <div className="mt-6 rounded-lg bg-slate-50 border border-slate-200 p-4">
-        {state === 'ON_BOARDING' && (
-          <div className="flex items-start gap-3"><FolderUp className="h-5 w-5 text-blue-600" /><div><p className="font-semibold text-slate-900">Your document checklist is ready</p><p className="text-sm text-slate-600 mt-0.5">Please upload the required documents.</p><Link href="/client/documents"><Button size="sm" className="mt-3 bg-indigo-600 hover:bg-indigo-700">Go to Documents</Button></Link></div></div>
-        )}
-        {state === 'PROCESSING' && (
-          <div className="flex items-start gap-3"><Send className="h-5 w-5 text-indigo-600" /><div className="flex-1"><p className="font-semibold text-slate-900">Submit your uploaded documents</p><p className="text-sm text-slate-600 mt-0.5">Once submitted, your CA will review them.</p><Button onClick={submit} disabled={acting} size="sm" className="mt-3 bg-indigo-600 hover:bg-indigo-700">{acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Submit Documents</Button></div></div>
-        )}
-        {state === 'COMPUTATION' && (
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <Calculator className="h-5 w-5 text-violet-600 mt-0.5" />
-              <div>
-                <p className="font-semibold text-slate-900">Your tax computation is ready for review</p>
-                <p className="text-sm text-slate-600 mt-0.5">Review the computation document and approve or request changes.</p>
-              </div>
-            </div>
-
-            {/* Current version - prominent */}
-            {currentVersion && currentVersion.status === 'UPLOADED' && (
-              <div className="rounded-lg border-2 border-violet-200 bg-violet-50/50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">Computation v{currentVersion.version}</div>
-                    <div className="text-xs text-slate-500">{currentVersion.original_filename || 'computation.pdf'} · from {currentVersion.uploaded_by_name || 'your CA'}</div>
-                    {currentVersion.uploaded_at && <div className="text-[10px] text-slate-400 mt-0.5">{new Date(currentVersion.uploaded_at).toLocaleDateString()}</div>}
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => downloadComp(currentVersion.id)}><Download className="h-3.5 w-3.5 mr-1" /> Download</Button>
-                </div>
-                <div className="flex items-center gap-2 mt-3">
-                  <Button size="sm" onClick={() => handleApproveComp(currentVersion.id)} disabled={acting} className="bg-emerald-600 hover:bg-emerald-700">
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-rose-600 border-rose-200 hover:bg-rose-50" onClick={() => setRejectingComp(currentVersion)}>
-                    <X className="h-3.5 w-3.5 mr-1" /> Request Changes
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Version history */}
-            {computations.length > 1 && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Version History</p>
-                <div className="space-y-1.5">
-                  {computations.sort((a: any, b: any) => b.version - a.version).filter((c: any) => c.id !== currentVersion?.id || c.status !== 'UPLOADED').map((c: any) => (
-                    <div key={c.id} className={`flex items-center justify-between gap-2 p-2.5 rounded-lg border text-sm ${c.status === 'REJECTED' ? 'border-rose-100 bg-rose-50/30' : c.status === 'APPROVED' ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-slate-50/50 opacity-60'}`}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-bold text-slate-500">v{c.version}</span>
-                        <span className="text-slate-700 truncate">{c.original_filename || 'computation'}</span>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <StatusBadge status={c.status} size="sm" />
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => downloadComp(c.id)}><Download className="h-3 w-3" /></Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {computations.some((c: any) => c.status === 'REJECTED' && c.rejection_reason) && (
-                  <div className="mt-2">
-                    {computations.filter((c: any) => c.status === 'REJECTED' && c.rejection_reason).slice(0, 1).map((c: any) => (
-                      <div key={c.id} className="text-xs text-rose-600 bg-rose-50 rounded p-2">Last rejection: {c.rejection_reason}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {computations.length === 0 && (
-              <p className="text-sm text-slate-500">Waiting for your CA to upload the computation document...</p>
-            )}
-          </div>
-        )}
-        {state === 'FILING' && <div className="flex items-start gap-3"><Send className="h-5 w-5 text-orange-600" /><div className="flex-1"><p className="font-semibold text-slate-900">Your ITR is being filed</p><p className="text-sm text-slate-600 mt-0.5">We&rsquo;ll notify you when done.</p></div></div>}
-        {state === 'PAYMENT' && (
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <IndianRupee className="h-5 w-5 text-yellow-600" />
-              <div className="flex-1">
-                <p className="font-semibold text-slate-900">Your ITR has been filed!</p>
-                <p className="text-sm text-slate-600 mt-0.5">Please complete payment with your CA to finalize.</p>
-              </div>
-            </div>
-            {completed.filter((d: any) => d.doc_type === 'INVOICE').length > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
-                <p className="text-xs font-semibold text-amber-800 uppercase mb-2">Invoice</p>
-                <div className="flex flex-wrap gap-2">
-                  {completed.filter((d: any) => d.doc_type === 'INVOICE').map((d: any) => (
-                    <Button key={d.id} size="sm" variant="outline" onClick={() => download(d.id)}>
-                      <Download className="h-3.5 w-3.5 mr-1" /> {d.original_filename || d.filename || 'Invoice'}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        {state === 'COMPLETED' && (
-          <div className="flex items-start gap-3"><CheckCircle2 className="h-5 w-5 text-emerald-600" /><div className="flex-1"><p className="font-semibold text-slate-900">✅ Filing Complete!</p><p className="text-sm text-slate-600 mt-0.5">Download your acknowledgement and invoice below.</p><div className="mt-3 flex flex-wrap gap-2">{completed.length === 0 && <span className="text-xs text-slate-500">Documents will appear here.</span>}{completed.map((d: any) => <Button key={d.id} size="sm" variant="outline" onClick={() => download(d.id)}><Download className="h-3.5 w-3.5 mr-1" /> {d.doc_type || d.filename}</Button>)}</div></div></div>
-        )}
-        {state === 'INITIATED' && <div className="text-sm text-slate-600">Your filing has been initiated. The CA will assign your document checklist soon.</div>}
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+          <span>{progress}% complete</span>
+          {docsTotal > 0 && <span>{docsApproved}/{docsTotal} docs</span>}
+        </div>
+        <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${state === 'COMPLETED' ? 'bg-emerald-500' : state === 'HALTED' ? 'bg-rose-400' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }} />
+        </div>
       </div>
 
-      <div className="mt-4"><Link href="/client/documents"><Button variant="outline" size="sm">View Documents</Button></Link></div>
+      <div className="mt-3 text-[11px] text-slate-500">
+        {state === 'HALTED' && <span className="text-rose-600 font-medium">Filing halted by CA</span>}
+        {state === 'COMPUTATION' && <span className="text-violet-600 font-medium">Review computation</span>}
+        {state === 'ON_BOARDING' && <span className="text-blue-600 font-medium">Upload documents</span>}
+        {state === 'COMPLETED' && <span className="inline-flex items-center gap-1 text-emerald-600 font-medium"><CheckCircle2 className="h-3 w-3" /> Filed</span>}
+        {state === 'PROCESSING' && <span className="text-indigo-600 font-medium">CA reviewing</span>}
+        {state === 'INITIATED' && <span className="text-slate-600 font-medium">Awaiting checklist</span>}
+      </div>
+    </div>
+  );
+}
 
-      {/* Reject Computation Dialog */}
-      <Dialog open={!!rejectingComp} onOpenChange={(o) => { if (!o) { setRejectingComp(null); setRejectReason(''); } }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Request Changes to Computation</DialogTitle></DialogHeader>
-          <p className="text-sm text-slate-500">Explain what needs to be changed. Your CA will upload a revised version.</p>
-          <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Describe the changes needed…" rows={3} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setRejectingComp(null); setRejectReason(''); }}>Cancel</Button>
-            <Button onClick={handleRejectComp} disabled={acting || !rejectReason.trim()} className="bg-rose-600 hover:bg-rose-700">
-              {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Submit Feedback
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+/** Inline file upload for onboarding dialog */
+function OnboardingFileInput({ fieldKey, value, onUploaded }: { fieldKey: string; value: any; onUploaded: (fileId: string, name: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const hasFile = !!value && typeof value === 'string' && value.length > 0;
+
+  const handle = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const r = await onboardingUploadUrl({ field_key: fieldKey, filename: file.name, content_type: file.type });
+      await axios.put(r.upload_url, file, { headers: { 'Content-Type': file.type } });
+      const confirm = await confirmOnboardingUpload({ field_key: fieldKey, object_key: r.object_key, filename: file.name, content_type: file.type, file_size: file.size });
+      const fileId = confirm?.file_id || confirm?.id || r.object_key;
+      setFileName(file.name);
+      onUploaded(fileId, file.name);
+      toast.success(`${file.name} uploaded`);
+    } catch (err: any) { toast.error(err?.response?.data?.detail || 'Upload failed'); }
+    finally { setUploading(false); }
+  };
+
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      {hasFile || fileName ? (
+        <div className="flex items-center gap-2 flex-1 rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <span className="text-sm text-slate-700 truncate">{fileName || 'Uploaded file'}</span>
+        </div>
+      ) : (
+        <div className="flex-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-400">No file uploaded</div>
+      )}
+      <label className="cursor-pointer">
+        <input type="file" className="hidden" onChange={handle} />
+        <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {hasFile || fileName ? 'Replace' : 'Upload'}
+        </span>
+      </label>
+    </div>
   );
 }

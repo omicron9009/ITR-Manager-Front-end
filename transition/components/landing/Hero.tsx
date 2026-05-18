@@ -31,6 +31,7 @@ export default function Hero() {
           </Link>
         </div>
 
+        {/* Client-facing mockup */}
         <div className="mt-16 max-w-5xl mx-auto">
           <ClientMockup />
         </div>
@@ -48,9 +49,9 @@ export default function Hero() {
 
 function ClientMockup() {
   const filings = [
-    { fy: 'FY 2024-25', stateLabel: 'Computation Ready', progress: 70, color: 'from-violet-500 to-violet-600', tint: 'bg-violet-50' },
-    { fy: 'FY 2023-24', stateLabel: 'Completed', progress: 100, color: 'from-emerald-500 to-emerald-600', tint: 'bg-emerald-50' },
-    { fy: 'FY 2022-23', stateLabel: 'Completed', progress: 100, color: 'from-emerald-500 to-emerald-600', tint: 'bg-emerald-50' },
+    { fy: 'FY 2024-25', state: 'COMPUTATION', stateLabel: 'Computation Ready', progress: 70, color: 'from-violet-500 to-violet-600', tint: 'bg-violet-50' },
+    { fy: 'FY 2023-24', state: 'COMPLETED', stateLabel: 'Completed', progress: 100, color: 'from-emerald-500 to-emerald-600', tint: 'bg-emerald-50' },
+    { fy: 'FY 2022-23', state: 'COMPLETED', stateLabel: 'Completed', progress: 100, color: 'from-emerald-500 to-emerald-600', tint: 'bg-emerald-50' },
   ];
   return (
     <div className="rounded-2xl bg-white/95 backdrop-blur shadow-2xl ring-1 ring-black/5 overflow-hidden">
@@ -63,7 +64,7 @@ function ClientMockup() {
       <div className="p-6 bg-white text-left">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="font-bold text-slate-900">Welcome back, Rajesh &#128075;</h3>
+            <h3 className="font-bold text-slate-900">Welcome back, Rajesh 👋</h3>
             <p className="text-xs text-slate-500">Here are your filings.</p>
           </div>
           <span className="px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-semibold">1 action needed</span>

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 
 export default function ClientsListPage() {
   const params = useSearchParams();
+  const pathname = usePathname();
+  const routePrefix = pathname.startsWith('/executive') ? '/executive' : '/partner';
   const initialStatus = params.get('status') || '';
   const [search, setSearch] = useState('');
   const [accountStatus, setAccountStatus] = useState('');
@@ -115,7 +117,7 @@ export default function ClientsListPage() {
                     <td className="px-5 py-3">{(c.current_state || c.filing_state) ? <StatusBadge status={c.current_state || c.filing_state} /> : <span className="text-xs text-slate-400">—</span>}</td>
                     <td className="px-5 py-3 text-xs text-slate-500">{c.last_updated ? new Date(c.last_updated).toLocaleDateString() : '—'}</td>
                     <td className="px-5 py-3 text-right">
-                      <Link href={`/partner/clients/${c.id}`}><Button size="sm" variant="outline"><Eye className="h-3.5 w-3.5 mr-1" /> View</Button></Link>
+                      <Link href={`${routePrefix}/clients/${c.id}`}><Button size="sm" variant="outline"><Eye className="h-3.5 w-3.5 mr-1" /> View</Button></Link>
                     </td>
                   </tr>
                 ))}

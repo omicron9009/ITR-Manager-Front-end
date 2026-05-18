@@ -7,12 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, haltFiling, markPayment, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, haltFiling, markPayment, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, getClientOnboardingForm } from '@/lib/api';
 import { toast } from 'sonner';
-import { Mail, Phone, Pause, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Calculator, RefreshCw, FileArchive } from 'lucide-react';
+import { Mail, Phone, Pause, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Calculator, RefreshCw, FileArchive, CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 export default function ClientDetailPage() {
   const { client_id } = useParams<{ client_id: string }>();
@@ -23,6 +24,10 @@ export default function ClientDetailPage() {
   const [haltFor, setHaltFor] = useState<any>(null);
   const [haltReason, setHaltReason] = useState('');
   const [acting, setActing] = useState(false);
+  const [rejectDocFor, setRejectDocFor] = useState<any>(null);
+  const [rejectDocReason, setRejectDocReason] = useState('');
+  const [onboardingFields, setOnboardingFields] = useState<any[]>([]);
+  const [onboardingValues, setOnboardingValues] = useState<Record<string, any>>({});
 
   const load = async () => {
     setLoading(true);
@@ -32,6 +37,12 @@ export default function ClientDetailPage() {
       const f = await listFilings({ client_id });
       const list = f?.items || f?.filings || f || [];
       setFilings(list);
+      // load onboarding form
+      try {
+        const form = await getClientOnboardingForm(client_id);
+        setOnboardingFields(form?.fields || []);
+        if (form?.submitted_data) setOnboardingValues(form.submitted_data);
+      } catch {}
       // load docs for each
       for (const fi of list) {
         try { const d = await filingDocs(fi.id); setDocs((prev) => ({ ...prev, [fi.id]: d?.items || d?.documents || d || [] })); } catch {}
@@ -58,26 +69,50 @@ export default function ClientDetailPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
       {/* Left */}
-      <Card className="lg:col-span-2 rounded-xl p-6 h-fit">
-        <div className="flex items-center gap-3">
-          <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-lg font-bold">{initials}</div>
-          <div>
-            <h2 className="font-bold text-lg text-slate-900">{client.full_name}</h2>
-            <StatusBadge status={client.account_status} />
+      <div className="lg:col-span-2 space-y-5">
+        <Card className="rounded-xl p-6">
+          <div className="flex items-center gap-3">
+            <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-lg font-bold">{initials}</div>
+            <div>
+              <h2 className="font-bold text-lg text-slate-900">{client.full_name}</h2>
+              <StatusBadge status={client.account_status} />
+            </div>
           </div>
-        </div>
-        <div className="mt-5 space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-slate-600"><Mail className="h-4 w-4" /> {client.email}</div>
-          {client.phone_number && <div className="flex items-center gap-2 text-slate-600"><Phone className="h-4 w-4" /> {client.phone_number}</div>}
-        </div>
-        <div className="mt-5 pt-5 border-t border-slate-200">
-          <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Executive</div>
-          <div className="text-sm font-medium text-slate-800">{client.assigned_executive_name || client.executive_name || 'Unassigned'}</div>
-        </div>
-        {client.pan_document_url && (
-          <Button variant="outline" className="mt-5 w-full" onClick={() => window.open(client.pan_document_url, '_blank')}><FileText className="h-4 w-4 mr-2" /> View PAN Document</Button>
+          <div className="mt-5 space-y-2 text-sm">
+            <div className="flex items-center gap-2 text-slate-600"><Mail className="h-4 w-4" /> {client.email}</div>
+            {client.phone_number && <div className="flex items-center gap-2 text-slate-600"><Phone className="h-4 w-4" /> {client.phone_number}</div>}
+          </div>
+          <div className="mt-5 pt-5 border-t border-slate-200">
+            <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Executive</div>
+            <div className="text-sm font-medium text-slate-800">{client.assigned_executive_name || client.executive_name || 'Unassigned'}</div>
+          </div>
+          {client.pan_document_url && (
+            <Button variant="outline" className="mt-5 w-full" onClick={() => window.open(client.pan_document_url, '_blank')}><FileText className="h-4 w-4 mr-2" /> View PAN Document</Button>
+          )}
+        </Card>
+
+        {/* Onboarding Profile Section */}
+        {onboardingFields.length > 0 && (
+          <Card className="rounded-xl p-6">
+            <h3 className="font-bold text-slate-900 mb-4">Onboarding Profile</h3>
+            <div className="space-y-3">
+              {onboardingFields.map((f: any) => {
+                const val = onboardingValues[f.field_key];
+                return (
+                  <div key={f.id}>
+                    <div className="text-xs text-slate-500 font-medium">{f.field_label}</div>
+                    {f.field_type === 'FILE' ? (
+                      <OnboardingFileDisplay fileId={val} />
+                    ) : (
+                      <div className="text-sm text-slate-900 mt-0.5">{val || <span className="text-slate-400 italic">Not provided</span>}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
         )}
-      </Card>
+      </div>
 
       {/* Right */}
       <div className="lg:col-span-3 space-y-5">
@@ -131,7 +166,7 @@ export default function ClientDetailPage() {
                         {d.status === 'UPLOADED' && (
                           <>
                             <Button size="sm" variant="outline" className="h-7 text-emerald-700 border-emerald-200" onClick={async () => { try { await approveDoc([d.id]); toast.success('Approved'); load(); } catch { toast.error('Failed'); } }}><Check className="h-3 w-3" /></Button>
-                            <Button size="sm" variant="outline" className="h-7 text-rose-700 border-rose-200" onClick={async () => { const r = window.prompt('Rejection reason?'); if (r) { try { await rejectDoc([{ document_id: d.id, reason: r }]); toast.success('Rejected'); load(); } catch { toast.error('Failed'); } } }}><X className="h-3 w-3" /></Button>
+                            <Button size="sm" variant="outline" className="h-7 text-rose-700 border-rose-200" onClick={() => { setRejectDocFor(d); setRejectDocReason(''); }}><X className="h-3 w-3" /></Button>
                           </>
                         )}
                       </div>
@@ -153,12 +188,48 @@ export default function ClientDetailPage() {
         ))}
       </div>
 
+      {/* Halt Filing Dialog */}
       <Dialog open={!!haltFor} onOpenChange={(o) => !o && setHaltFor(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Halt this filing?</DialogTitle></DialogHeader>
           <p className="text-sm text-slate-500">Provide a reason. The client will see this banner.</p>
           <Textarea value={haltReason} onChange={(e) => setHaltReason(e.target.value)} placeholder="Reason…" rows={3} />
           <DialogFooter><Button variant="outline" onClick={() => setHaltFor(null)}>Cancel</Button><Button onClick={onHalt} disabled={acting} className="bg-rose-600 hover:bg-rose-700">{acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Halt</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Document Dialog */}
+      <Dialog open={!!rejectDocFor} onOpenChange={(o) => { if (!o) { setRejectDocFor(null); setRejectDocReason(''); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="text-rose-700">Reject Document</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs text-slate-500">Document</div>
+              <div className="text-sm font-medium text-slate-900 mt-0.5">{rejectDocFor?.document_type_name || rejectDocFor?.original_filename || 'Document'}</div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-slate-700">Reason for rejection <span className="text-rose-500">*</span></Label>
+              <Textarea value={rejectDocReason} onChange={(e) => setRejectDocReason(e.target.value)} placeholder="Describe why this document is being rejected (e.g. blurry scan, wrong document, incomplete info)…" rows={4} className="mt-1.5" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRejectDocFor(null); setRejectDocReason(''); }}>Cancel</Button>
+            <Button
+              disabled={acting || !rejectDocReason.trim()}
+              className="bg-rose-600 hover:bg-rose-700"
+              onClick={async () => {
+                setActing(true);
+                try {
+                  await rejectDoc([{ document_id: rejectDocFor.id, reason: rejectDocReason.trim() }]);
+                  toast.success('Document rejected');
+                  setRejectDocFor(null); setRejectDocReason(''); load();
+                } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+                finally { setActing(false); }
+              }}
+            >
+              {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Reject Document
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -501,4 +572,30 @@ function getCurrentFY() {
   const d = new Date();
   const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
   return `${y}-${y + 1}`;
+}
+
+function OnboardingFileDisplay({ fileId }: { fileId: any }) {
+  const hasFile = !!fileId && typeof fileId === 'string' && fileId.length > 0;
+  const isUuid = hasFile && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(fileId);
+
+  const handleDownload = async () => {
+    try {
+      const r = await storageDownloadUrl(fileId);
+      window.open(r.download_url || r.url, '_blank');
+    } catch { toast.error('Download failed'); }
+  };
+
+  if (!hasFile) return <div className="mt-0.5 text-sm text-slate-400 italic">No file uploaded</div>;
+
+  return (
+    <div className="mt-1 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-2">
+      <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+      <span className="text-sm text-slate-700 truncate flex-1">{isUuid ? 'File uploaded' : fileId}</span>
+      {isUuid && (
+        <Button size="sm" variant="outline" className="h-7 px-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50" onClick={handleDownload}>
+          <Download className="h-3.5 w-3.5 mr-1" /> View
+        </Button>
+      )}
+    </div>
+  );
 }
