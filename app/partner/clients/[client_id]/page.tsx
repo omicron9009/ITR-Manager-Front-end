@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles } from '@/lib/api';
 import { toast } from 'sonner';
 import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -29,6 +29,7 @@ export default function ClientDetailPage() {
   const [rejectDocReason, setRejectDocReason] = useState('');
   const [onboardingFields, setOnboardingFields] = useState<any[]>([]);
   const [onboardingValues, setOnboardingValues] = useState<Record<string, any>>({});
+  const [onboardingFiles, setOnboardingFiles] = useState<any[]>([]);
   const [docViewerOpen, setDocViewerOpen] = useState(false);
   const [docViewerUrl, setDocViewerUrl] = useState<string | null>(null);
   const [docViewerName, setDocViewerName] = useState<string | undefined>(undefined);
@@ -55,6 +56,11 @@ export default function ClientDetailPage() {
         const form = await getClientOnboardingForm(client_id);
         setOnboardingFields(form?.fields || []);
         if (form?.submitted_data) setOnboardingValues(form.submitted_data);
+      } catch {}
+      // load onboarding files
+      try {
+        const files = await getOnboardingFiles(client_id);
+        setOnboardingFiles(files || []);
       } catch {}
       // load docs for each
       for (const fi of list) {
@@ -107,11 +113,14 @@ export default function ClientDetailPage() {
             <div className="space-y-3">
               {onboardingFields.map((f: any) => {
                 const val = onboardingValues[f.field_key];
+                const fileInfo = f.field_type === 'FILE' ? onboardingFiles.find((of: any) => of.field_key === f.field_key) : null;
+                const resolvedFileId = fileInfo ? (fileInfo.id || fileInfo.file_id || fileInfo.stored_file_id) : val;
+                const resolvedFileName = fileInfo ? (fileInfo.original_filename || fileInfo.filename) : onboardingValues[`${f.field_key}__filename`];
                 return (
                   <div key={f.id}>
                     <div className="text-xs text-slate-500 font-medium">{f.field_label}</div>
                     {f.field_type === 'FILE' ? (
-                      <OnboardingFileDisplay fileId={val} />
+                      <OnboardingFileDisplay fileId={resolvedFileId} fileName={resolvedFileName} />
                     ) : (
                       <div className="text-sm text-slate-900 mt-0.5">{val || <span className="text-slate-400 italic">Not provided</span>}</div>
                     )}
@@ -638,7 +647,7 @@ function getCurrentFY() {
   return `${y}-${y + 1}`;
 }
 
-function OnboardingFileDisplay({ fileId }: { fileId: any }) {
+function OnboardingFileDisplay({ fileId, fileName }: { fileId: any; fileName?: string }) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const hasFile = !!fileId && typeof fileId === 'string' && fileId.length > 0;
@@ -658,14 +667,14 @@ function OnboardingFileDisplay({ fileId }: { fileId: any }) {
     <>
       <div className="mt-1 flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-2">
         <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-        <span className="text-sm text-slate-700 truncate flex-1">{isUuid ? 'File uploaded' : fileId}</span>
+        <span className="text-sm text-slate-700 truncate flex-1">{fileName || (isUuid ? 'File uploaded' : fileId)}</span>
         {isUuid && (
           <Button size="sm" variant="outline" className="h-7 px-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50" onClick={handleView}>
             <Eye className="h-3.5 w-3.5 mr-1" /> View
           </Button>
         )}
       </div>
-      <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={undefined} />
+      <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={fileName} />
     </>
   );
 }

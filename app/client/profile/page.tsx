@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { me, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl } from '@/lib/api';
+import { me, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl, getOnboardingFiles } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Loader2, Upload, Eye, FileText, CheckCircle2 } from 'lucide-react';
@@ -26,19 +26,38 @@ export default function ClientProfilePage() {
 
   useEffect(() => {
     me().then((p) => { setProfile(p); }).catch(() => {});
-    getOnboardingForm().then((r) => {
-      setFields(r?.fields || []);
-      if (r?.submitted_data) {
-        setValues(r.submitted_data);
+    const loadForm = async () => {
+      try {
+        const r = await getOnboardingForm();
+        setFields(r?.fields || []);
+        const formValues: Record<string, any> = r?.submitted_data || {};
         const names: Record<string, string> = {};
-        Object.keys(r.submitted_data).forEach((k) => {
-          if (k.endsWith('__filename') && r.submitted_data[k]) {
-            names[k.replace('__filename', '')] = r.submitted_data[k];
+        Object.keys(formValues).forEach((k) => {
+          if (k.endsWith('__filename') && formValues[k]) {
+            names[k.replace('__filename', '')] = formValues[k];
           }
         });
+
+        // Fetch uploaded onboarding files to resolve file IDs and filenames
+        try {
+          const files = await getOnboardingFiles();
+          if (files?.length) {
+            files.forEach((f: any) => {
+              const key = f.field_key;
+              if (!key) return;
+              const fileId = f.id || f.file_id || f.stored_file_id;
+              const filename = f.original_filename || f.filename;
+              if (fileId) formValues[key] = fileId;
+              if (filename) names[key] = filename;
+            });
+          }
+        } catch {}
+
+        setValues(formValues);
         setFileNames(names);
-      }
-    }).catch(() => {});
+      } catch {}
+    };
+    loadForm();
   }, []);
 
   const save = async () => {

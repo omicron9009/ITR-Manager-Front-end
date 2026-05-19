@@ -145,6 +145,7 @@ export const testEmailConfig = (test_recipient: string) =>
 
 // ---------- STORAGE ----------
 export const storageDownloadUrl = (file_id: string) => api.get(`/api/v1/storage/${file_id}/download-url`).then((r) => r.data);
+export const getOnboardingFiles = (client_id?: string) => api.get('/api/v1/storage/onboarding-files', { params: client_id ? { client_id } : {} }).then((r) => r.data);
 export const completedDocs = (filing_id: string) => api.get(`/api/v1/storage/completed-docs/${filing_id}`).then((r) => r.data);
 export const completedDocUploadUrl = (params: any) => api.post('/api/v1/storage/completed-doc/upload-url', null, { params }).then((r) => r.data);
 export const completedDocConfirm = (params: any) => api.post('/api/v1/storage/completed-doc/confirm', null, { params }).then((r) => r.data);

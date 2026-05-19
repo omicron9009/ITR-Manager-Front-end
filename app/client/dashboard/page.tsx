@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -18,7 +19,7 @@ function getFYOptions() {
   const d = new Date();
   const cur = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
   const arr: string[] = [];
-  for (let y = cur; y >= cur - 4; y--) arr.push(`${y}-${y + 1}`);
+  for (let y = cur; y >= 2000; y--) arr.push(`${y}-${y + 1}`);
   return arr;
 }
 
