@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 const STAGES = [
   { key: 'INITIATED', label: 'Initiated' },
-  { key: 'ON_BOARDING', label: 'On Boarding' },
+  { key: 'ON_BOARDING', label: 'Document Upload' },
   { key: 'PROCESSING', label: 'Processing' },
   { key: 'COMPUTATION', label: 'Computation' },
   { key: 'FILING', label: 'Filing' },

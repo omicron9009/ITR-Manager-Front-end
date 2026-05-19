@@ -11,11 +11,20 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
 import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles } from '@/lib/api';
 import { toast } from 'sonner';
-import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2 } from 'lucide-react';
+import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+
+const FILING_STAGES = ['INITIATED', 'ON_BOARDING', 'PROCESSING', 'COMPUTATION', 'FILING', 'PAYMENT', 'COMPLETED'];
+function getFilingPercent(status: string): number {
+  if (status === 'COMPLETED') return 100;
+  if (status === 'HALTED') return 0;
+  const idx = FILING_STAGES.indexOf(status);
+  if (idx < 0) return 0;
+  return Math.round(((idx + 1) / FILING_STAGES.length) * 100);
+}
 
 export default function ClientDetailPage() {
   const { client_id } = useParams<{ client_id: string }>();
@@ -24,9 +33,6 @@ export default function ClientDetailPage() {
   const [docs, setDocs] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
 
-  const [acting, setActing] = useState(false);
-  const [rejectDocFor, setRejectDocFor] = useState<any>(null);
-  const [rejectDocReason, setRejectDocReason] = useState('');
   const [onboardingFields, setOnboardingFields] = useState<any[]>([]);
   const [onboardingValues, setOnboardingValues] = useState<Record<string, any>>({});
   const [onboardingFiles, setOnboardingFiles] = useState<any[]>([]);
@@ -140,19 +146,91 @@ export default function ClientDetailPage() {
         </div>
         {filings.length === 0 ? (
           <Card className="rounded-xl"><EmptyState icon={FolderUp} title="No filings yet" subtitle="Initiate the first filing for this client." /></Card>
-        ) : filings.map((f: any) => (
-          <Card key={f.id} className="rounded-xl p-5">
-            <div className="flex items-start justify-between flex-wrap gap-3">
-              <div>
-                <div className="text-xs uppercase font-bold text-slate-400">{f.financial_year}</div>
-                <h3 className="font-bold text-lg text-slate-900 mt-0.5">Filing &middot; {f.financial_year}</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={f.status || f.current_state} />
-
-              </div>
+        ) : (
+          <Card className="rounded-xl overflow-hidden">
+            <div className="max-h-[calc(100vh-140px)] overflow-y-auto divide-y divide-slate-100">
+              {filings.map((f: any) => (
+                <FilingAccordionItem key={f.id} filing={f} docs={docs} load={load} viewDoc={viewDoc} />
+              ))}
             </div>
-            <div className="mt-5"><FilingProgressBar currentState={f.status || f.current_state} /></div>
+          </Card>
+        )}
+      </div>
+
+      <FileViewer open={docViewerOpen} onClose={() => setDocViewerOpen(false)} fileUrl={docViewerUrl} fileName={docViewerName} />
+    </div>
+  );
+}
+
+function FilingAccordionItem({ filing: f, docs, load, viewDoc }: { filing: any; docs: Record<string, any[]>; load: () => void; viewDoc: (id: string, name?: string) => void }) {
+  const storageKey = `filing-accordion-${f.id}`;
+  const [open, setOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(storageKey) === '1';
+  });
+  const toggleOpen = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) localStorage.setItem(storageKey, '1');
+    else localStorage.removeItem(storageKey);
+  };
+  const [rejectDocFor, setRejectDocFor] = useState<any>(null);
+  const [rejectDocReason, setRejectDocReason] = useState('');
+  const [acting, setActing] = useState(false);
+  const status = f.status || f.current_state;
+  const percent = getFilingPercent(status);
+
+  const statusColor = status === 'COMPLETED' ? 'bg-emerald-500' : status === 'HALTED' ? 'bg-rose-500' : 'bg-indigo-500';
+
+  return (
+    <>
+      <div className="group">
+        {/* Collapsed Header */}
+        <button
+          onClick={toggleOpen}
+          className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-slate-50/80 transition-colors"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3">
+              <h3 className="font-semibold text-slate-900 text-sm">FY {f.financial_year}</h3>
+              <StatusBadge status={status} size="sm" />
+            </div>
+            {/* Progress bar or completed indicator */}
+            {status === 'COMPLETED' ? (
+              <div className="mt-2 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <span className="text-xs font-medium text-emerald-700">Filing completed</span>
+                {f.completed_at && <span className="text-[10px] text-slate-400 ml-auto">{new Date(f.completed_at).toLocaleDateString()}</span>}
+              </div>
+            ) : (
+              <div className="mt-2 flex items-center gap-3">
+                <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${statusColor}`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+                <span className="text-xs font-medium text-slate-500 w-9 text-right">{percent}%</span>
+              </div>
+            )}
+          </div>
+          <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </button>
+
+        {/* Expanded Content */}
+        {open && (
+          <div className="px-5 pb-5 pt-1 border-t border-slate-100 bg-slate-50/30">
+            {status === 'COMPLETED' ? (
+              <div className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-3 flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                <div>
+                  <div className="text-sm font-semibold text-emerald-800">Filing Completed</div>
+                  <div className="text-xs text-emerald-600 mt-0.5">All stages finished{f.completed_at ? ` on ${new Date(f.completed_at).toLocaleDateString()}` : ''}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3"><FilingProgressBar currentState={status} /></div>
+            )}
             <Tabs defaultValue="docs" className="mt-5">
               <TabsList>
                 <TabsTrigger value="docs">Documents</TabsTrigger>
@@ -171,7 +249,7 @@ export default function ClientDetailPage() {
                   {(docs[f.id] || []).length === 0 ? (
                     <p className="text-sm text-slate-500 py-4 text-center">No documents assigned yet. Send a checklist to the client.</p>
                   ) : (docs[f.id] || []).map((d: any) => (
-                    <div key={d.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50/40">
+                    <div key={d.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 bg-white">
                       <div className="flex items-center gap-3 min-w-0">
                         <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
                         <div className="min-w-0">
@@ -198,22 +276,20 @@ export default function ClientDetailPage() {
                 </div>
               </TabsContent>
               <TabsContent value="computations" className="mt-3">
-                <ComputationPanel filingId={f.id} filingStatus={f.status || f.current_state} />
+                <ComputationPanel filingId={f.id} filingStatus={status} />
               </TabsContent>
               <TabsContent value="filed-docs" className="mt-3">
-                <FiledDocsPanel filingId={f.id} filingStatus={f.status || f.current_state} />
+                <FiledDocsPanel filingId={f.id} filingStatus={status} />
               </TabsContent>
               <TabsContent value="actions" className="mt-3">
                 <StateActions filing={f} onChange={load} />
               </TabsContent>
             </Tabs>
-          </Card>
-        ))}
+          </div>
+        )}
       </div>
 
-
-
-      {/* Reject Document Dialog */}
+      {/* Reject Document Dialog (scoped to this accordion item) */}
       <Dialog open={!!rejectDocFor} onOpenChange={(o) => { if (!o) { setRejectDocFor(null); setRejectDocReason(''); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle className="text-rose-700">Reject Document</DialogTitle></DialogHeader>
@@ -224,7 +300,7 @@ export default function ClientDetailPage() {
             </div>
             <div>
               <Label className="text-sm font-medium text-slate-700">Reason for rejection <span className="text-rose-500">*</span></Label>
-              <Textarea value={rejectDocReason} onChange={(e) => setRejectDocReason(e.target.value)} placeholder="Describe why this document is being rejected (e.g. blurry scan, wrong document, incomplete info)…" rows={4} className="mt-1.5" />
+              <Textarea value={rejectDocReason} onChange={(e) => setRejectDocReason(e.target.value)} placeholder="Describe why this document is being rejected…" rows={4} className="mt-1.5" />
             </div>
           </div>
           <DialogFooter>
@@ -247,9 +323,7 @@ export default function ClientDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <FileViewer open={docViewerOpen} onClose={() => setDocViewerOpen(false)} fileUrl={docViewerUrl} fileName={docViewerName} />
-    </div>
+    </>
   );
 }
 
@@ -262,7 +336,7 @@ function StateActions({ filing, onChange }: { filing: any; onChange: () => void 
     try { await markPayment(filing.id); toast.success('Payment received — filing completed!'); onChange(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
   };
   const items: { label: string; target: string; cls?: string; action?: () => void }[] = [];
-  if (state === 'INITIATED') items.push({ label: 'Move to On Boarding', target: 'ON_BOARDING' });
+  if (state === 'INITIATED') items.push({ label: 'Move to Document Upload', target: 'ON_BOARDING' });
   if (state === 'ON_BOARDING') items.push({ label: 'Move to Processing', target: 'PROCESSING' });
   if (state === 'PROCESSING') items.push({ label: 'Move to Computation', target: 'COMPUTATION' });
   if (state === 'COMPUTATION') items.push({ label: 'Move to Filing', target: 'FILING' });
@@ -485,9 +559,11 @@ function ComputationPanel({ filingId, filingStatus }: { filingId: string; filing
 }
 
 const COMPLETED_DOC_TYPES = [
-  { key: 'ITR_ACKNOWLEDGEMENT', label: 'ITR Acknowledgement', description: 'PDF acknowledgement from ITR portal' },
-  { key: 'INVOICE', label: 'Invoice', description: 'Service invoice for the client' },
-  { key: 'ITR_JSON', label: 'ITR JSON', description: 'ITR JSON file submitted to portal' },
+  { key: 'ITR_ACKNOWLEDGEMENT', label: 'ITR Acknowledgement', description: 'PDF acknowledgement from ITR portal', required: true },
+  { key: 'INVOICE', label: 'Invoice', description: 'Service invoice for the client', required: true },
+  { key: 'ITR_JSON', label: 'ITR JSON', description: 'ITR JSON file submitted to portal', required: true },
+  { key: 'ITR_FORM', label: 'ITR Form', description: 'ITR form filed with the department', required: true },
+  { key: 'FINANCIAL_STATEMENT', label: 'Financial Statement', description: 'Financial statement document (optional)', required: false },
 ];
 
 function FiledDocsPanel({ filingId, filingStatus }: { filingId: string; filingStatus: string }) {
@@ -564,7 +640,7 @@ function FiledDocsPanel({ filingId, filingStatus }: { filingId: string; filingSt
                     <div className="flex items-center gap-3 min-w-0">
                       <FileArchive className="h-4 w-4 text-emerald-600 flex-shrink-0" />
                       <div className="min-w-0">
-                        <div className="text-sm font-medium text-slate-900">{dt.label}</div>
+                        <div className="text-sm font-medium text-slate-900">{dt.label} {!dt.required && <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>}</div>
                         <div className="text-xs text-slate-500 truncate">{uploaded.original_filename || uploaded.filename}</div>
                         {uploaded.uploaded_at && <div className="text-[10px] text-slate-400">{new Date(uploaded.uploaded_at).toLocaleDateString()}</div>}
                       </div>
@@ -600,7 +676,7 @@ function FiledDocsPanel({ filingId, filingStatus }: { filingId: string; filingSt
                   <div className="flex items-center gap-3 min-w-0">
                     <FileArchive className="h-4 w-4 text-slate-400 flex-shrink-0" />
                     <div className="min-w-0">
-                      <div className="text-sm font-medium text-slate-900">{dt.label}</div>
+                      <div className="text-sm font-medium text-slate-900">{dt.label} {!dt.required && <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>}</div>
                       <div className="text-xs text-slate-400">{dt.description}</div>
                     </div>
                   </div>
@@ -628,9 +704,9 @@ function FiledDocsPanel({ filingId, filingStatus }: { filingId: string; filingSt
             );
           })}
 
-          {docs.length === COMPLETED_DOC_TYPES.length && (
+          {docs.length >= COMPLETED_DOC_TYPES.filter(d => d.required).length && COMPLETED_DOC_TYPES.filter(d => d.required).every(dt => docs.some((d: any) => d.doc_type === dt.key)) && (
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 text-center">
-              ✅ All filed documents uploaded. You can now mark payment and complete the filing.
+              ✅ All required filed documents uploaded. You can now mark payment and complete the filing.
             </div>
           )}
         </div>

@@ -50,7 +50,7 @@ export default function FilingDetailPage() {
         setComputations(c?.items || []);
         setCurrentComp(c?.current_version || null);
       }
-      if (['FILING', 'PAYMENT', 'COMPLETED'].includes(state)) {
+      if (['COMPLETED'].includes(state)) {
         const cd = await completedDocs(filingId);
         setCompleted(cd || []);
       }
@@ -143,7 +143,17 @@ export default function FilingDetailPage() {
 
       {/* Progress */}
       <Card className="rounded-xl p-5">
-        <FilingProgressBar currentState={state} />
+        {state === 'COMPLETED' ? (
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-6 w-6 text-emerald-600 flex-shrink-0" />
+            <div>
+              <div className="text-sm font-semibold text-emerald-800">Filing Completed</div>
+              <div className="text-xs text-emerald-600 mt-0.5">All stages finished{filing.completed_at ? ` on ${new Date(filing.completed_at).toLocaleDateString()}` : ''}</div>
+            </div>
+          </div>
+        ) : (
+          <FilingProgressBar currentState={state} />
+        )}
       </Card>
 
       {/* Documents Section - File System View */}
@@ -247,7 +257,7 @@ export default function FilingDetailPage() {
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-emerald-600" />
                   <div>
-                    <div className="font-medium text-sm text-slate-900">{d.doc_type || d.original_filename || 'Document'}</div>
+                    <div className="font-medium text-sm text-slate-900">{{ ITR_ACKNOWLEDGEMENT: 'ITR Acknowledgement', INVOICE: 'Invoice', ITR_JSON: 'ITR JSON', ITR_FORM: 'ITR Form', FINANCIAL_STATEMENT: 'Financial Statement' }[d.doc_type] || d.doc_type || d.original_filename || 'Document'}</div>
                     <div className="text-xs text-slate-500">{d.original_filename || d.filename}</div>
                   </div>
                 </div>

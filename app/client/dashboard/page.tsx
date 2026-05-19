@@ -241,13 +241,22 @@ function FilingCard({ filing, onClick }: { filing: any; onClick: () => void }) {
       </div>
 
       <div className="mt-4">
-        <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
-          <span>{progress}% complete</span>
-          {docsTotal > 0 && <span>{docsApproved}/{docsTotal} docs</span>}
-        </div>
-        <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
-          <div className={`h-full rounded-full transition-all ${state === 'COMPLETED' ? 'bg-emerald-500' : state === 'HALTED' ? 'bg-rose-400' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }} />
-        </div>
+        {state === 'COMPLETED' ? (
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <span className="text-xs font-medium text-emerald-700">Filing completed</span>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+              <span>{progress}% complete</span>
+              {docsTotal > 0 && <span>{docsApproved}/{docsTotal} docs</span>}
+            </div>
+            <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${state === 'HALTED' ? 'bg-rose-400' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }} />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="mt-3 text-[11px] text-slate-500">

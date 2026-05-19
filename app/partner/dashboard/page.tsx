@@ -15,7 +15,7 @@ import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader
 
 const CARDS = [
   { key: 'INITIATED', label: 'Initiated', color: 'border-l-slate-400 bg-slate-50', text: 'text-slate-700' },
-  { key: 'ON_BOARDING', label: 'On Boarding', color: 'border-l-blue-500 bg-blue-50', text: 'text-blue-700' },
+  { key: 'ON_BOARDING', label: 'Document Upload', color: 'border-l-blue-500 bg-blue-50', text: 'text-blue-700' },
   { key: 'PROCESSING', label: 'Processing', color: 'border-l-indigo-500 bg-indigo-50', text: 'text-indigo-700' },
   { key: 'COMPUTATION', label: 'Computation', color: 'border-l-violet-500 bg-violet-50', text: 'text-violet-700' },
   { key: 'FILING', label: 'Filing', color: 'border-l-orange-500 bg-orange-50', text: 'text-orange-700' },
@@ -69,7 +69,7 @@ export default function PartnerDashboardPage() {
   // Analytics data shaping
   const STATUS_LABELS: Record<string, string> = {
     INITIATED: 'Initiated',
-    ON_BOARDING: 'Onboarding',
+    ON_BOARDING: 'Document Upload',
     PROCESSING: 'Processing',
     COMPUTATION: 'Computation',
     FILING: 'Filing',

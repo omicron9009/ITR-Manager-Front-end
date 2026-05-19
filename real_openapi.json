@@ -4956,7 +4956,9 @@
         "enum": [
           "ITR_ACKNOWLEDGEMENT",
           "INVOICE",
-          "ITR_JSON"
+          "ITR_JSON",
+          "ITR_FORM",
+          "FINANCIAL_STATEMENT"
         ],
         "title": "CompletedDocType"
       },

@@ -25,7 +25,7 @@ const CONFIG: Record<string, { bg: string; text: string; ring: string; icon?: an
   REJECTED: { bg: 'bg-rose-50', text: 'text-rose-700', ring: 'ring-rose-200', label: 'Rejected' },
   DEACTIVATED: { bg: 'bg-slate-100', text: 'text-slate-600', ring: 'ring-slate-200', label: 'Deactivated' },
   INITIATED: { bg: 'bg-slate-100', text: 'text-slate-700', ring: 'ring-slate-200', icon: FileText, label: 'Initiated' },
-  ON_BOARDING: { bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-200', icon: FolderUp, label: 'On Boarding' },
+  ON_BOARDING: { bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-200', icon: FolderUp, label: 'Document Upload' },
   PROCESSING: { bg: 'bg-indigo-50', text: 'text-indigo-700', ring: 'ring-indigo-200', icon: Clock, label: 'Processing' },
   COMPUTATION: { bg: 'bg-violet-50', text: 'text-violet-700', ring: 'ring-violet-200', icon: Calculator, label: 'Computation' },
   FILING: { bg: 'bg-orange-50', text: 'text-orange-700', ring: 'ring-orange-200', icon: Send, label: 'Filing' },
