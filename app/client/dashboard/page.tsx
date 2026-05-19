@@ -186,7 +186,7 @@ export default function ClientDashboard() {
                   </Select>
                 )}
                 {f.field_type === 'FILE' && (
-                  <OnboardingFileInput fieldKey={f.field_key} value={onboardingValues[f.field_key]} onUploaded={(fileId, name) => setOnboardingValues({ ...onboardingValues, [f.field_key]: fileId })} />
+                  <OnboardingFileInput fieldKey={f.field_key} value={onboardingValues[f.field_key]} onUploaded={(fileId, name) => setOnboardingValues({ ...onboardingValues, [f.field_key]: fileId, [`${f.field_key}__filename`]: name })} />
                 )}
               </div>
             ))}
@@ -265,11 +265,13 @@ function FilingCard({ filing, onClick }: { filing: any; onClick: () => void }) {
 function OnboardingFileInput({ fieldKey, value, onUploaded }: { fieldKey: string; value: any; onUploaded: (fileId: string, name: string) => void }) {
   const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const hasFile = !!value && typeof value === 'string' && value.length > 0;
 
-  const handle = async (e: any) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const doUpload = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf','doc','docx','xls','xlsx','csv','png','jpg','jpeg'].includes(ext)) { toast.error('Allowed types: PDF, Word, Excel, CSV, PNG, JPG'); return; }
     setUploading(true);
     try {
       const r = await onboardingUploadUrl({ field_key: fieldKey, filename: file.name, content_type: file.type });
@@ -277,6 +279,7 @@ function OnboardingFileInput({ fieldKey, value, onUploaded }: { fieldKey: string
       const confirm = await confirmOnboardingUpload({ field_key: fieldKey, object_key: r.object_key, filename: file.name, content_type: file.type, file_size: file.size });
       const fileId = confirm?.file_id || confirm?.id || r.object_key;
       setFileName(file.name);
+      setPendingFile(null);
       onUploaded(fileId, file.name);
       toast.success(`${file.name} uploaded`);
     } catch (err: any) { toast.error(err?.response?.data?.detail || 'Upload failed'); }
@@ -285,7 +288,13 @@ function OnboardingFileInput({ fieldKey, value, onUploaded }: { fieldKey: string
 
   return (
     <div className="mt-1.5 flex items-center gap-2">
-      {hasFile || fileName ? (
+      {pendingFile ? (
+        <div className="flex items-center gap-2 flex-1 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2">
+          <Upload className="h-4 w-4 text-amber-600 flex-shrink-0" />
+          <span className="text-sm text-slate-700 truncate flex-1">{pendingFile.name}</span>
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-rose-500 hover:bg-rose-50" onClick={() => setPendingFile(null)}>✕</Button>
+        </div>
+      ) : hasFile || fileName ? (
         <div className="flex items-center gap-2 flex-1 rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           <span className="text-sm text-slate-700 truncate">{fileName || 'Uploaded file'}</span>
@@ -293,13 +302,20 @@ function OnboardingFileInput({ fieldKey, value, onUploaded }: { fieldKey: string
       ) : (
         <div className="flex-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-400">No file uploaded</div>
       )}
-      <label className="cursor-pointer">
-        <input type="file" className="hidden" onChange={handle} />
-        <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-          {hasFile || fileName ? 'Replace' : 'Upload'}
-        </span>
-      </label>
+      {pendingFile ? (
+        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs px-3 py-2" disabled={uploading} onClick={() => doUpload(pendingFile)}>
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+          Confirm
+        </Button>
+      ) : (
+        <label className="cursor-pointer">
+          <input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} />
+          <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+            <Upload className="h-3.5 w-3.5" />
+            {hasFile || fileName ? 'Replace' : 'Choose File'}
+          </span>
+        </label>
+      )}
     </div>
   );
 }

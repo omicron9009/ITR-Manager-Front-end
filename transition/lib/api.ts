@@ -66,7 +66,6 @@ export const initiateFiling = (data: any) => api.post('/api/v1/filings/initiate'
 export const listFilings = (params: any = {}) => api.get('/api/v1/filings', { params }).then((r) => r.data);
 export const getFiling = (id: string) => api.get(`/api/v1/filings/${id}`).then((r) => r.data);
 export const transitionFiling = (id: string, data: any) => api.post(`/api/v1/filings/${id}/transition`, data).then((r) => r.data);
-export const haltFiling = (id: string, reason: string) => api.post(`/api/v1/filings/${id}/halt`, { reason }).then((r) => r.data);
 export const submitDocs = (id: string) => api.post(`/api/v1/filings/${id}/submit-documents`).then((r) => r.data);
 export const markPayment = (id: string) => api.post(`/api/v1/filings/${id}/mark-payment`).then((r) => r.data);
 export const myTracking = () => api.get('/api/v1/filings/my/tracking').then((r) => r.data);
