@@ -1427,7 +1427,7 @@
           "Documents"
         ],
         "summary": "Assign Documents To Filing",
-        "description": "Assign document placeholders to a filing (Executive/Partner).\n\nIdempotent: can be called multiple times to update the checklist.\nWorks in INITIATED or ON_BOARDING state.",
+        "description": "Assign document placeholders to a filing (Executive/Partner).\n\nIdempotent: can be called multiple times to update the checklist.\nWorks in INITIATED or DOCUMENT_UPLOAD state.",
         "operationId": "assign_documents_to_filing_api_v1_documents_filings__filing_id__assign_post",
         "security": [
           {
@@ -3895,6 +3895,764 @@
         ]
       }
     },
+    "/api/v1/tags": {
+      "post": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Create New Tag",
+        "description": "Create a new tag (Manager or Location). Partner only.",
+        "operationId": "create_new_tag_api_v1_tags_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "List All Tags",
+        "description": "List all tags, optionally filtered by type. Partner only.",
+        "operationId": "list_all_tags_api_v1_tags_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TagType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tags/{tag_id}": {
+      "patch": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Update Existing Tag",
+        "description": "Update a tag's name, description, or active status. Partner only.",
+        "operationId": "update_existing_tag_api_v1_tags__tag_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Delete Tag",
+        "description": "Soft-delete a tag (set is_active=False). Partner only.",
+        "operationId": "delete_tag_api_v1_tags__tag_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Delete Tag Api V1 Tags  Tag Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tags/assign": {
+      "post": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Assign Tag",
+        "description": "Assign a tag to an executive. Partner only.",
+        "operationId": "assign_tag_api_v1_tags_assign_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutiveTagAssignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutiveTagResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/bulk-assign": {
+      "post": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Bulk Assign Tag Endpoint",
+        "description": "Assign a tag to multiple executives at once. Partner only.",
+        "operationId": "bulk_assign_tag_endpoint_api_v1_tags_bulk_assign_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutiveTagBulkAssignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Bulk Assign Tag Endpoint Api V1 Tags Bulk Assign Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/assign/{executive_id}/{tag_id}": {
+      "delete": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Unassign Tag",
+        "description": "Remove a tag from an executive. Partner only.",
+        "operationId": "unassign_tag_api_v1_tags_assign__executive_id___tag_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "executive_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Executive Id"
+            }
+          },
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Unassign Tag Api V1 Tags Assign  Executive Id   Tag Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tags/executives": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "List Executives With Tags",
+        "description": "List all executives with their assigned tags. Partner only.",
+        "operationId": "list_executives_with_tags_api_v1_tags_executives_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutiveTagsListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/executives/{executive_id}": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Get Executive Tags Endpoint",
+        "description": "Get tags for a specific executive. Partner only.",
+        "operationId": "get_executive_tags_endpoint_api_v1_tags_executives__executive_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "executive_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Executive Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutiveTagsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tags/my-tags": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Get My Tags",
+        "description": "Executive views their own tags. Also accessible by Partner.",
+        "operationId": "get_my_tags_api_v1_tags_my_tags_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutiveTagsView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/summary/manager": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Manager Summary",
+        "description": "Per-manager summary: executive count, filing stats. Partner only.",
+        "operationId": "manager_summary_api_v1_tags_summary_manager_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerSummaryResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/summary/location": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Location Summary",
+        "description": "Per-location summary: executive count, manager count, filing stats. Partner only.",
+        "operationId": "location_summary_api_v1_tags_summary_location_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationSummaryResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/summary/hierarchy": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Hierarchy Summary",
+        "description": "Full hierarchy: Location → Managers → Executives → filing stats. Partner only.",
+        "operationId": "hierarchy_summary_api_v1_tags_summary_hierarchy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HierarchyResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/summary/manager/{tag_id}": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Manager Detail",
+        "description": "Detailed view for one manager: executives, filings, status breakdown. Partner only.",
+        "operationId": "manager_detail_api_v1_tags_summary_manager__tag_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tags/summary/location/{tag_id}": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Location Detail",
+        "description": "Detailed view for one location: executives, managers, filings. Partner only.",
+        "operationId": "location_detail_api_v1_tags_summary_location__tag_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/dashboard": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Get Comprehensive Dashboard",
+        "description": "Comprehensive analytics dashboard — single route, full data.\n\nIncludes: overall summary, FY-wise breakdown, manager distribution,\nlocation distribution (with hierarchy), pending report (longest-pending first),\nexecutive/manager/location leaderboards.\n\nOptional ?fy=2024-2025 filter narrows filing data to a specific financial year.",
+        "operationId": "get_comprehensive_dashboard_api_v1_reports_dashboard_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by financial year (e.g. 2024-2025)",
+              "title": "Fy"
+            },
+            "description": "Filter by financial year (e.g. 2024-2025)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComprehensiveReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/download": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Download Comprehensive Report",
+        "description": "Download comprehensive report as Excel (.xlsx) file.\n\nMulti-sheet workbook: Overall, FY-Wise, Manager Distribution,\nLocation Distribution, Pending Report, Executive/Manager/Location Leaderboards.",
+        "operationId": "download_comprehensive_report_api_v1_reports_download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by financial year (e.g. 2024-2025)",
+              "title": "Fy"
+            },
+            "description": "Filter by financial year (e.g. 2024-2025)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/my-tax-filings": {
       "get": {
         "summary": "Read Filings",
@@ -4268,6 +5026,69 @@
           "unread_notification_count"
         ],
         "title": "ClientDashboardResponse"
+      },
+      "ClientFilingBrief": {
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "client_name": {
+            "type": "string",
+            "title": "Client Name"
+          },
+          "client_email": {
+            "type": "string",
+            "title": "Client Email"
+          },
+          "financial_year": {
+            "type": "string",
+            "title": "Financial Year"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "assigned_executive_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Executive Name"
+          },
+          "initiated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Initiated At"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Updated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filing_id",
+          "client_id",
+          "client_name",
+          "client_email",
+          "financial_year",
+          "status",
+          "initiated_at",
+          "last_updated"
+        ],
+        "title": "ClientFilingBrief"
       },
       "ClientFilingDetail": {
         "properties": {
@@ -4961,6 +5782,99 @@
           "FINANCIAL_STATEMENT"
         ],
         "title": "CompletedDocType"
+      },
+      "ComprehensiveReportResponse": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "financial_years": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Financial Years",
+            "default": []
+          },
+          "filtered_fy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filtered Fy"
+          },
+          "overall": {
+            "$ref": "#/components/schemas/OverallSummary"
+          },
+          "fy_wise": {
+            "items": {
+              "$ref": "#/components/schemas/FYSummary"
+            },
+            "type": "array",
+            "title": "Fy Wise",
+            "default": []
+          },
+          "manager_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/ManagerDistItem"
+            },
+            "type": "array",
+            "title": "Manager Distribution",
+            "default": []
+          },
+          "location_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/LocationDistItem"
+            },
+            "type": "array",
+            "title": "Location Distribution",
+            "default": []
+          },
+          "pending_report": {
+            "items": {
+              "$ref": "#/components/schemas/PendingFilingItem"
+            },
+            "type": "array",
+            "title": "Pending Report",
+            "default": []
+          },
+          "leaderboard_executive": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutiveLeaderboardItem"
+            },
+            "type": "array",
+            "title": "Leaderboard Executive",
+            "default": []
+          },
+          "leaderboard_manager": {
+            "items": {
+              "$ref": "#/components/schemas/ManagerLeaderboardItem"
+            },
+            "type": "array",
+            "title": "Leaderboard Manager",
+            "default": []
+          },
+          "leaderboard_location": {
+            "items": {
+              "$ref": "#/components/schemas/LocationLeaderboardItem"
+            },
+            "type": "array",
+            "title": "Leaderboard Location",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "overall"
+        ],
+        "title": "ComprehensiveReportResponse"
       },
       "ComputationApproveRequest": {
         "properties": {
@@ -5830,6 +6744,40 @@
         ],
         "title": "ExecutiveAssignmentResponse"
       },
+      "ExecutiveBrief": {
+        "properties": {
+          "executive_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Executive Id"
+          },
+          "executive_name": {
+            "type": "string",
+            "title": "Executive Name"
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "executive_id",
+          "executive_name"
+        ],
+        "title": "ExecutiveBrief"
+      },
       "ExecutiveClientDetail": {
         "properties": {
           "executive_id": {
@@ -5956,6 +6904,106 @@
         ],
         "title": "ExecutiveCreateRequest"
       },
+      "ExecutiveDistItem": {
+        "properties": {
+          "executive_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Executive Id"
+          },
+          "executive_name": {
+            "type": "string",
+            "title": "Executive Name"
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          },
+          "avg_days_to_complete": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Complete"
+          }
+        },
+        "type": "object",
+        "required": [
+          "executive_id",
+          "executive_name"
+        ],
+        "title": "ExecutiveDistItem"
+      },
+      "ExecutiveLeaderboardItem": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "executive_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Executive Id"
+          },
+          "executive_name": {
+            "type": "string",
+            "title": "Executive Name"
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "avg_days_to_complete": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Complete"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "executive_id",
+          "executive_name"
+        ],
+        "title": "ExecutiveLeaderboardItem"
+      },
       "ExecutiveListResponse": {
         "properties": {
           "items": {
@@ -6026,6 +7074,157 @@
           "created_at"
         ],
         "title": "ExecutiveResponse"
+      },
+      "ExecutiveTagAssignRequest": {
+        "properties": {
+          "executive_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Executive Id"
+          },
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "executive_id",
+          "tag_id"
+        ],
+        "title": "ExecutiveTagAssignRequest"
+      },
+      "ExecutiveTagBulkAssignRequest": {
+        "properties": {
+          "executive_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Executive Ids"
+          },
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "executive_ids",
+          "tag_id"
+        ],
+        "title": "ExecutiveTagBulkAssignRequest"
+      },
+      "ExecutiveTagResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "executive_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Executive Id"
+          },
+          "executive_name": {
+            "type": "string",
+            "title": "Executive Name"
+          },
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "tag_name": {
+            "type": "string",
+            "title": "Tag Name"
+          },
+          "tag_type": {
+            "$ref": "#/components/schemas/TagType"
+          },
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Assigned At"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "executive_id",
+          "executive_name",
+          "tag_id",
+          "tag_name",
+          "tag_type",
+          "assigned_at",
+          "is_active"
+        ],
+        "title": "ExecutiveTagResponse"
+      },
+      "ExecutiveTagsListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutiveTagsView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ExecutiveTagsListResponse"
+      },
+      "ExecutiveTagsView": {
+        "properties": {
+          "executive_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Executive Id"
+          },
+          "executive_name": {
+            "type": "string",
+            "title": "Executive Name"
+          },
+          "manager_tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagBrief"
+            },
+            "type": "array",
+            "title": "Manager Tags"
+          },
+          "location_tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagBrief"
+            },
+            "type": "array",
+            "title": "Location Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "executive_id",
+          "executive_name",
+          "manager_tags",
+          "location_tags"
+        ],
+        "title": "ExecutiveTagsView"
       },
       "ExecutiveWorkloadItem": {
         "properties": {
@@ -6099,6 +7298,101 @@
           "active"
         ],
         "title": "FYDistribution"
+      },
+      "FYSummary": {
+        "properties": {
+          "financial_year": {
+            "type": "string",
+            "title": "Financial Year"
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          },
+          "filing_status_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/StatusCount"
+            },
+            "type": "array",
+            "title": "Filing Status Breakdown",
+            "default": []
+          },
+          "avg_days_to_complete": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Complete"
+          },
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/ClientFilingBrief"
+            },
+            "type": "array",
+            "title": "Clients",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "financial_year"
+        ],
+        "title": "FYSummary"
+      },
+      "FilingBriefItem": {
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "client_name": {
+            "type": "string",
+            "title": "Client Name"
+          },
+          "financial_year": {
+            "type": "string",
+            "title": "Financial Year"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Updated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filing_id",
+          "client_name",
+          "financial_year",
+          "status",
+          "last_updated"
+        ],
+        "title": "FilingBriefItem"
       },
       "FilingDirectoryResponse": {
         "properties": {
@@ -6730,7 +8024,7 @@
         "type": "string",
         "enum": [
           "INITIATED",
-          "ON_BOARDING",
+          "DOCUMENT_UPLOAD",
           "PROCESSING",
           "COMPUTATION",
           "FILING",
@@ -7132,6 +8426,359 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HierarchyLocationItem": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "location_name": {
+            "type": "string",
+            "title": "Location Name"
+          },
+          "managers": {
+            "items": {
+              "$ref": "#/components/schemas/HierarchyManagerItem"
+            },
+            "type": "array",
+            "title": "Managers",
+            "default": []
+          },
+          "total_executives": {
+            "type": "integer",
+            "title": "Total Executives",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "location_name"
+        ],
+        "title": "HierarchyLocationItem"
+      },
+      "HierarchyManagerItem": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "manager_name": {
+            "type": "string",
+            "title": "Manager Name"
+          },
+          "executives": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutiveBrief"
+            },
+            "type": "array",
+            "title": "Executives",
+            "default": []
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "manager_name"
+        ],
+        "title": "HierarchyManagerItem"
+      },
+      "HierarchyResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HierarchyLocationItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "HierarchyResponse"
+      },
+      "LocationDetailResponse": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "location_name": {
+            "type": "string",
+            "title": "Location Name"
+          },
+          "executive_count": {
+            "type": "integer",
+            "title": "Executive Count",
+            "default": 0
+          },
+          "manager_count": {
+            "type": "integer",
+            "title": "Manager Count",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          },
+          "executives": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutiveBrief"
+            },
+            "type": "array",
+            "title": "Executives",
+            "default": []
+          },
+          "recent_filings": {
+            "items": {
+              "$ref": "#/components/schemas/FilingBriefItem"
+            },
+            "type": "array",
+            "title": "Recent Filings",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "location_name"
+        ],
+        "title": "LocationDetailResponse"
+      },
+      "LocationDistItem": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "location_name": {
+            "type": "string",
+            "title": "Location Name"
+          },
+          "executive_count": {
+            "type": "integer",
+            "title": "Executive Count",
+            "default": 0
+          },
+          "manager_count": {
+            "type": "integer",
+            "title": "Manager Count",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          },
+          "avg_days_to_complete": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Complete"
+          },
+          "hierarchy": {
+            "items": {
+              "$ref": "#/components/schemas/ManagerInLocation"
+            },
+            "type": "array",
+            "title": "Hierarchy",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "location_name"
+        ],
+        "title": "LocationDistItem"
+      },
+      "LocationLeaderboardItem": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "location_name": {
+            "type": "string",
+            "title": "Location Name"
+          },
+          "executive_count": {
+            "type": "integer",
+            "title": "Executive Count",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "avg_days_to_complete": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Complete"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "tag_id",
+          "location_name"
+        ],
+        "title": "LocationLeaderboardItem"
+      },
+      "LocationSummaryItem": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "location_name": {
+            "type": "string",
+            "title": "Location Name"
+          },
+          "executive_count": {
+            "type": "integer",
+            "title": "Executive Count",
+            "default": 0
+          },
+          "manager_count": {
+            "type": "integer",
+            "title": "Manager Count",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "location_name"
+        ],
+        "title": "LocationSummaryItem"
+      },
+      "LocationSummaryResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LocationSummaryItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "LocationSummaryResponse"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -7151,6 +8798,289 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "ManagerDetailResponse": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "manager_name": {
+            "type": "string",
+            "title": "Manager Name"
+          },
+          "executive_count": {
+            "type": "integer",
+            "title": "Executive Count",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          },
+          "executives": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutiveBrief"
+            },
+            "type": "array",
+            "title": "Executives",
+            "default": []
+          },
+          "recent_filings": {
+            "items": {
+              "$ref": "#/components/schemas/FilingBriefItem"
+            },
+            "type": "array",
+            "title": "Recent Filings",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "manager_name"
+        ],
+        "title": "ManagerDetailResponse"
+      },
+      "ManagerDistItem": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "manager_name": {
+            "type": "string",
+            "title": "Manager Name"
+          },
+          "executive_count": {
+            "type": "integer",
+            "title": "Executive Count",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          },
+          "avg_days_to_complete": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Complete"
+          },
+          "executives": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutiveDistItem"
+            },
+            "type": "array",
+            "title": "Executives",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "manager_name"
+        ],
+        "title": "ManagerDistItem"
+      },
+      "ManagerInLocation": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "manager_name": {
+            "type": "string",
+            "title": "Manager Name"
+          },
+          "executives": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutiveDistItem"
+            },
+            "type": "array",
+            "title": "Executives",
+            "default": []
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "manager_name"
+        ],
+        "title": "ManagerInLocation"
+      },
+      "ManagerLeaderboardItem": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "manager_name": {
+            "type": "string",
+            "title": "Manager Name"
+          },
+          "executive_count": {
+            "type": "integer",
+            "title": "Executive Count",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "avg_days_to_complete": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Complete"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "tag_id",
+          "manager_name"
+        ],
+        "title": "ManagerLeaderboardItem"
+      },
+      "ManagerSummaryItem": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "manager_name": {
+            "type": "string",
+            "title": "Manager Name"
+          },
+          "executive_count": {
+            "type": "integer",
+            "title": "Executive Count",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          },
+          "executives": {
+            "items": {
+              "$ref": "#/components/schemas/ExecutiveBrief"
+            },
+            "type": "array",
+            "title": "Executives",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "manager_name"
+        ],
+        "title": "ManagerSummaryItem"
+      },
+      "ManagerSummaryResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagerSummaryItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ManagerSummaryResponse"
       },
       "MasterDocTypeCreateRequest": {
         "properties": {
@@ -7461,6 +9391,81 @@
         ],
         "title": "OnboardingFormSubmitRequest"
       },
+      "OverallSummary": {
+        "properties": {
+          "total_clients": {
+            "type": "integer",
+            "title": "Total Clients",
+            "default": 0
+          },
+          "active_clients": {
+            "type": "integer",
+            "title": "Active Clients",
+            "default": 0
+          },
+          "total_executives": {
+            "type": "integer",
+            "title": "Total Executives",
+            "default": 0
+          },
+          "active_executives": {
+            "type": "integer",
+            "title": "Active Executives",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          },
+          "filing_status_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/StatusCount"
+            },
+            "type": "array",
+            "title": "Filing Status Breakdown",
+            "default": []
+          },
+          "avg_days_to_complete": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days To Complete"
+          },
+          "avg_days_by_stage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StageTiming"
+              }
+            ],
+            "default": {
+
+            }
+          }
+        },
+        "type": "object",
+        "title": "OverallSummary"
+      },
       "PartnerAnalyticsResponse": {
         "properties": {
           "total_clients": {
@@ -7600,6 +9605,96 @@
         ],
         "title": "PartnerAnalyticsResponse"
       },
+      "PendingFilingItem": {
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "client_name": {
+            "type": "string",
+            "title": "Client Name"
+          },
+          "client_email": {
+            "type": "string",
+            "title": "Client Email"
+          },
+          "financial_year": {
+            "type": "string",
+            "title": "Financial Year"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "assigned_executive_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Executive Name"
+          },
+          "manager_tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Tag"
+          },
+          "location_tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Tag"
+          },
+          "days_pending": {
+            "type": "number",
+            "title": "Days Pending",
+            "default": 0
+          },
+          "initiated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Initiated At"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Updated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filing_id",
+          "client_id",
+          "client_name",
+          "client_email",
+          "financial_year",
+          "status",
+          "initiated_at",
+          "last_updated"
+        ],
+        "title": "PendingFilingItem"
+      },
       "PendingVerificationItem": {
         "properties": {
           "id": {
@@ -7650,6 +9745,247 @@
           "total"
         ],
         "title": "PendingVerificationResponse"
+      },
+      "StageTiming": {
+        "properties": {
+          "avg_days_document_processing": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days Document Processing"
+          },
+          "avg_days_computation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days Computation"
+          },
+          "avg_days_filing": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days Filing"
+          },
+          "avg_days_payment": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Days Payment"
+          }
+        },
+        "type": "object",
+        "title": "StageTiming"
+      },
+      "StatusCount": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "count"
+        ],
+        "title": "StatusCount"
+      },
+      "TagBrief": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "tag_type": {
+            "$ref": "#/components/schemas/TagType"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "tag_type"
+        ],
+        "title": "TagBrief"
+      },
+      "TagCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "tag_type": {
+            "$ref": "#/components/schemas/TagType"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "tag_type"
+        ],
+        "title": "TagCreateRequest"
+      },
+      "TagListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TagResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "TagListResponse"
+      },
+      "TagResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "tag_type": {
+            "$ref": "#/components/schemas/TagType"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "executive_count": {
+            "type": "integer",
+            "title": "Executive Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "tag_type",
+          "is_active",
+          "created_at"
+        ],
+        "title": "TagResponse"
+      },
+      "TagType": {
+        "type": "string",
+        "enum": [
+          "MANAGER",
+          "LOCATION"
+        ],
+        "title": "TagType"
+      },
+      "TagUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "TagUpdateRequest"
       },
       "TokenExchangeRequest": {
         "properties": {

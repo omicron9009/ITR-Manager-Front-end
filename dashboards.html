@@ -1,0 +1,1301 @@
+
+Action: file_editor create /app/dashboard.html --file-text "<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+<meta charset=\"UTF-8\" />
+<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>
+<title>Tax Intelligence — Executive Dashboard</title>
+
+<!-- Tailwind -->
+<script src=\"https://cdn.tailwindcss.com\"></script>
+<!-- Chart.js -->
+<script src=\"https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js\"></script>
+<!-- Lucide Icons -->
+<script src=\"https://unpkg.com/lucide@latest/dist/umd/lucide.min.js\"></script>
+<!-- Fonts -->
+<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
+<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
+<link href=\"https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap\" rel=\"stylesheet\">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['\"Space Grotesk\"', 'sans-serif'],
+          sans: ['Manrope', 'sans-serif'],
+          mono: ['\"JetBrains Mono\"', 'monospace']
+        },
+        colors: {
+          ink: {
+            950: '#06070d',
+            900: '#0a0c16',
+            800: '#10131f',
+            700: '#171a2a',
+            600: '#1f2336',
+            500: '#2a2f47'
+          },
+          neon: {
+            indigo: '#6366f1',
+            cyan: '#22d3ee',
+            violet: '#a78bfa',
+            emerald: '#10b981',
+            amber: '#f59e0b',
+            rose: '#fb7185'
+          }
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  :root{
+    --indigo:#6366f1;
+    --cyan:#22d3ee;
+    --violet:#a78bfa;
+    --emerald:#10b981;
+    --amber:#f59e0b;
+    --rose:#fb7185;
+  }
+  html,body{ background:#06070d; color:#e6e8f2; font-family:'Manrope',sans-serif; }
+
+  /* Grid texture */
+  .bg-grid{
+    background-image:
+      linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 80%);
+  }
+
+  /* Orbs */
+  .orb{ position:absolute; border-radius:9999px; filter: blur(80px); opacity:.45; pointer-events:none; }
+  .orb-indigo{ background: radial-gradient(circle, #6366f1 0%, transparent 70%); }
+  .orb-cyan{ background: radial-gradient(circle, #22d3ee 0%, transparent 70%); }
+  .orb-violet{ background: radial-gradient(circle, #a78bfa 0%, transparent 70%); }
+
+  @keyframes float {
+    0%,100% { transform: translate3d(0,0,0); }
+    50% { transform: translate3d(0,-30px,0); }
+  }
+  .float-slow{ animation: float 14s ease-in-out infinite; }
+  .float-mid{ animation: float 10s ease-in-out infinite; }
+
+  /* Glass card */
+  .glass{
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+    border: 1px solid rgba(255,255,255,0.07);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-radius: 20px;
+  }
+  .glass-strong{
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.09);
+    backdrop-filter: blur(22px);
+  }
+
+  /* Gradient border */
+  .gborder{ position: relative; }
+  .gborder::before{
+    content:\"\"; position:absolute; inset:0; padding:1px; border-radius:inherit;
+    background: linear-gradient(135deg, rgba(99,102,241,.6), rgba(34,211,238,.4), rgba(167,139,250,.3));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    pointer-events:none;
+  }
+
+  /* KPI glow */
+  .kpi:hover{ transform: translateY(-4px); box-shadow: 0 25px 60px -25px rgba(99,102,241,.45), 0 0 0 1px rgba(99,102,241,.2); }
+  .kpi{ transition: transform .35s ease, box-shadow .35s ease; }
+
+  /* Pulse dot */
+  .pulse-dot{
+    width:8px; height:8px; border-radius:9999px; background:#22d3ee;
+    box-shadow: 0 0 0 0 rgba(34,211,238,.7);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow: 0 0 0 0 rgba(34,211,238,.6);}
+    70%{ box-shadow: 0 0 0 14px rgba(34,211,238,0);}
+    100%{ box-shadow: 0 0 0 0 rgba(34,211,238,0);}
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{ width:10px; height:10px;}
+  ::-webkit-scrollbar-track{ background: transparent; }
+  ::-webkit-scrollbar-thumb{ background: linear-gradient(#3b3f5f,#1a1d2c); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover{ background: linear-gradient(#4f5483,#22263a); }
+
+  /* Reveal */
+  .reveal{ opacity:0; transform: translateY(18px); transition: opacity .8s ease, transform .8s ease;}
+  .reveal.in{ opacity:1; transform: translateY(0); }
+
+  /* Severity badges */
+  .badge-sev{ font-family:'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing:.04em; padding:3px 8px; border-radius:9999px; border:1px solid; display:inline-flex; align-items:center; gap:6px;}
+  .sev-critical{ color:#fda4af; border-color:rgba(251,113,133,.4); background: rgba(251,113,133,.08); }
+  .sev-high{ color:#fcd34d; border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.08);}
+  .sev-medium{ color:#7dd3fc; border-color: rgba(34,211,238,.35); background: rgba(34,211,238,.08);}
+  .sev-low{ color:#86efac; border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.08);}
+
+  .blink::after{ content:\"\"; display:inline-block; width:6px; height:6px; border-radius:9999px; background: currentColor; margin-left:6px; animation: blink 1.4s ease-in-out infinite;}
+  @keyframes blink{ 0%,100%{opacity:.2;} 50%{opacity:1;} }
+
+  /* Shimmer */
+  .shimmer{
+    background: linear-gradient(110deg, rgba(255,255,255,.04) 8%, rgba(255,255,255,.10) 18%, rgba(255,255,255,.04) 33%);
+    background-size: 200% 100%;
+    animation: shimmer 2.2s linear infinite;
+  }
+  @keyframes shimmer{ 0%{background-position: 200% 0;} 100%{ background-position: -200% 0;} }
+
+  /* Podium glow */
+  .gold-glow{ box-shadow: 0 0 30px rgba(245,158,11,.45), 0 0 60px rgba(245,158,11,.25);}
+  .silver-glow{ box-shadow: 0 0 30px rgba(203,213,225,.4), 0 0 60px rgba(203,213,225,.2);}
+  .bronze-glow{ box-shadow: 0 0 30px rgba(217,119,6,.4), 0 0 60px rgba(217,119,6,.18);}
+
+  /* Tiny sparkline canvas */
+  .spark{ width: 100%; height: 36px; }
+
+  /* Radial progress ring */
+  .ring-track{ stroke: rgba(255,255,255,.07); }
+  .ring-fill{ stroke-dasharray: 220; stroke-dashoffset: 220; transition: stroke-dashoffset 1.4s ease; }
+
+  /* Hover row */
+  tr.row-glow:hover{ background: linear-gradient(90deg, rgba(99,102,241,.07), rgba(34,211,238,.04)); }
+
+  /* Trophy floating */
+  @keyframes hover-y{ 0%,100%{transform: translateY(0);} 50%{ transform: translateY(-6px);} }
+  .hover-y{ animation: hover-y 3.4s ease-in-out infinite;}
+
+  /* Select reset */
+  select{ background-image: none; }
+
+  details > summary{ list-style:none; cursor:pointer;}
+  details > summary::-webkit-details-marker{ display:none; }
+  details[open] .chev{ transform: rotate(90deg);}
+  .chev{ transition: transform .25s ease;}
+
+  /* Particle */
+  .particles{ position:absolute; inset:0; overflow:hidden; pointer-events:none;}
+  .particle{ position:absolute; width:2px; height:2px; background:#fff; border-radius:9999px; opacity:.25; animation: rise linear infinite;}
+  @keyframes rise{
+    0%{ transform: translateY(0); opacity:0;}
+    20%{ opacity:.4;}
+    100%{ transform: translateY(-1200px); opacity:0;}
+  }
+
+  /* Section heading underline */
+  .h-underline{ position:relative; display:inline-block; }
+  .h-underline::after{
+    content:\"\"; position:absolute; left:0; bottom:-6px; width:46px; height:2px;
+    background: linear-gradient(90deg, var(--indigo), var(--cyan));
+    border-radius:2px;
+  }
+</style>
+</head>
+<body class=\"relative overflow-x-hidden\">
+
+<!-- Background layers -->
+<div class=\"fixed inset-0 -z-10 bg-grid\"></div>
+<div class=\"fixed inset-0 -z-10 pointer-events-none\">
+  <div class=\"orb orb-indigo float-slow\" style=\"width:520px;height:520px;top:-120px;left:-140px;\"></div>
+  <div class=\"orb orb-cyan float-mid\" style=\"width:480px;height:480px;top:30%;right:-180px;\"></div>
+  <div class=\"orb orb-violet float-slow\" style=\"width:420px;height:420px;bottom:-160px;left:30%;opacity:.35;\"></div>
+</div>
+<div class=\"particles fixed inset-0 -z-10\" id=\"particles\"></div>
+
+<!-- ===================== NAV ===================== -->
+<header class=\"sticky top-0 z-40 backdrop-blur-xl bg-ink-950/60 border-b border-white/5\">
+  <div class=\"max-w-[1480px] mx-auto px-6 py-4 flex items-center justify-between\">
+    <div class=\"flex items-center gap-3\">
+      <div class=\"w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 grid place-items-center shadow-lg shadow-indigo-500/30\">
+        <i data-lucide=\"scan-line\" class=\"w-5 h-5 text-white\"></i>
+      </div>
+      <div>
+        <div class=\"font-display font-semibold text-[15px] tracking-tight\">Lumen Tax Intelligence</div>
+        <div class=\"text-[11px] text-white/40 font-mono tracking-wider\">v 4.2 · COMMAND CENTER</div>
+      </div>
+    </div>
+
+    <nav class=\"hidden md:flex items-center gap-1 text-sm text-white/60\">
+      <a class=\"px-3 py-2 rounded-lg hover:text-white hover:bg-white/5 transition\">Overview</a>
+      <a class=\"px-3 py-2 rounded-lg text-white bg-white/5\">Intelligence</a>
+      <a class=\"px-3 py-2 rounded-lg hover:text-white hover:bg-white/5 transition\">Filings</a>
+      <a class=\"px-3 py-2 rounded-lg hover:text-white hover:bg-white/5 transition\">Clients</a>
+      <a class=\"px-3 py-2 rounded-lg hover:text-white hover:bg-white/5 transition\">Reports</a>
+    </nav>
+
+    <div class=\"flex items-center gap-3\">
+      <div class=\"hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5\">
+        <span class=\"pulse-dot\"></span>
+        <span class=\"text-xs text-white/70 font-mono\">LIVE · <span id=\"liveTime\">--:--:--</span></span>
+      </div>
+      <button class=\"w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 grid place-items-center font-semibold text-sm\">AR</button>
+    </div>
+  </div>
+</header>
+
+<main class=\"max-w-[1480px] mx-auto px-6 py-10 space-y-14\">
+
+  <!-- ===================== HERO ===================== -->
+  <section class=\"reveal\">
+    <div class=\"glass gborder p-8 md:p-10 relative overflow-hidden\">
+      <div class=\"absolute -top-24 -right-24 w-[360px] h-[360px] rounded-full bg-gradient-to-br from-indigo-500/40 to-cyan-400/10 blur-3xl\"></div>
+      <div class=\"absolute -bottom-24 -left-24 w-[300px] h-[300px] rounded-full bg-gradient-to-br from-violet-500/30 to-transparent blur-3xl\"></div>
+
+      <div class=\"flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 relative\">
+        <div>
+          <div class=\"flex items-center gap-2 mb-4\">
+            <span class=\"text-[11px] uppercase tracking-[0.22em] text-cyan-300/80 font-mono\">Executive Intelligence</span>
+            <span class=\"w-1 h-1 rounded-full bg-white/30\"></span>
+            <span class=\"text-[11px] uppercase tracking-[0.22em] text-white/40 font-mono\">Q4 · FY 2024-25</span>
+          </div>
+          <h1 class=\"font-display text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight leading-[1.05]\">
+            The state of your<br>
+            <span class=\"bg-gradient-to-r from-indigo-400 via-cyan-300 to-violet-300 bg-clip-text text-transparent\">tax filing operation.</span>
+          </h1>
+          <p class=\"mt-4 text-white/55 max-w-2xl text-[15px] leading-relaxed\">
+            A real-time, multi-dimensional view of every client, executive, manager and location across the firm.
+            Built for leaders who need to act before the deadline finds them.
+          </p>
+        </div>
+
+        <div class=\"flex flex-wrap items-center gap-3\">
+          <div class=\"glass-strong px-4 py-2.5 flex items-center gap-2 rounded-xl\">
+            <i data-lucide=\"calendar-range\" class=\"w-4 h-4 text-cyan-300\"></i>
+            <select id=\"fySelect\" class=\"bg-transparent text-sm font-medium outline-none\">
+              <option class=\"bg-ink-900\">FY 2024-2025</option>
+              <option class=\"bg-ink-900\">FY 2023-2024</option>
+              <option class=\"bg-ink-900\">FY 2022-2023</option>
+              <option class=\"bg-ink-900\">FY 2021-2022</option>
+              <option class=\"bg-ink-900\">All Years</option>
+            </select>
+          </div>
+          <button class=\"glass-strong px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-white/5 transition\">
+            <i data-lucide=\"sliders-horizontal\" class=\"w-4 h-4\"></i> Filters
+          </button>
+          <button class=\"px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 text-ink-950 bg-gradient-to-r from-cyan-300 to-indigo-400 hover:brightness-110 transition shadow-lg shadow-indigo-500/20\">
+            <i data-lucide=\"download\" class=\"w-4 h-4\"></i> Export Report
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI grid -->
+      <div class=\"grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-10\">
+        <!-- KPI Card template -->
+        <div class=\"kpi glass gborder p-5 relative overflow-hidden\">
+          <div class=\"flex items-center justify-between\">
+            <div class=\"w-9 h-9 rounded-xl bg-indigo-500/15 grid place-items-center\"><i data-lucide=\"users\" class=\"w-4 h-4 text-indigo-300\"></i></div>
+            <span class=\"text-[10px] font-mono text-emerald-300/80 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5\">+12.4%</span>
+          </div>
+          <div class=\"mt-4\">
+            <div class=\"text-[11px] uppercase tracking-wider text-white/40\">Total Clients</div>
+            <div class=\"font-display text-3xl font-semibold mt-1\" data-count=\"1284\">0</div>
+          </div>
+          <canvas class=\"spark mt-2\" data-spark=\"[8,9,11,10,13,15,14,18,17,21,20,24]\" data-color=\"#818cf8\"></canvas>
+        </div>
+
+        <div class=\"kpi glass gborder p-5 relative overflow-hidden\">
+          <div class=\"flex items-center justify-between\">
+            <div class=\"w-9 h-9 rounded-xl bg-cyan-500/15 grid place-items-center\"><i data-lucide=\"user-check\" class=\"w-4 h-4 text-cyan-300\"></i></div>
+            <span class=\"text-[10px] font-mono text-emerald-300/80 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5\">+8.1%</span>
+          </div>
+          <div class=\"mt-4\">
+            <div class=\"text-[11px] uppercase tracking-wider text-white/40\">Active Clients</div>
+            <div class=\"font-display text-3xl font-semibold mt-1\" data-count=\"1097\">0</div>
+          </div>
+          <canvas class=\"spark mt-2\" data-spark=\"[7,8,10,9,11,13,12,14,16,15,18,21]\" data-color=\"#22d3ee\"></canvas>
+        </div>
+
+        <div class=\"kpi glass gborder p-5 relative overflow-hidden\">
+          <div class=\"flex items-center justify-between\">
+            <div class=\"w-9 h-9 rounded-xl bg-violet-500/15 grid place-items-center\"><i data-lucide=\"file-stack\" class=\"w-4 h-4 text-violet-300\"></i></div>
+            <span class=\"text-[10px] font-mono text-emerald-300/80 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5\">+18.7%</span>
+          </div>
+          <div class=\"mt-4\">
+            <div class=\"text-[11px] uppercase tracking-wider text-white/40\">Total Filings</div>
+            <div class=\"font-display text-3xl font-semibold mt-1\" data-count=\"3942\">0</div>
+          </div>
+          <canvas class=\"spark mt-2\" data-spark=\"[12,18,16,22,25,28,30,34,32,38,42,46]\" data-color=\"#a78bfa\"></canvas>
+        </div>
+
+        <div class=\"kpi glass gborder p-5 relative overflow-hidden\">
+          <div class=\"flex items-center justify-between\">
+            <div class=\"w-9 h-9 rounded-xl bg-emerald-500/15 grid place-items-center\"><i data-lucide=\"check-circle-2\" class=\"w-4 h-4 text-emerald-300\"></i></div>
+            <span class=\"text-[10px] font-mono text-emerald-300/80 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5\">+22.0%</span>
+          </div>
+          <div class=\"mt-4\">
+            <div class=\"text-[11px] uppercase tracking-wider text-white/40\">Completed</div>
+            <div class=\"font-display text-3xl font-semibold mt-1\" data-count=\"2876\">0</div>
+          </div>
+          <canvas class=\"spark mt-2\" data-spark=\"[8,10,12,15,18,21,24,28,30,33,38,44]\" data-color=\"#34d399\"></canvas>
+        </div>
+
+        <div class=\"kpi glass gborder p-5 relative overflow-hidden\">
+          <div class=\"flex items-center justify-between\">
+            <div class=\"w-9 h-9 rounded-xl bg-amber-500/15 grid place-items-center\"><i data-lucide=\"briefcase\" class=\"w-4 h-4 text-amber-300\"></i></div>
+            <span class=\"text-[10px] font-mono text-rose-300/80 bg-rose-500/10 border border-rose-500/20 rounded-full px-2 py-0.5\">-2.3%</span>
+          </div>
+          <div class=\"mt-4\">
+            <div class=\"text-[11px] uppercase tracking-wider text-white/40\">Active Executives</div>
+            <div class=\"font-display text-3xl font-semibold mt-1\" data-count=\"142\">0</div>
+          </div>
+          <canvas class=\"spark mt-2\" data-spark=\"[14,15,16,15,17,16,18,17,18,17,16,15]\" data-color=\"#fbbf24\"></canvas>
+        </div>
+
+        <div class=\"kpi glass gborder p-5 relative overflow-hidden\">
+          <div class=\"flex items-center justify-between\">
+            <div class=\"w-9 h-9 rounded-xl bg-rose-500/15 grid place-items-center\"><i data-lucide=\"timer\" class=\"w-4 h-4 text-rose-300\"></i></div>
+            <span class=\"text-[10px] font-mono text-emerald-300/80 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5\">-1.6d</span>
+          </div>
+          <div class=\"mt-4\">
+            <div class=\"text-[11px] uppercase tracking-wider text-white/40\">Avg Completion</div>
+            <div class=\"font-display text-3xl font-semibold mt-1\"><span data-count=\"11.2\" data-decimals=\"1\">0</span><span class=\"text-base text-white/40 font-sans\"> d</span></div>
+          </div>
+          <canvas class=\"spark mt-2\" data-spark=\"[14,13.5,13,12.8,12.5,12.2,12,11.8,11.6,11.4,11.3,11.2]\" data-color=\"#fb7185\"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== OVERALL ANALYTICS ===================== -->
+  <section class=\"reveal\">
+    <div class=\"flex items-end justify-between mb-6\">
+      <div>
+        <div class=\"text-[11px] uppercase tracking-[0.22em] text-cyan-300/70 font-mono mb-2\">/ section 02</div>
+        <h2 class=\"font-display text-2xl md:text-3xl font-semibold tracking-tight h-underline\">Overall Analytics</h2>
+      </div>
+      <div class=\"text-xs text-white/40 font-mono\">Last sync · 14 sec ago</div>
+    </div>
+
+    <div class=\"grid grid-cols-12 gap-5\">
+      <!-- Filing status breakdown -->
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-4\">
+        <div class=\"flex items-center justify-between mb-2\">
+          <h3 class=\"font-display font-semibold text-base\">Filing Status Breakdown</h3>
+          <i data-lucide=\"more-horizontal\" class=\"w-4 h-4 text-white/40\"></i>
+        </div>
+        <p class=\"text-xs text-white/40 mb-4\">Distribution across all 3,942 filings</p>
+        <div class=\"relative\">
+          <canvas id=\"statusDoughnut\" height=\"220\"></canvas>
+          <div class=\"absolute inset-0 grid place-items-center pointer-events-none\">
+            <div class=\"text-center\">
+              <div class=\"font-display text-3xl font-semibold\">73<span class=\"text-base text-white/40\">%</span></div>
+              <div class=\"text-[10px] uppercase tracking-wider text-white/40 font-mono\">Completed</div>
+            </div>
+          </div>
+        </div>
+        <div class=\"grid grid-cols-2 gap-3 mt-5 text-xs\">
+          <div class=\"flex items-center gap-2\"><span class=\"w-2 h-2 rounded-full bg-emerald-400\"></span><span class=\"text-white/60\">Completed</span><span class=\"ml-auto font-mono\">2,876</span></div>
+          <div class=\"flex items-center gap-2\"><span class=\"w-2 h-2 rounded-full bg-cyan-400\"></span><span class=\"text-white/60\">In Progress</span><span class=\"ml-auto font-mono\">684</span></div>
+          <div class=\"flex items-center gap-2\"><span class=\"w-2 h-2 rounded-full bg-amber-400\"></span><span class=\"text-white/60\">Pending Docs</span><span class=\"ml-auto font-mono\">241</span></div>
+          <div class=\"flex items-center gap-2\"><span class=\"w-2 h-2 rounded-full bg-rose-400\"></span><span class=\"text-white/60\">Halted</span><span class=\"ml-auto font-mono\">141</span></div>
+        </div>
+      </div>
+
+      <!-- Lifecycle funnel -->
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-5\">
+        <div class=\"flex items-center justify-between mb-2\">
+          <h3 class=\"font-display font-semibold text-base\">Filing Lifecycle Funnel</h3>
+          <span class=\"text-[10px] font-mono text-white/40 px-2 py-0.5 rounded bg-white/5\">CONVERSION 73%</span>
+        </div>
+        <p class=\"text-xs text-white/40 mb-5\">Stage-by-stage drop-off across the filing journey</p>
+
+        <div class=\"space-y-3\" id=\"funnel\">
+          <!-- injected by JS -->
+        </div>
+      </div>
+
+      <!-- Avg stage time -->
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-3\">
+        <div class=\"flex items-center justify-between mb-2\">
+          <h3 class=\"font-display font-semibold text-base\">Avg Days · Per Stage</h3>
+          <i data-lucide=\"timer-reset\" class=\"w-4 h-4 text-white/40\"></i>
+        </div>
+        <p class=\"text-xs text-white/40 mb-4\">Mean time each filing spends in stage</p>
+        <canvas id=\"stageBar\" height=\"240\"></canvas>
+      </div>
+
+      <!-- Active vs halted -->
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-7\">
+        <div class=\"flex items-center justify-between mb-2\">
+          <h3 class=\"font-display font-semibold text-base\">Active vs Halted Filings · 12 Weeks</h3>
+          <div class=\"flex items-center gap-3 text-xs text-white/60\">
+            <span class=\"flex items-center gap-1.5\"><span class=\"w-2 h-2 rounded-full bg-cyan-400\"></span>Active</span>
+            <span class=\"flex items-center gap-1.5\"><span class=\"w-2 h-2 rounded-full bg-rose-400\"></span>Halted</span>
+          </div>
+        </div>
+        <canvas id=\"activeHaltedLine\" height=\"120\"></canvas>
+      </div>
+
+      <!-- Completion ratio -->
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-5\">
+        <h3 class=\"font-display font-semibold text-base mb-1\">Completion Ratio</h3>
+        <p class=\"text-xs text-white/40 mb-5\">Goal: 80% of all filings completed by FY end</p>
+
+        <div class=\"flex items-center gap-6\">
+          <svg width=\"160\" height=\"160\" viewBox=\"0 0 160 160\" class=\"-rotate-90\">
+            <circle cx=\"80\" cy=\"80\" r=\"64\" stroke-width=\"14\" fill=\"none\" class=\"ring-track\"/>
+            <circle id=\"completionRing\" cx=\"80\" cy=\"80\" r=\"64\" stroke-width=\"14\" fill=\"none\"
+              stroke=\"url(#gradRing)\" stroke-linecap=\"round\" class=\"ring-fill\"/>
+            <defs>
+              <linearGradient id=\"gradRing\" x1=\"0\" x2=\"1\" y1=\"0\" y2=\"1\">
+                <stop offset=\"0%\" stop-color=\"#22d3ee\"/>
+                <stop offset=\"100%\" stop-color=\"#6366f1\"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class=\"flex-1\">
+            <div class=\"font-display text-5xl font-semibold leading-none\"><span data-count=\"73\">0</span><span class=\"text-2xl text-white/40\">%</span></div>
+            <div class=\"text-xs text-white/50 mt-2\">2,876 of 3,942 filings completed</div>
+            <div class=\"mt-4 grid grid-cols-2 gap-3 text-xs\">
+              <div class=\"p-3 rounded-xl bg-white/5\">
+                <div class=\"text-white/40 text-[10px] uppercase tracking-wider\">On-time</div>
+                <div class=\"font-display text-lg font-semibold mt-1 text-emerald-300\">2,418</div>
+              </div>
+              <div class=\"p-3 rounded-xl bg-white/5\">
+                <div class=\"text-white/40 text-[10px] uppercase tracking-wider\">Late</div>
+                <div class=\"font-display text-lg font-semibold mt-1 text-amber-300\">458</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FY ANALYTICS ===================== -->
+  <section class=\"reveal\">
+    <div class=\"flex items-end justify-between mb-6\">
+      <div>
+        <div class=\"text-[11px] uppercase tracking-[0.22em] text-cyan-300/70 font-mono mb-2\">/ section 03</div>
+        <h2 class=\"font-display text-2xl md:text-3xl font-semibold tracking-tight h-underline\">Financial Year Intelligence</h2>
+      </div>
+      <div class=\"hidden md:flex items-center gap-1 text-xs bg-white/5 rounded-full p-1 border border-white/5\">
+        <button class=\"px-3 py-1 rounded-full bg-white/10\">Filings</button>
+        <button class=\"px-3 py-1 rounded-full text-white/50\">Revenue</button>
+        <button class=\"px-3 py-1 rounded-full text-white/50\">Clients</button>
+      </div>
+    </div>
+
+    <div class=\"grid grid-cols-12 gap-5\">
+      <!-- Trend -->
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-8\">
+        <div class=\"flex items-center justify-between mb-2\">
+          <h3 class=\"font-display font-semibold text-base\">FY Filing Trends</h3>
+          <span class=\"text-[10px] font-mono text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full\">YoY +27.4%</span>
+        </div>
+        <canvas id=\"fyTrend\" height=\"120\"></canvas>
+      </div>
+
+      <!-- YoY Cards -->
+      <div class=\"col-span-12 lg:col-span-4 grid grid-cols-2 gap-4\">
+        <div class=\"glass gborder p-5\">
+          <div class=\"text-[10px] uppercase tracking-wider text-white/40 font-mono\">FY 24-25</div>
+          <div class=\"font-display text-2xl font-semibold mt-1\">1,452</div>
+          <div class=\"text-[11px] text-emerald-300 mt-2 flex items-center gap-1\"><i data-lucide=\"trending-up\" class=\"w-3 h-3\"></i> +27.4%</div>
+        </div>
+        <div class=\"glass gborder p-5\">
+          <div class=\"text-[10px] uppercase tracking-wider text-white/40 font-mono\">FY 23-24</div>
+          <div class=\"font-display text-2xl font-semibold mt-1\">1,140</div>
+          <div class=\"text-[11px] text-emerald-300 mt-2 flex items-center gap-1\"><i data-lucide=\"trending-up\" class=\"w-3 h-3\"></i> +18.2%</div>
+        </div>
+        <div class=\"glass gborder p-5\">
+          <div class=\"text-[10px] uppercase tracking-wider text-white/40 font-mono\">FY 22-23</div>
+          <div class=\"font-display text-2xl font-semibold mt-1\">964</div>
+          <div class=\"text-[11px] text-emerald-300 mt-2 flex items-center gap-1\"><i data-lucide=\"trending-up\" class=\"w-3 h-3\"></i> +9.1%</div>
+        </div>
+        <div class=\"glass gborder p-5\">
+          <div class=\"text-[10px] uppercase tracking-wider text-white/40 font-mono\">FY 21-22</div>
+          <div class=\"font-display text-2xl font-semibold mt-1\">883</div>
+          <div class=\"text-[11px] text-rose-300 mt-2 flex items-center gap-1\"><i data-lucide=\"trending-down\" class=\"w-3 h-3\"></i> -3.6%</div>
+        </div>
+      </div>
+
+      <!-- Velocity -->
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-7\">
+        <div class=\"flex items-center justify-between mb-2\">
+          <h3 class=\"font-display font-semibold text-base\">Completion Velocity</h3>
+          <span class=\"text-xs text-white/40 font-mono\">filings completed per business day</span>
+        </div>
+        <canvas id=\"velocityChart\" height=\"120\"></canvas>
+      </div>
+
+      <!-- Growth indicators -->
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-5\">
+        <h3 class=\"font-display font-semibold text-base mb-4\">Growth Signals</h3>
+        <div class=\"space-y-4\">
+          <div>
+            <div class=\"flex items-center justify-between text-xs mb-1.5\"><span class=\"text-white/60\">New client onboarding</span><span class=\"font-mono text-emerald-300\">+34%</span></div>
+            <div class=\"h-1.5 rounded-full bg-white/5 overflow-hidden\"><div class=\"h-full bg-gradient-to-r from-emerald-400 to-cyan-400\" style=\"width:84%\"></div></div>
+          </div>
+          <div>
+            <div class=\"flex items-center justify-between text-xs mb-1.5\"><span class=\"text-white/60\">Filing completion rate</span><span class=\"font-mono text-emerald-300\">+12%</span></div>
+            <div class=\"h-1.5 rounded-full bg-white/5 overflow-hidden\"><div class=\"h-full bg-gradient-to-r from-cyan-400 to-indigo-400\" style=\"width:73%\"></div></div>
+          </div>
+          <div>
+            <div class=\"flex items-center justify-between text-xs mb-1.5\"><span class=\"text-white/60\">Avg revenue per filing</span><span class=\"font-mono text-emerald-300\">+8%</span></div>
+            <div class=\"h-1.5 rounded-full bg-white/5 overflow-hidden\"><div class=\"h-full bg-gradient-to-r from-indigo-400 to-violet-400\" style=\"width:64%\"></div></div>
+          </div>
+          <div>
+            <div class=\"flex items-center justify-between text-xs mb-1.5\"><span class=\"text-white/60\">Halted filings</span><span class=\"font-mono text-rose-300\">-22%</span></div>
+            <div class=\"h-1.5 rounded-full bg-white/5 overflow-hidden\"><div class=\"h-full bg-gradient-to-r from-amber-400 to-rose-400\" style=\"width:28%\"></div></div>
+          </div>
+          <div>
+            <div class=\"flex items-center justify-between text-xs mb-1.5\"><span class=\"text-white/60\">Avg cycle time</span><span class=\"font-mono text-emerald-300\">-1.6d</span></div>
+            <div class=\"h-1.5 rounded-full bg-white/5 overflow-hidden\"><div class=\"h-full bg-gradient-to-r from-violet-400 to-rose-400\" style=\"width:52%\"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== MANAGER DISTRIBUTION ===================== -->
+  <section class=\"reveal\">
+    <div class=\"flex items-end justify-between mb-6\">
+      <div>
+        <div class=\"text-[11px] uppercase tracking-[0.22em] text-cyan-300/70 font-mono mb-2\">/ section 04</div>
+        <h2 class=\"font-display text-2xl md:text-3xl font-semibold tracking-tight h-underline\">Manager Distribution</h2>
+      </div>
+      <a class=\"text-xs text-cyan-300/80 hover:text-cyan-200 font-mono flex items-center gap-1\">VIEW ALL 24 MANAGERS <i data-lucide=\"arrow-up-right\" class=\"w-3 h-3\"></i></a>
+    </div>
+
+    <div class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5\" id=\"managerGrid\"></div>
+  </section>
+
+  <!-- ===================== LOCATION INTELLIGENCE ===================== -->
+  <section class=\"reveal\">
+    <div class=\"flex items-end justify-between mb-6\">
+      <div>
+        <div class=\"text-[11px] uppercase tracking-[0.22em] text-cyan-300/70 font-mono mb-2\">/ section 05</div>
+        <h2 class=\"font-display text-2xl md:text-3xl font-semibold tracking-tight h-underline\">Location Intelligence</h2>
+      </div>
+      <div class=\"hidden md:flex items-center gap-2 text-xs\">
+        <span class=\"flex items-center gap-1.5 text-white/50\"><span class=\"w-2.5 h-2.5 rounded-sm bg-emerald-400/70\"></span>Healthy</span>
+        <span class=\"flex items-center gap-1.5 text-white/50\"><span class=\"w-2.5 h-2.5 rounded-sm bg-amber-400/70\"></span>Watch</span>
+        <span class=\"flex items-center gap-1.5 text-white/50\"><span class=\"w-2.5 h-2.5 rounded-sm bg-rose-400/70\"></span>Hot Zone</span>
+      </div>
+    </div>
+
+    <div class=\"grid grid-cols-12 gap-5\">
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-7 space-y-3\" id=\"locationTree\"></div>
+
+      <div class=\"col-span-12 lg:col-span-5 space-y-5\">
+        <div class=\"glass gborder p-6\">
+          <h3 class=\"font-display font-semibold text-base mb-3\">Territory Heatmap</h3>
+          <div class=\"grid grid-cols-7 gap-1.5\" id=\"heatmap\"></div>
+          <div class=\"flex items-center justify-between mt-4 text-[10px] text-white/40 font-mono\">
+            <span>LOW</span>
+            <div class=\"flex gap-1\">
+              <span class=\"w-3 h-3 rounded-sm bg-cyan-500/10\"></span>
+              <span class=\"w-3 h-3 rounded-sm bg-cyan-500/30\"></span>
+              <span class=\"w-3 h-3 rounded-sm bg-cyan-500/55\"></span>
+              <span class=\"w-3 h-3 rounded-sm bg-cyan-500/80\"></span>
+              <span class=\"w-3 h-3 rounded-sm bg-cyan-400\"></span>
+            </div>
+            <span>HIGH</span>
+          </div>
+        </div>
+
+        <div class=\"glass gborder p-6\">
+          <h3 class=\"font-display font-semibold text-base mb-3\">Top Regions by Filing Velocity</h3>
+          <canvas id=\"regionBar\" height=\"180\"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== LIVE PENDING MONITOR ===================== -->
+  <section class=\"reveal\">
+    <div class=\"flex items-end justify-between mb-6\">
+      <div>
+        <div class=\"text-[11px] uppercase tracking-[0.22em] text-rose-300/80 font-mono mb-2 flex items-center gap-2\">
+          <span class=\"pulse-dot\" style=\"background:#fb7185;box-shadow:0 0 0 0 rgba(251,113,133,.7);\"></span>
+          / section 06 · MISSION CONTROL
+        </div>
+        <h2 class=\"font-display text-2xl md:text-3xl font-semibold tracking-tight h-underline\">Live Pending Filings</h2>
+      </div>
+      <div class=\"flex items-center gap-3 text-xs\">
+        <div class=\"px-3 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-300 font-mono blink\">7 CRITICAL</div>
+        <div class=\"px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 font-mono\">23 HIGH</div>
+      </div>
+    </div>
+
+    <div class=\"glass gborder p-2 overflow-hidden\">
+      <div class=\"overflow-x-auto max-h-[480px] overflow-y-auto rounded-2xl\">
+        <table class=\"w-full text-sm\">
+          <thead class=\"sticky top-0 z-10 bg-ink-900/90 backdrop-blur-xl\">
+            <tr class=\"text-left text-[10px] uppercase tracking-wider text-white/40 font-mono\">
+              <th class=\"px-5 py-4\">#</th>
+              <th class=\"px-5 py-4\">Client</th>
+              <th class=\"px-5 py-4\">Stage</th>
+              <th class=\"px-5 py-4\">Manager</th>
+              <th class=\"px-5 py-4\">Executive</th>
+              <th class=\"px-5 py-4 text-right\">Pending</th>
+              <th class=\"px-5 py-4 text-center\">Severity</th>
+            </tr>
+          </thead>
+          <tbody id=\"pendingTbody\" class=\"text-white/80\"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== EXECUTIVE LEADERBOARD ===================== -->
+  <section class=\"reveal\">
+    <div class=\"flex items-end justify-between mb-6\">
+      <div>
+        <div class=\"text-[11px] uppercase tracking-[0.22em] text-amber-300/80 font-mono mb-2\">/ section 07 · GAMIFIED</div>
+        <h2 class=\"font-display text-2xl md:text-3xl font-semibold tracking-tight h-underline\">Executive Leaderboard</h2>
+      </div>
+      <div class=\"text-xs text-white/40 font-mono\">QUARTER · Q4 24-25</div>
+    </div>
+
+    <!-- Podium -->
+    <div class=\"grid grid-cols-3 gap-4 md:gap-6 items-end mb-6\">
+      <!-- 2nd -->
+      <div class=\"text-center\">
+        <div class=\"glass gborder p-5 silver-glow rounded-2xl\">
+          <div class=\"w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-slate-200 to-slate-400 grid place-items-center font-display text-xl font-semibold text-slate-900 hover-y\">PR</div>
+          <div class=\"mt-3 font-display font-semibold\">Priya Raghavan</div>
+          <div class=\"text-[10px] font-mono text-white/40 uppercase tracking-wider\">Mumbai · Sr. Executive</div>
+          <div class=\"mt-3 font-display text-2xl\">218</div>
+          <div class=\"text-[10px] uppercase tracking-wider text-white/40\">filings</div>
+        </div>
+        <div class=\"mt-3 text-slate-300 font-display text-3xl\">02</div>
+      </div>
+      <!-- 1st -->
+      <div class=\"text-center -mt-6\">
+        <div class=\"glass gborder p-6 gold-glow rounded-2xl relative\">
+          <div class=\"absolute -top-5 left-1/2 -translate-x-1/2\"><i data-lucide=\"crown\" class=\"w-8 h-8 text-amber-300 hover-y\"></i></div>
+          <div class=\"w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-amber-300 to-amber-500 grid place-items-center font-display text-2xl font-semibold text-amber-950 hover-y\">AK</div>
+          <div class=\"mt-3 font-display font-semibold text-lg\">Arjun Kapoor</div>
+          <div class=\"text-[10px] font-mono text-amber-300/80 uppercase tracking-wider\">Bengaluru · Principal Exec.</div>
+          <div class=\"mt-4 font-display text-4xl bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent\">274</div>
+          <div class=\"text-[10px] uppercase tracking-wider text-white/40\">filings completed</div>
+          <div class=\"flex items-center justify-center gap-2 mt-3 text-xs\">
+            <span class=\"px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-200 font-mono\">98.4 score</span>
+            <span class=\"px-2 py-0.5 rounded-full bg-white/5 text-white/60 font-mono flex items-center gap-1\"><i data-lucide=\"flame\" class=\"w-3 h-3 text-rose-300\"></i> 14d</span>
+          </div>
+        </div>
+        <div class=\"mt-3 text-amber-300 font-display text-4xl\">01</div>
+      </div>
+      <!-- 3rd -->
+      <div class=\"text-center\">
+        <div class=\"glass gborder p-5 bronze-glow rounded-2xl\">
+          <div class=\"w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-amber-700 to-amber-900 grid place-items-center font-display text-xl font-semibold text-amber-100 hover-y\">SM</div>
+          <div class=\"mt-3 font-display font-semibold\">Suresh Menon</div>
+          <div class=\"text-[10px] font-mono text-white/40 uppercase tracking-wider\">Chennai · Sr. Executive</div>
+          <div class=\"mt-3 font-display text-2xl\">196</div>
+          <div class=\"text-[10px] uppercase tracking-wider text-white/40\">filings</div>
+        </div>
+        <div class=\"mt-3 text-amber-700 font-display text-3xl\">03</div>
+      </div>
+    </div>
+
+    <!-- Rest of leaderboard -->
+    <div class=\"glass gborder p-2 overflow-hidden\">
+      <table class=\"w-full text-sm\">
+        <thead>
+          <tr class=\"text-left text-[10px] uppercase tracking-wider text-white/40 font-mono\">
+            <th class=\"px-5 py-4\">Rank</th>
+            <th class=\"px-5 py-4\">Executive</th>
+            <th class=\"px-5 py-4\">Location</th>
+            <th class=\"px-5 py-4 text-right\">Filings</th>
+            <th class=\"px-5 py-4 text-right\">Efficiency</th>
+            <th class=\"px-5 py-4 text-center\">Streak</th>
+            <th class=\"px-5 py-4 text-center\">Δ Rank</th>
+          </tr>
+        </thead>
+        <tbody id=\"execTbody\"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== MANAGER LEADERBOARD ===================== -->
+  <section class=\"reveal\">
+    <div class=\"flex items-end justify-between mb-6\">
+      <div>
+        <div class=\"text-[11px] uppercase tracking-[0.22em] text-cyan-300/70 font-mono mb-2\">/ section 08</div>
+        <h2 class=\"font-display text-2xl md:text-3xl font-semibold tracking-tight h-underline\">Manager Leaderboard</h2>
+      </div>
+    </div>
+    <div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5\" id=\"managerLb\"></div>
+  </section>
+
+  <!-- ===================== LOCATION LEADERBOARD ===================== -->
+  <section class=\"reveal\">
+    <div class=\"flex items-end justify-between mb-6\">
+      <div>
+        <div class=\"text-[11px] uppercase tracking-[0.22em] text-cyan-300/70 font-mono mb-2\">/ section 09</div>
+        <h2 class=\"font-display text-2xl md:text-3xl font-semibold tracking-tight h-underline\">Location Leaderboard</h2>
+      </div>
+    </div>
+
+    <div class=\"grid grid-cols-12 gap-5\">
+      <div class=\"glass gborder p-6 col-span-12 lg:col-span-8\">
+        <h3 class=\"font-display font-semibold text-base mb-4\">Branch Operational Score</h3>
+        <canvas id=\"branchRadar\" height=\"220\"></canvas>
+      </div>
+      <div class=\"glass gborder p-4 col-span-12 lg:col-span-4\">
+        <div class=\"px-2 py-3 text-[10px] uppercase tracking-wider text-white/40 font-mono flex items-center justify-between\">
+          <span>Rank · Branch</span><span>Score</span>
+        </div>
+        <div id=\"branchList\" class=\"divide-y divide-white/5\"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== EXPORT CENTER ===================== -->
+  <section class=\"reveal\">
+    <div class=\"flex items-end justify-between mb-6\">
+      <div>
+        <div class=\"text-[11px] uppercase tracking-[0.22em] text-cyan-300/70 font-mono mb-2\">/ section 10</div>
+        <h2 class=\"font-display text-2xl md:text-3xl font-semibold tracking-tight h-underline\">Report Export Center</h2>
+      </div>
+      <div class=\"flex items-center gap-2 text-xs text-white/50\">
+        <i data-lucide=\"shield-check\" class=\"w-4 h-4 text-emerald-300\"></i> SOC2 · AES-256 Encrypted
+      </div>
+    </div>
+
+    <div class=\"grid grid-cols-1 md:grid-cols-3 gap-5\">
+      <div class=\"glass gborder p-6 group relative overflow-hidden\">
+        <div class=\"absolute -right-10 -top-10 w-40 h-40 rounded-full bg-rose-500/15 blur-3xl group-hover:bg-rose-500/25 transition\"></div>
+        <div class=\"w-11 h-11 rounded-xl bg-rose-500/15 grid place-items-center\"><i data-lucide=\"file-text\" class=\"w-5 h-5 text-rose-300\"></i></div>
+        <h3 class=\"font-display font-semibold mt-4 text-lg\">PDF · Executive Summary</h3>
+        <p class=\"text-sm text-white/50 mt-1 leading-relaxed\">Boardroom-ready, paginated report with charts, KPIs and signed cover page.</p>
+        <div class=\"mt-5 flex items-center justify-between\">
+          <span class=\"text-[10px] font-mono text-white/40 uppercase tracking-wider\">~ 2.4 MB · 18 pages</span>
+          <button class=\"px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-medium flex items-center gap-2 transition\"><i data-lucide=\"download\" class=\"w-4 h-4\"></i> Download</button>
+        </div>
+      </div>
+
+      <div class=\"glass gborder p-6 group relative overflow-hidden\">
+        <div class=\"absolute -right-10 -top-10 w-40 h-40 rounded-full bg-emerald-500/15 blur-3xl group-hover:bg-emerald-500/25 transition\"></div>
+        <div class=\"w-11 h-11 rounded-xl bg-emerald-500/15 grid place-items-center\"><i data-lucide=\"sheet\" class=\"w-5 h-5 text-emerald-300\"></i></div>
+        <h3 class=\"font-display font-semibold mt-4 text-lg\">Excel · Comprehensive</h3>
+        <p class=\"text-sm text-white/50 mt-1 leading-relaxed\">Multi-sheet workbook · Overall, FY-Wise, Distribution, Pending & Leaderboards.</p>
+        <div class=\"mt-5 flex items-center justify-between\">
+          <span class=\"text-[10px] font-mono text-white/40 uppercase tracking-wider\">~ 1.1 MB · 8 sheets</span>
+          <button class=\"px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-400 to-cyan-400 text-ink-950 text-sm font-semibold flex items-center gap-2 hover:brightness-110 transition\"><i data-lucide=\"download\" class=\"w-4 h-4\"></i> Download</button>
+        </div>
+      </div>
+
+      <div class=\"glass gborder p-6 group relative overflow-hidden\">
+        <div class=\"absolute -right-10 -top-10 w-40 h-40 rounded-full bg-indigo-500/15 blur-3xl group-hover:bg-indigo-500/25 transition\"></div>
+        <div class=\"w-11 h-11 rounded-xl bg-indigo-500/15 grid place-items-center\"><i data-lucide=\"database\" class=\"w-5 h-5 text-indigo-300\"></i></div>
+        <h3 class=\"font-display font-semibold mt-4 text-lg\">CSV · Raw Dataset</h3>
+        <p class=\"text-sm text-white/50 mt-1 leading-relaxed\">Flat dataset for analytics, BI tools and data warehouse ingestion pipelines.</p>
+        <div class=\"mt-5 flex items-center justify-between\">
+          <span class=\"text-[10px] font-mono text-white/40 uppercase tracking-wider\">~ 640 KB · raw</span>
+          <button class=\"px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-medium flex items-center gap-2 transition\"><i data-lucide=\"download\" class=\"w-4 h-4\"></i> Download</button>
+        </div>
+      </div>
+    </div>
+
+    <div class=\"mt-5 glass gborder p-5 flex flex-col md:flex-row md:items-center gap-4\">
+      <div class=\"flex items-center gap-3\">
+        <div class=\"w-10 h-10 rounded-xl bg-cyan-500/15 grid place-items-center\"><i data-lucide=\"calendar-clock\" class=\"w-5 h-5 text-cyan-300\"></i></div>
+        <div>
+          <div class=\"font-display font-semibold\">Schedule a recurring report</div>
+          <div class=\"text-xs text-white/50\">Send the Executive Summary to leadership every Monday at 7:00 AM IST.</div>
+        </div>
+      </div>
+      <div class=\"flex-1\"></div>
+      <div class=\"flex items-center gap-2\">
+        <select class=\"bg-white/5 border border-white/10 rounded-lg text-sm px-3 py-2 outline-none\">
+          <option class=\"bg-ink-900\">Weekly · Mon 07:00</option>
+          <option class=\"bg-ink-900\">Daily · 08:00</option>
+          <option class=\"bg-ink-900\">Monthly · 1st</option>
+        </select>
+        <button class=\"px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-ink-950 font-semibold text-sm\">Activate</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class=\"pt-10 pb-6 text-center text-xs text-white/30 font-mono\">
+    © 2026 LUMEN TAX INTELLIGENCE · BUILT FOR LEADERS · ALL DATA SIMULATED
+  </footer>
+</main>
+
+<script>
+/* ====================== INIT ICONS ====================== */
+lucide.createIcons();
+
+/* ====================== LIVE CLOCK ====================== */
+function tick(){
+  const t = new Date();
+  const fmt = n => String(n).padStart(2,'0');
+  document.getElementById('liveTime').textContent = `${fmt(t.getHours())}:${fmt(t.getMinutes())}:${fmt(t.getSeconds())}`;
+}
+tick(); setInterval(tick, 1000);
+
+/* ====================== PARTICLES ====================== */
+(function particles(){
+  const c = document.getElementById('particles');
+  for (let i=0;i<40;i++){
+    const p = document.createElement('span');
+    p.className = 'particle';
+    p.style.left = Math.random()*100 + '%';
+    p.style.bottom = '-10px';
+    p.style.animationDuration = (10 + Math.random()*18) + 's';
+    p.style.animationDelay = (Math.random()*10) + 's';
+    p.style.opacity = (.15 + Math.random()*.25);
+    c.appendChild(p);
+  }
+})();
+
+/* ====================== REVEAL ON SCROLL ====================== */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+}, {threshold:.12});
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* ====================== ANIMATED COUNTERS ====================== */
+function animateCount(el){
+  const target = parseFloat(el.dataset.count);
+  const dec = parseInt(el.dataset.decimals || '0');
+  const dur = 1400;
+  const start = performance.now();
+  function step(now){
+    const t = Math.min(1,(now-start)/dur);
+    const eased = 1 - Math.pow(1-t,3);
+    const v = target * eased;
+    el.textContent = dec ? v.toFixed(dec) : Math.floor(v).toLocaleString();
+    if(t<1) requestAnimationFrame(step);
+    else el.textContent = dec ? target.toFixed(dec) : Math.floor(target).toLocaleString();
+  }
+  requestAnimationFrame(step);
+}
+const co = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ animateCount(e.target); co.unobserve(e.target);} });
+}, {threshold:.4});
+document.querySelectorAll('[data-count]').forEach(el => co.observe(el));
+
+/* ====================== SPARKLINES ====================== */
+document.querySelectorAll('canvas.spark').forEach(c=>{
+  const data = JSON.parse(c.dataset.spark);
+  const color = c.dataset.color;
+  new Chart(c, {
+    type:'line',
+    data:{ labels:data.map((_,i)=>i), datasets:[{ data, borderColor:color, backgroundColor: color+'22',
+      borderWidth:1.6, tension:.4, pointRadius:0, fill:true }]},
+    options:{ responsive:true, plugins:{legend:{display:false}, tooltip:{enabled:false}},
+      scales:{ x:{display:false}, y:{display:false} }, maintainAspectRatio:false }
+  });
+});
+
+/* ====================== CHART DEFAULTS ====================== */
+Chart.defaults.color = 'rgba(230,232,242,0.55)';
+Chart.defaults.font.family = 'Manrope, sans-serif';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+
+/* ====================== STATUS DOUGHNUT ====================== */
+new Chart(document.getElementById('statusDoughnut'), {
+  type:'doughnut',
+  data:{ labels:['Completed','In Progress','Pending Docs','Halted'],
+    datasets:[{ data:[2876,684,241,141], backgroundColor:['#10b981','#22d3ee','#f59e0b','#fb7185'],
+      borderWidth:0, hoverOffset:10, cutout:'72%' }]},
+  options:{ plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false }
+});
+
+/* ====================== FUNNEL ====================== */
+const funnelData = [
+  {label:'Onboarded', value:3942, pct:100},
+  {label:'Documents Received', value:3580, pct:91},
+  {label:'In Review', value:3160, pct:80},
+  {label:'Drafted', value:3020, pct:77},
+  {label:'Submitted', value:2950, pct:75},
+  {label:'Completed', value:2876, pct:73}
+];
+const funnel = document.getElementById('funnel');
+funnelData.forEach((s,i)=>{
+  const row = document.createElement('div');
+  const widths = [100, 92, 82, 74, 66, 58];
+  row.innerHTML = `
+    <div class=\"flex items-center justify-between text-xs text-white/60 mb-1.5\">
+      <span>${s.label}</span>
+      <span class=\"font-mono text-white/80\">${s.value.toLocaleString()} · ${s.pct}%</span>
+    </div>
+    <div class=\"h-7 rounded-lg bg-white/5 overflow-hidden relative\">
+      <div class=\"h-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400\" style=\"width:${widths[i]}%; transition: width 1s ease ${(i*120)}ms;\"></div>
+    </div>`;
+  funnel.appendChild(row);
+});
+
+/* ====================== STAGE BAR ====================== */
+new Chart(document.getElementById('stageBar'), {
+  type:'bar',
+  data:{ labels:['Onboard','Docs','Review','Draft','Submit','Final'],
+    datasets:[{ data:[1.4,3.2,2.8,2.1,1.0,0.7], backgroundColor:(ctx)=>{
+      const g = ctx.chart.ctx.createLinearGradient(0,0,0,240);
+      g.addColorStop(0,'#22d3ee'); g.addColorStop(1,'#6366f1'); return g;
+    }, borderRadius:6, barThickness:14 }]},
+  options:{ indexAxis:'y', plugins:{legend:{display:false}},
+    scales:{ x:{grid:{color:'rgba(255,255,255,.04)'}, ticks:{font:{size:10}}}, y:{grid:{display:false}, ticks:{font:{size:11}}} },
+    responsive:true, maintainAspectRatio:false }
+});
+
+/* ====================== ACTIVE / HALTED LINE ====================== */
+new Chart(document.getElementById('activeHaltedLine'), {
+  type:'line',
+  data:{ labels:Array.from({length:12},(_,i)=>'W'+(i+1)),
+    datasets:[
+      { label:'Active', data:[420,460,490,510,535,560,585,610,635,660,685,720], borderColor:'#22d3ee',
+        backgroundColor:(ctx)=>{ const g = ctx.chart.ctx.createLinearGradient(0,0,0,200); g.addColorStop(0,'rgba(34,211,238,.35)'); g.addColorStop(1,'rgba(34,211,238,0)'); return g; },
+        tension:.4, fill:true, pointRadius:0, borderWidth:2 },
+      { label:'Halted', data:[180,170,160,165,155,150,145,140,138,135,130,141], borderColor:'#fb7185',
+        backgroundColor:'rgba(251,113,133,.08)', tension:.4, fill:true, pointRadius:0, borderWidth:2, borderDash:[4,4] }
+    ]},
+  options:{ plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false,
+    scales:{ x:{grid:{display:false}, ticks:{font:{size:10}}}, y:{grid:{color:'rgba(255,255,255,.04)'}, ticks:{font:{size:10}}}} }
+});
+
+/* ====================== COMPLETION RING ====================== */
+setTimeout(()=>{
+  const r = document.getElementById('completionRing');
+  const circ = 2 * Math.PI * 64; // 402
+  r.setAttribute('stroke-dasharray', circ);
+  r.style.strokeDashoffset = circ * (1 - 0.73);
+}, 400);
+
+/* ====================== FY TREND ====================== */
+new Chart(document.getElementById('fyTrend'), {
+  type:'line',
+  data:{ labels:['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'],
+    datasets:[
+      { label:'FY 24-25', data:[88,102,118,132,128,140,156,168,172,182,188,196], borderColor:'#22d3ee',
+        backgroundColor:(c)=>{const g=c.chart.ctx.createLinearGradient(0,0,0,260); g.addColorStop(0,'rgba(34,211,238,.45)'); g.addColorStop(1,'rgba(34,211,238,0)'); return g;},
+        fill:true, tension:.4, pointRadius:0, borderWidth:2.2 },
+      { label:'FY 23-24', data:[64,72,84,92,98,104,110,118,122,128,134,138], borderColor:'#a78bfa',
+        backgroundColor:'rgba(167,139,250,.05)', fill:true, tension:.4, pointRadius:0, borderWidth:1.8, borderDash:[4,4] },
+      { label:'FY 22-23', data:[54,60,68,72,76,80,82,88,90,94,96,98], borderColor:'#64748b',
+        backgroundColor:'transparent', fill:false, tension:.4, pointRadius:0, borderWidth:1.5, borderDash:[2,4] }
+    ]},
+  options:{ plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false,
+    scales:{ x:{grid:{display:false}}, y:{grid:{color:'rgba(255,255,255,.04)'}} } }
+});
+
+/* ====================== VELOCITY ====================== */
+new Chart(document.getElementById('velocityChart'), {
+  type:'bar',
+  data:{ labels:['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'],
+    datasets:[{ data:[8,10,11,13,12,14,16,17,18,20,21,23],
+      backgroundColor:(c)=>{ const g=c.chart.ctx.createLinearGradient(0,0,0,180); g.addColorStop(0,'#6366f1'); g.addColorStop(1,'#22d3ee'); return g;},
+      borderRadius:6, barThickness:14 }]},
+  options:{ plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false,
+    scales:{ x:{grid:{display:false}, ticks:{font:{size:10}}}, y:{grid:{color:'rgba(255,255,255,.04)'}, ticks:{font:{size:10}}} } }
+});
+
+/* ====================== MANAGER GRID ====================== */
+const managers = [
+  { name:'Rajat Bhatia',     loc:'Mumbai',     rank:1, filings:412, avg:9.4,  ratio:88 },
+  { name:'Anjali Verma',     loc:'Delhi NCR',  rank:2, filings:386, avg:10.1, ratio:84 },
+  { name:'Vikram Iyer',      loc:'Bengaluru',  rank:3, filings:362, avg:10.6, ratio:81 },
+  { name:'Meera Krishnan',   loc:'Chennai',    rank:4, filings:341, avg:11.0, ratio:79 },
+  { name:'Saurabh Jain',     loc:'Pune',       rank:5, filings:298, avg:11.4, ratio:76 },
+  { name:'Neha Sharma',      loc:'Hyderabad',  rank:6, filings:284, avg:11.9, ratio:74 },
+  { name:'Karthik Subramanian', loc:'Kolkata', rank:7, filings:262, avg:12.4, ratio:71 },
+  { name:'Devika Nair',      loc:'Ahmedabad',  rank:8, filings:241, avg:12.8, ratio:68 },
+];
+const colors = ['#22d3ee','#6366f1','#a78bfa','#10b981','#f59e0b','#fb7185','#22d3ee','#6366f1'];
+const mgrGrid = document.getElementById('managerGrid');
+managers.forEach((m,i)=>{
+  const card = document.createElement('div');
+  card.className = 'glass gborder p-5 kpi relative overflow-hidden';
+  const offset = 220 * (1 - m.ratio/100);
+  card.innerHTML = `
+    <div class=\"flex items-center justify-between\">
+      <div class=\"flex items-center gap-2\">
+        <span class=\"text-[10px] font-mono text-white/40 uppercase tracking-wider\">Rank</span>
+        <span class=\"font-display text-lg font-semibold\">${String(m.rank).padStart(2,'0')}</span>
+      </div>
+      <span class=\"text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/5 text-white/60\">${m.loc}</span>
+    </div>
+    <div class=\"mt-4 flex items-center gap-4\">
+      <svg width=\"78\" height=\"78\" viewBox=\"0 0 78 78\" class=\"-rotate-90 shrink-0\">
+        <circle cx=\"39\" cy=\"39\" r=\"32\" stroke-width=\"6\" fill=\"none\" class=\"ring-track\"/>
+        <circle cx=\"39\" cy=\"39\" r=\"32\" stroke-width=\"6\" fill=\"none\" stroke=\"${colors[i]}\"
+          stroke-linecap=\"round\" stroke-dasharray=\"201\" stroke-dashoffset=\"${201*(1-m.ratio/100)}\" style=\"transition: stroke-dashoffset 1.2s ease ${i*80}ms;\"/>
+      </svg>
+      <div class=\"flex-1 min-w-0\">
+        <div class=\"font-display font-semibold truncate\">${m.name}</div>
+        <div class=\"text-[10px] text-white/40 font-mono uppercase tracking-wider\">Sr. Manager</div>
+        <div class=\"mt-2 grid grid-cols-2 gap-2 text-[11px]\">
+          <div><div class=\"text-white/40\">Filings</div><div class=\"font-display text-base font-semibold\">${m.filings}</div></div>
+          <div><div class=\"text-white/40\">Avg days</div><div class=\"font-display text-base font-semibold\">${m.avg}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class=\"mt-4\">
+      <div class=\"flex items-center justify-between text-[10px] text-white/40 font-mono uppercase tracking-wider\"><span>Efficiency</span><span>${m.ratio}%</span></div>
+      <div class=\"h-1.5 rounded-full bg-white/5 mt-1 overflow-hidden\">
+        <div class=\"h-full\" style=\"width:${m.ratio}%; background: linear-gradient(90deg, ${colors[i]}, #22d3ee); transition: width 1.2s ease ${i*80}ms;\"></div>
+      </div>
+    </div>`;
+  mgrGrid.appendChild(card);
+});
+
+/* ====================== LOCATION TREE ====================== */
+const locations = [
+  { name:'North Region', filings:1180, share:30, status:'healthy', children:[
+    { name:'Delhi NCR', filings:680, share:17, status:'healthy', children:[
+      { name:'Connaught Place', filings:280, share:7 },
+      { name:'Gurugram', filings:220, share:6 },
+      { name:'Noida', filings:180, share:4 },
+    ]},
+    { name:'Chandigarh', filings:280, share:7, status:'watch' },
+    { name:'Jaipur', filings:220, share:6, status:'healthy' }
+  ]},
+  { name:'West Region', filings:1320, share:33, status:'healthy', children:[
+    { name:'Mumbai', filings:820, share:21, status:'healthy', children:[
+      { name:'BKC', filings:380, share:10 },
+      { name:'Andheri', filings:260, share:7 },
+      { name:'Lower Parel', filings:180, share:5 }
+    ]},
+    { name:'Pune', filings:320, share:8, status:'healthy' },
+    { name:'Ahmedabad', filings:180, share:4, status:'watch' }
+  ]},
+  { name:'South Region', filings:1080, share:27, status:'watch', children:[
+    { name:'Bengaluru', filings:520, share:13, status:'healthy' },
+    { name:'Chennai', filings:340, share:9, status:'watch' },
+    { name:'Hyderabad', filings:220, share:6, status:'hot' }
+  ]},
+  { name:'East Region', filings:362, share:10, status:'hot', children:[
+    { name:'Kolkata', filings:242, share:7, status:'hot' },
+    { name:'Bhubaneswar', filings:120, share:3, status:'watch' }
+  ]}
+];
+
+const statusColor = s => s==='hot'?'#fb7185': s==='watch'?'#f59e0b':'#10b981';
+const statusBg = s => s==='hot'?'bg-rose-500/10 border-rose-500/20 text-rose-200'
+                    : s==='watch'?'bg-amber-500/10 border-amber-500/20 text-amber-200'
+                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200';
+
+function renderNode(node, depth=0){
+  const hasChildren = node.children && node.children.length;
+  const pad = depth * 18;
+  if(hasChildren){
+    return `
+      <details ${depth===0?'open':''} class=\"rounded-xl\">
+        <summary class=\"flex items-center gap-3 py-3 px-3 hover:bg-white/5 rounded-xl transition\" style=\"margin-left:${pad}px\">
+          <i data-lucide=\"chevron-right\" class=\"chev w-4 h-4 text-white/40\"></i>
+          <span class=\"w-2.5 h-2.5 rounded-sm\" style=\"background:${statusColor(node.status||'healthy')}\"></span>
+          <span class=\"font-display font-semibold ${depth===0?'text-base':'text-sm'}\">${node.name}</span>
+          <span class=\"ml-auto flex items-center gap-3\">
+            <span class=\"text-[10px] font-mono px-2 py-0.5 rounded-full ${statusBg(node.status||'healthy')}\">${(node.status||'healthy').toUpperCase()}</span>
+            <span class=\"font-mono text-sm text-white/70\">${node.filings.toLocaleString()}</span>
+            <span class=\"text-[11px] text-white/40 font-mono w-12 text-right\">${node.share}%</span>
+          </span>
+        </summary>
+        <div class=\"space-y-1 pb-2\">
+          ${node.children.map(c => renderNode(c, depth+1)).join('')}
+        </div>
+      </details>`;
+  }
+  return `
+    <div class=\"flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white/5\" style=\"margin-left:${pad+16}px\">
+      <span class=\"w-1.5 h-1.5 rounded-full bg-white/30\"></span>
+      <span class=\"text-sm text-white/80\">${node.name}</span>
+      <span class=\"ml-auto flex items-center gap-3\">
+        <span class=\"font-mono text-sm text-white/70\">${node.filings.toLocaleString()}</span>
+        <span class=\"text-[11px] text-white/40 font-mono w-12 text-right\">${node.share}%</span>
+      </span>
+    </div>`;
+}
+document.getElementById('locationTree').innerHTML = locations.map(n=>renderNode(n)).join('');
+lucide.createIcons();
+
+/* ====================== HEATMAP ====================== */
+const hm = document.getElementById('heatmap');
+for(let i=0;i<7*8;i++){
+  const v = Math.random();
+  const opacity = v<.2?.10: v<.4?.30: v<.65?.55: v<.85?.80: 1;
+  const sq = document.createElement('div');
+  sq.className = 'aspect-square rounded-md';
+  sq.style.background = `rgba(34,211,238,${opacity})`;
+  hm.appendChild(sq);
+}
+
+/* ====================== REGION BAR ====================== */
+new Chart(document.getElementById('regionBar'), {
+  type:'bar',
+  data:{ labels:['Mumbai','Bengaluru','Delhi','Pune','Chennai','Hyderabad','Kolkata'],
+    datasets:[{ data:[820,520,680,320,340,220,242],
+      backgroundColor:(c)=>{ const g=c.chart.ctx.createLinearGradient(0,0,300,0); g.addColorStop(0,'#6366f1'); g.addColorStop(1,'#22d3ee'); return g;},
+      borderRadius:6, barThickness:14 }]},
+  options:{ indexAxis:'y', plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false,
+    scales:{ x:{grid:{color:'rgba(255,255,255,.04)'}, ticks:{font:{size:10}}}, y:{grid:{display:false}, ticks:{font:{size:11}}} } }
+});
+
+/* ====================== PENDING TABLE ====================== */
+const pending = [
+  { id:'TF-9821', client:'Nexlify Industries Pvt. Ltd.', stage:'Document Review', mgr:'Rajat Bhatia',    exec:'Arjun Kapoor',   days:42, sev:'critical' },
+  { id:'TF-9745', client:'Helios Logistics',            stage:'Audit Adjustment', mgr:'Anjali Verma',    exec:'Priya Raghavan',days:38, sev:'critical' },
+  { id:'TF-9712', client:'Orion Pharmaceuticals',       stage:'Draft Approval',   mgr:'Vikram Iyer',     exec:'Suresh Menon',  days:34, sev:'critical' },
+  { id:'TF-9680', client:'Crestwood Holdings LLP',      stage:'Document Review', mgr:'Meera Krishnan',  exec:'Naina Joshi',   days:31, sev:'high' },
+  { id:'TF-9655', client:'Trident Steel Corp.',         stage:'Compliance Check', mgr:'Saurabh Jain',    exec:'Rohan Desai',   days:28, sev:'high' },
+  { id:'TF-9612', client:'Bluepeak Capital',            stage:'Submission Queue', mgr:'Neha Sharma',     exec:'Ishaan Bose',   days:25, sev:'high' },
+  { id:'TF-9588', client:'Velocity Couriers Ltd.',      stage:'Document Review', mgr:'Karthik Sub.',    exec:'Tara Mehta',    days:22, sev:'high' },
+  { id:'TF-9542', client:'Indigo Textiles',             stage:'Draft Approval',   mgr:'Devika Nair',     exec:'Aman Sinha',    days:19, sev:'medium' },
+  { id:'TF-9501', client:'Polaris Retail',              stage:'Audit Adjustment', mgr:'Rajat Bhatia',    exec:'Arjun Kapoor',  days:16, sev:'medium' },
+  { id:'TF-9476', client:'Maple Hospitality',           stage:'Document Review', mgr:'Anjali Verma',    exec:'Priya Raghavan',days:14, sev:'medium' },
+  { id:'TF-9442', client:'Quantum Edge Technologies',   stage:'Compliance Check', mgr:'Vikram Iyer',     exec:'Suresh Menon',  days:11, sev:'low' },
+  { id:'TF-9418', client:'Saffron Foods Co.',           stage:'Submission Queue', mgr:'Meera Krishnan',  exec:'Naina Joshi',   days:9,  sev:'low' },
+];
+const ptb = document.getElementById('pendingTbody');
+pending.forEach((p,i)=>{
+  const tr = document.createElement('tr');
+  tr.className = 'row-glow border-b border-white/5 last:border-0';
+  const sevLabel = p.sev.toUpperCase();
+  tr.innerHTML = `
+    <td class=\"px-5 py-4 font-mono text-xs text-white/50\">${String(i+1).padStart(2,'0')}</td>
+    <td class=\"px-5 py-4\">
+      <div class=\"font-medium\">${p.client}</div>
+      <div class=\"text-[10px] font-mono text-white/40 mt-0.5\">${p.id}</div>
+    </td>
+    <td class=\"px-5 py-4 text-white/70\">${p.stage}</td>
+    <td class=\"px-5 py-4\">
+      <div class=\"flex items-center gap-2\">
+        <div class=\"w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/40 to-cyan-400/40 grid place-items-center text-[10px] font-semibold\">${p.mgr.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
+        <span class=\"text-sm\">${p.mgr}</span>
+      </div>
+    </td>
+    <td class=\"px-5 py-4 text-white/70\">${p.exec}</td>
+    <td class=\"px-5 py-4 text-right\">
+      <span class=\"font-mono font-semibold ${p.days>30?'text-rose-300':p.days>20?'text-amber-300':'text-white/80'}\">${p.days}d</span>
+    </td>
+    <td class=\"px-5 py-4 text-center\">
+      <span class=\"badge-sev sev-${p.sev} ${p.sev==='critical'?'blink':''}\">${sevLabel}</span>
+    </td>`;
+  ptb.appendChild(tr);
+});
+
+/* ====================== EXEC LEADERBOARD ====================== */
+const execs = [
+  { rank:4,  name:'Naina Joshi',    loc:'Delhi NCR',  filings:184, eff:96.1, streak:9,  delta:+2 },
+  { rank:5,  name:'Rohan Desai',    loc:'Pune',       filings:172, eff:95.4, streak:7,  delta:+1 },
+  { rank:6,  name:'Ishaan Bose',    loc:'Hyderabad',  filings:168, eff:94.2, streak:6,  delta:-1 },
+  { rank:7,  name:'Tara Mehta',     loc:'Kolkata',    filings:160, eff:93.6, streak:5,  delta:+3 },
+  { rank:8,  name:'Aman Sinha',     loc:'Ahmedabad',  filings:154, eff:92.8, streak:4,  delta:0  },
+  { rank:9,  name:'Ritu Pillai',    loc:'Chennai',    filings:148, eff:91.4, streak:4,  delta:-2 },
+  { rank:10, name:'Vivek Saxena',   loc:'Pune',       filings:142, eff:90.6, streak:3,  delta:+1 },
+  { rank:11, name:'Kabir Anand',    loc:'Bengaluru',  filings:136, eff:89.9, streak:3,  delta:-1 }
+];
+const execTb = document.getElementById('execTbody');
+execs.forEach((e,i)=>{
+  const dColor = e.delta>0?'text-emerald-300': e.delta<0?'text-rose-300':'text-white/40';
+  const dIcon  = e.delta>0?'arrow-up': e.delta<0?'arrow-down':'minus';
+  const tr = document.createElement('tr');
+  tr.className = 'row-glow border-b border-white/5 last:border-0';
+  tr.innerHTML = `
+    <td class=\"px-5 py-4 font-display text-lg w-16\">${String(e.rank).padStart(2,'0')}</td>
+    <td class=\"px-5 py-4\">
+      <div class=\"flex items-center gap-3\">
+        <div class=\"w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 grid place-items-center text-[11px] font-semibold\">${e.name.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
+        <div>
+          <div class=\"font-medium\">${e.name}</div>
+          <div class=\"text-[10px] text-white/40 font-mono uppercase tracking-wider\">Sr. Executive</div>
+        </div>
+      </div>
+    </td>
+    <td class=\"px-5 py-4 text-white/70\">${e.loc}</td>
+    <td class=\"px-5 py-4 text-right font-mono\">${e.filings}</td>
+    <td class=\"px-5 py-4 text-right\">
+      <div class=\"inline-flex items-center gap-2\">
+        <div class=\"w-20 h-1.5 bg-white/5 rounded-full overflow-hidden\"><div class=\"h-full bg-gradient-to-r from-emerald-400 to-cyan-400\" style=\"width:${e.eff}%\"></div></div>
+        <span class=\"font-mono text-xs text-white/70\">${e.eff}</span>
+      </div>
+    </td>
+    <td class=\"px-5 py-4 text-center\">
+      <span class=\"inline-flex items-center gap-1 text-xs font-mono ${e.streak>=7?'text-rose-300':'text-amber-300'}\">
+        <i data-lucide=\"flame\" class=\"w-3 h-3\"></i> ${e.streak}d
+      </span>
+    </td>
+    <td class=\"px-5 py-4 text-center\">
+      <span class=\"inline-flex items-center gap-1 text-xs font-mono ${dColor}\">
+        <i data-lucide=\"${dIcon}\" class=\"w-3 h-3\"></i> ${Math.abs(e.delta)||'—'}
+      </span>
+    </td>`;
+  execTb.appendChild(tr);
+});
+lucide.createIcons();
+
+/* ====================== MANAGER LEADERBOARD ====================== */
+const mlb = document.getElementById('managerLb');
+managers.slice(0,6).forEach((m,i)=>{
+  const card = document.createElement('div');
+  card.className = 'glass gborder p-6 kpi relative overflow-hidden';
+  const medalColor = i===0?'from-amber-300 to-amber-500': i===1?'from-slate-200 to-slate-400': i===2?'from-amber-700 to-amber-900':'from-indigo-500 to-cyan-400';
+  card.innerHTML = `
+    <div class=\"absolute top-0 right-0 w-32 h-32 rounded-full bg-gradient-to-br ${medalColor} opacity-10 blur-3xl\"></div>
+    <div class=\"flex items-center justify-between\">
+      <div class=\"flex items-center gap-3\">
+        <div class=\"w-11 h-11 rounded-xl bg-gradient-to-br ${medalColor} grid place-items-center font-display font-semibold text-ink-950\">${String(m.rank).padStart(2,'0')}</div>
+        <div>
+          <div class=\"font-display font-semibold\">${m.name}</div>
+          <div class=\"text-[10px] font-mono text-white/40 uppercase tracking-wider\">${m.loc}</div>
+        </div>
+      </div>
+      ${i<3?'<i data-lucide=\"medal\" class=\"w-5 h-5 text-amber-300\"></i>':''}
+    </div>
+    <div class=\"grid grid-cols-3 gap-3 mt-5 text-center\">
+      <div class=\"p-3 rounded-xl bg-white/5\">
+        <div class=\"text-[10px] text-white/40 uppercase tracking-wider\">Filings</div>
+        <div class=\"font-display text-xl font-semibold mt-1\">${m.filings}</div>
+      </div>
+      <div class=\"p-3 rounded-xl bg-white/5\">
+        <div class=\"text-[10px] text-white/40 uppercase tracking-wider\">Avg Days</div>
+        <div class=\"font-display text-xl font-semibold mt-1\">${m.avg}</div>
+      </div>
+      <div class=\"p-3 rounded-xl bg-white/5\">
+        <div class=\"text-[10px] text-white/40 uppercase tracking-wider\">Score</div>
+        <div class=\"font-display text-xl font-semibold mt-1 text-cyan-300\">${m.ratio}</div>
+      </div>
+    </div>`;
+  mlb.appendChild(card);
+});
+lucide.createIcons();
+
+/* ====================== BRANCH RADAR ====================== */
+new Chart(document.getElementById('branchRadar'), {
+  type:'radar',
+  data:{ labels:['Volume','Velocity','Quality','Compliance','Client NPS','Retention'],
+    datasets:[
+      { label:'Mumbai', data:[95,88,92,90,86,89], borderColor:'#22d3ee', backgroundColor:'rgba(34,211,238,.18)', borderWidth:2, pointBackgroundColor:'#22d3ee' },
+      { label:'Bengaluru', data:[82,90,86,88,92,85], borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,.15)', borderWidth:2, pointBackgroundColor:'#a78bfa' },
+      { label:'Delhi NCR', data:[88,80,84,82,80,86], borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.12)', borderWidth:2, pointBackgroundColor:'#10b981' }
+    ]},
+  options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:8, font:{size:11}}}}, responsive:true, maintainAspectRatio:false,
+    scales:{ r:{ angleLines:{color:'rgba(255,255,255,.06)'}, grid:{color:'rgba(255,255,255,.06)'}, pointLabels:{font:{size:11}, color:'rgba(230,232,242,.7)'}, ticks:{display:false}, suggestedMin:50, suggestedMax:100 } } }
+});
+
+/* ====================== BRANCH LIST ====================== */
+const branches = [
+  { name:'Mumbai',     score:94.2 },
+  { name:'Bengaluru',  score:91.6 },
+  { name:'Delhi NCR',  score:88.4 },
+  { name:'Pune',       score:84.1 },
+  { name:'Chennai',    score:82.5 },
+  { name:'Hyderabad',  score:78.9 },
+  { name:'Kolkata',    score:74.2 }
+];
+const bl = document.getElementById('branchList');
+branches.forEach((b,i)=>{
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-3 px-2 py-3';
+  row.innerHTML = `
+    <span class=\"font-display text-sm text-white/40 w-6\">${String(i+1).padStart(2,'0')}</span>
+    <span class=\"w-2 h-2 rounded-full\" style=\"background: ${i<3?'#22d3ee':'#475569'}\"></span>
+    <span class=\"text-sm font-medium\">${b.name}</span>
+    <span class=\"ml-auto font-mono text-sm text-cyan-300\">${b.score}</span>`;
+  bl.appendChild(row);
+});
+
+</script>
+</body>
+</html>
+"
+Observation: Create successful: /app/dashboard.html

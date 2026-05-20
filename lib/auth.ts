@@ -1,6 +1,6 @@
 import { jwtDecode } from 'jwt-decode';
 
-export type UserRole = 'PARTNER' | 'EXECUTIVE' | 'CLIENT';
+export type UserRole = 'PARTNER' | 'EXECUTIVE' | 'CLIENT' | 'DASHBOARD_USER';
 
 export interface JwtPayload {
   sub?: string;
@@ -13,12 +13,19 @@ export interface JwtPayload {
 
 const TOKEN_KEY = 'filetax_token';
 const USER_KEY = 'filetax_user';
+const ROLE_KEY = 'filetax_role';
 
 export const setToken = (token: string) => {
   if (typeof window === 'undefined') return;
   localStorage.setItem(TOKEN_KEY, token);
   // also cookie for middleware
   document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=86400; SameSite=Lax`;
+};
+
+export const setRole = (role: string) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(ROLE_KEY, role);
+  document.cookie = `${ROLE_KEY}=${role}; path=/; max-age=86400; SameSite=Lax`;
 };
 
 export const getToken = (): string | null => {
@@ -41,14 +48,16 @@ export const clearAuth = () => {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(ROLE_KEY);
   document.cookie = `${TOKEN_KEY}=; path=/; max-age=0`;
+  document.cookie = `${ROLE_KEY}=; path=/; max-age=0`;
 };
 
 export const decodeRole = (token: string): UserRole | null => {
   try {
     const p = jwtDecode<JwtPayload>(token);
     const r = (p.role || (p as any).user_role || '').toString().toUpperCase();
-    if (r === 'PARTNER' || r === 'EXECUTIVE' || r === 'CLIENT') return r as UserRole;
+    if (r === 'PARTNER' || r === 'EXECUTIVE' || r === 'CLIENT' || r === 'DASHBOARD_USER') return r as UserRole;
     return null;
   } catch {
     return null;
@@ -58,6 +67,7 @@ export const decodeRole = (token: string): UserRole | null => {
 export const roleToDashboard = (role: UserRole | null): string => {
   switch (role) {
     case 'PARTNER': return '/partner/dashboard';
+    case 'DASHBOARD_USER': return '/summary/dashboard';
     case 'EXECUTIVE': return '/executive/dashboard';
     case 'CLIENT': return '/client/dashboard';
     default: return '/auth/login';

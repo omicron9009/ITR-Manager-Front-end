@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { login as apiLogin } from '@/lib/api';
-import { setToken, setUser, decodeRole, roleToDashboard } from '@/lib/auth';
+import { setToken, setUser, setRole, decodeRole, roleToDashboard } from '@/lib/auth';
 import { me as apiMe } from '@/lib/api';
 import { toast } from 'sonner';
 import GlobalFooter from '@/components/shared/GlobalFooter';
@@ -41,7 +41,11 @@ export default function LoginPage() {
         const profile = await apiMe();
         user = { ...user, ...profile };
         role = (profile.role || role || '').toString().toUpperCase() as any;
-      } catch {}
+      } catch {
+        // Re-set token in case interceptor cleared it
+        setToken(token);
+      }
+      if (role) setRole(role as string);
       setUser(user);
       toast.success('Welcome back!');
       router.push(roleToDashboard(role));

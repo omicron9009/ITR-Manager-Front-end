@@ -29,9 +29,12 @@ api.interceptors.response.use(
   (err: AxiosError<any>) => {
     const status = err.response?.status;
     if (status === 401) {
-      clearAuth();
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
-        window.location.href = '/auth/login';
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        if (!path.startsWith('/auth')) {
+          clearAuth();
+          window.location.href = '/auth/login';
+        }
       }
     } else if (status === 403) {
       toast.error('Access denied');
@@ -151,3 +154,41 @@ export const completedDocUploadUrl = (params: any) => api.post('/api/v1/storage/
 export const completedDocConfirm = (params: any) => api.post('/api/v1/storage/completed-doc/confirm', null, { params }).then((r) => r.data);
 export const onboardingUploadUrl = (params: any) => api.post('/api/v1/storage/onboarding-upload-url', null, { params }).then((r) => r.data);
 export const confirmOnboardingUpload = (params: any) => api.post('/api/v1/storage/confirm-onboarding-upload', null, { params }).then((r) => r.data);
+
+// ---------- TAGS ----------
+export const createTag = (data: { name: string; tag_type: string; description?: string }) =>
+  api.post('/api/v1/tags', data).then((r) => r.data);
+export const listTags = (tag_type?: string) =>
+  api.get('/api/v1/tags', { params: tag_type ? { tag_type } : {} }).then((r) => r.data);
+export const updateTag = (id: string, data: any) =>
+  api.patch(`/api/v1/tags/${id}`, data).then((r) => r.data);
+export const deleteTag = (id: string) =>
+  api.delete(`/api/v1/tags/${id}`).then((r) => r.data);
+export const assignTag = (executive_id: string, tag_id: string) =>
+  api.post('/api/v1/tags/assign', { executive_id, tag_id }).then((r) => r.data);
+export const bulkAssignTag = (executive_ids: string[], tag_id: string) =>
+  api.post('/api/v1/tags/bulk-assign', { executive_ids, tag_id }).then((r) => r.data);
+export const unassignTag = (executive_id: string, tag_id: string) =>
+  api.delete(`/api/v1/tags/assign/${executive_id}/${tag_id}`).then((r) => r.data);
+export const listExecutivesWithTags = () =>
+  api.get('/api/v1/tags/executives').then((r) => r.data);
+export const getExecutiveTags = (executive_id: string) =>
+  api.get(`/api/v1/tags/executives/${executive_id}`).then((r) => r.data);
+export const getMyTags = () =>
+  api.get('/api/v1/tags/my-tags').then((r) => r.data);
+export const getManagerSummary = () =>
+  api.get('/api/v1/tags/summary/manager').then((r) => r.data);
+export const getLocationSummary = () =>
+  api.get('/api/v1/tags/summary/location').then((r) => r.data);
+export const getHierarchySummary = () =>
+  api.get('/api/v1/tags/summary/hierarchy').then((r) => r.data);
+export const getManagerDetail = (tag_id: string) =>
+  api.get(`/api/v1/tags/summary/manager/${tag_id}`).then((r) => r.data);
+export const getLocationDetail = (tag_id: string) =>
+  api.get(`/api/v1/tags/summary/location/${tag_id}`).then((r) => r.data);
+
+// ---------- REPORTS ----------
+export const getReportDashboard = (fy?: string) =>
+  api.get('/api/v1/reports/dashboard', { params: fy ? { fy } : {} }).then((r) => r.data);
+export const downloadReport = (fy?: string) =>
+  api.get('/api/v1/reports/download', { params: fy ? { fy } : {}, responseType: 'blob' });
