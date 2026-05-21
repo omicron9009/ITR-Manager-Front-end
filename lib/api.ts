@@ -49,6 +49,12 @@ export const apiErr = (e: any): string => e?.response?.data?.detail || e?.respon
 export const login = (email: string, password: string) =>
   api.post('/api/v1/auth/login', { email, password }).then((r) => r.data);
 export const me = () => api.get('/api/v1/auth/me').then((r) => r.data);
+export const resetPassword = (data: { email: string; recovery_code: string; new_password: string }) =>
+  api.post('/api/v1/auth/reset-password', data).then((r) => r.data);
+export const changePassword = (data: { old_password: string; new_password: string }) =>
+  api.post('/api/v1/auth/change-password', data).then((r) => r.data);
+export const regenerateRecoveryCodes = () =>
+  api.post('/api/v1/auth/regenerate-recovery-codes').then((r) => r.data);
 
 // ---------- CLIENTS ----------
 export const registerClient = (payload: any) =>
@@ -80,6 +86,7 @@ export const transitionFiling = (id: string, data: any) => api.post(`/api/v1/fil
 
 export const submitDocs = (id: string) => api.post(`/api/v1/filings/${id}/submit-documents`).then((r) => r.data);
 export const markPayment = (id: string) => api.post(`/api/v1/filings/${id}/mark-payment`).then((r) => r.data);
+export const moveToComputation = (id: string) => api.post(`/api/v1/filings/${id}/move-to-computation`).then((r) => r.data);
 export const myTracking = () => api.get('/api/v1/filings/my/tracking').then((r) => r.data);
 export const getFilingHistory = (id: string) => api.get(`/api/v1/filings/${id}/history`).then((r) => r.data);
 

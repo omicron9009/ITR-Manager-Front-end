@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, FileCheck2, ShieldCheck, Bell, FolderOpen } from 'lucide-react';
+import { Loader2, FileCheck2, ShieldCheck, Bell, FolderOpen, Download, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { login as apiLogin } from '@/lib/api';
 import { setToken, setUser, setRole, decodeRole, roleToDashboard } from '@/lib/auth';
 import { me as apiMe } from '@/lib/api';
@@ -25,7 +26,57 @@ export default function LoginPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
+
+  const downloadRecoveryCodes = (codes: string[]) => {
+    const content = [
+      '═══════════════════════════════════════════════════════════',
+      '       ITR MANAGER — ACCOUNT RECOVERY CODES',
+      '═══════════════════════════════════════════════════════════',
+      '',
+      'IMPORTANT: Store these codes in a safe place.',
+      '',
+      '• Each code can only be used ONCE to reset your password.',
+      '• Once a code is used, it is permanently consumed.',
+      '• If you lose all codes, contact your CA/Partner admin.',
+      '• These codes are the ONLY way to reset your password',
+      '  without contacting support.',
+      '',
+      '───────────────────────────────────────────────────────────',
+      '  YOUR RECOVERY CODES',
+      '───────────────────────────────────────────────────────────',
+      '',
+      ...codes.map((code, i) => `  ${i + 1}. ${code}`),
+      '',
+      '───────────────────────────────────────────────────────────',
+      '',
+      `Generated on: ${new Date().toLocaleString()}`,
+      'Platform: ITR Filing Management Platform',
+      '',
+      'To reset your password:',
+      '  1. Go to the login page and click "Forgot password?"',
+      '  2. Enter your email address',
+      '  3. Enter one of the recovery codes above',
+      '  4. Set your new password',
+      '',
+      '═══════════════════════════════════════════════════════════',
+    ].join('\n');
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ITR_platform_recovery_codes.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setDownloaded(true);
+  };
 
   const onSubmit = async (values: any) => {
     setErr('');
@@ -47,13 +98,29 @@ export default function LoginPage() {
       }
       if (role) setRole(role as string);
       setUser(user);
-      toast.success('Welcome back!');
-      router.push(roleToDashboard(role));
+
+      // Check if recovery codes were returned (first login or codes not yet issued)
+      if (res.recovery_codes && Array.isArray(res.recovery_codes) && res.recovery_codes.length > 0) {
+        setRecoveryCodes(res.recovery_codes);
+        setShowRecoveryDialog(true);
+        setPendingRedirect(roleToDashboard(role));
+        // Auto-download the file
+        downloadRecoveryCodes(res.recovery_codes);
+      } else {
+        toast.success('Welcome back!');
+        router.push(roleToDashboard(role));
+      }
     } catch (e: any) {
       setErr(e?.response?.data?.detail || e?.message || 'Login failed. Check your credentials.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleRecoveryDialogClose = () => {
+    setShowRecoveryDialog(false);
+    toast.success('Welcome! Your recovery codes have been downloaded.');
+    if (pendingRedirect) router.push(pendingRedirect);
   };
 
   return (
@@ -105,7 +172,10 @@ export default function LoginPage() {
                   {errors.email && <p className="text-xs text-rose-600 mt-1">{errors.email.message as string}</p>}
                 </div>
                 <div>
-                  <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <Link href="/auth/reset-password" className="text-xs text-indigo-600 hover:underline font-medium">Forgot password?</Link>
+                  </div>
                   <Input id="password" type="password" placeholder="••••••••" {...register('password')} className="mt-1.5" />
                   {errors.password && <p className="text-xs text-rose-600 mt-1">{errors.password.message as string}</p>}
                 </div>
@@ -121,6 +191,51 @@ export default function LoginPage() {
           </div>
         </div>
       </main>
+
+      {/* Recovery Codes Dialog */}
+      <Dialog open={showRecoveryDialog} onOpenChange={(open) => { if (!open) handleRecoveryDialogClose(); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <ShieldAlert className="h-5 w-5" /> Recovery Codes — Save These Now!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
+              <p className="text-sm text-amber-800 font-medium">These are your one-time recovery codes for password reset.</p>
+              <p className="text-xs text-amber-700 mt-1">Each code can only be used once. Store them safely — this is the only time they will be displayed.</p>
+            </div>
+            {recoveryCodes && (
+              <div className="grid grid-cols-2 gap-2">
+                {recoveryCodes.map((code, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-100 border border-slate-200 font-mono text-sm text-slate-800">
+                    <span className="text-xs text-slate-400 w-4">{i + 1}.</span>
+                    {code}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+              <p className="text-xs text-slate-600"><strong>How to use:</strong> If you forget your password, click &ldquo;Forgot password?&rdquo; on the login page, enter your email and one of these codes, then set a new password.</p>
+            </div>
+            {downloaded && (
+              <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                <Download className="h-3.5 w-3.5" /> File downloaded: ITR_platform_recovery_codes.txt
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {!downloaded && recoveryCodes && (
+              <Button variant="outline" onClick={() => downloadRecoveryCodes(recoveryCodes)} className="gap-2">
+                <Download className="h-4 w-4" /> Download Again
+              </Button>
+            )}
+            <Button onClick={handleRecoveryDialogClose} className="bg-indigo-600 hover:bg-indigo-700">
+              I&apos;ve saved my codes — Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <GlobalFooter />

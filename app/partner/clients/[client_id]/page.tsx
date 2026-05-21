@@ -9,15 +9,15 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles } from '@/lib/api';
 import { toast } from 'sonner';
-import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 
-const FILING_STAGES = ['INITIATED', 'ON_BOARDING', 'PROCESSING', 'COMPUTATION', 'FILING', 'PAYMENT', 'COMPLETED'];
+const FILING_STAGES = ['INITIATED', 'DOCUMENT_UPLOAD', 'PROCESSING', 'COMPUTATION', 'FILING', 'PAYMENT', 'COMPLETED'];
 function getFilingPercent(status: string): number {
   if (status === 'COMPLETED') return 100;
   if (status === 'HALTED') return 0;
@@ -273,6 +273,16 @@ function FilingAccordionItem({ filing: f, docs, load, viewDoc }: { filing: any; 
                       </div>
                     </div>
                   ))}
+                  {/* All docs approved banner */}
+                  {(docs[f.id] || []).length > 0 && (docs[f.id] || []).every((d: any) => d.status === 'APPROVED') && (status === 'PROCESSING' || status === 'DOCUMENT_UPLOAD') && (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 mt-3 flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-emerald-800">All documents approved</div>
+                        <div className="text-xs text-emerald-600 mt-0.5">Go to the Actions tab to move this filing to Computation stage. You can still assign new documents if needed.</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
               <TabsContent value="computations" className="mt-3">
@@ -329,23 +339,97 @@ function FilingAccordionItem({ filing: f, docs, load, viewDoc }: { filing: any; 
 
 function StateActions({ filing, onChange }: { filing: any; onChange: () => void }) {
   const state = filing.status || filing.current_state;
+  const [allDocsApproved, setAllDocsApproved] = useState<boolean | null>(null);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [moving, setMoving] = useState(false);
+
+  // Check document approval status for PROCESSING/DOCUMENT_UPLOAD states
+  useEffect(() => {
+    if (state === 'PROCESSING' || state === 'DOCUMENT_UPLOAD') {
+      setDocsLoading(true);
+      filingDocs(filing.id).then((d: any) => {
+        const items = d?.items || d?.documents || d || [];
+        const total = items.length;
+        const approved = items.filter((doc: any) => doc.status === 'APPROVED').length;
+        setAllDocsApproved(total > 0 && approved === total);
+      }).catch(() => setAllDocsApproved(false)).finally(() => setDocsLoading(false));
+    }
+  }, [filing.id, state]);
+
   const tx = async (target: string) => {
     try { await transitionFiling(filing.id, { to_status: target }); toast.success(`Moved to ${target}`); onChange(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
   };
   const doMarkPayment = async () => {
     try { await markPayment(filing.id); toast.success('Payment received — filing completed!'); onChange(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
   };
+  const doMoveToComputation = async () => {
+    setMoving(true);
+    try {
+      await moveToComputation(filing.id);
+      toast.success('Moved to Computation stage');
+      setShowMoveDialog(false);
+      onChange();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to move to computation'); }
+    finally { setMoving(false); }
+  };
+
   const items: { label: string; target: string; cls?: string; action?: () => void }[] = [];
-  if (state === 'INITIATED') items.push({ label: 'Move to Document Upload', target: 'ON_BOARDING' });
-  if (state === 'ON_BOARDING') items.push({ label: 'Move to Processing', target: 'PROCESSING' });
-  if (state === 'PROCESSING') items.push({ label: 'Move to Computation', target: 'COMPUTATION' });
+  if (state === 'INITIATED') items.push({ label: 'Move to Document Upload', target: 'DOCUMENT_UPLOAD' });
+  // DOCUMENT_UPLOAD and PROCESSING → COMPUTATION uses the dedicated endpoint with doc approval check (shown below)
   if (state === 'COMPUTATION') items.push({ label: 'Move to Filing', target: 'FILING' });
   if (state === 'FILING') items.push({ label: 'Move to Payment', target: 'PAYMENT' });
   if (state === 'PAYMENT') items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {items.length === 0 && <p className="text-sm text-slate-500">No state actions available.</p>}
-      {items.map((it) => <Button key={it.target} onClick={() => it.action ? it.action() : tx(it.target)} className={it.cls || 'bg-indigo-600 hover:bg-indigo-700'}>{it.label}</Button>)}
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {items.length === 0 && state !== 'PROCESSING' && state !== 'DOCUMENT_UPLOAD' && <p className="text-sm text-slate-500">No state actions available.</p>}
+        {items.map((it) => <Button key={it.target} onClick={() => it.action ? it.action() : tx(it.target)} className={it.cls || 'bg-indigo-600 hover:bg-indigo-700'}>{it.label}</Button>)}
+      </div>
+
+      {/* Move to Computation — dedicated action for DOCUMENT_UPLOAD / PROCESSING state */}
+      {(state === 'DOCUMENT_UPLOAD' || state === 'PROCESSING') && (
+        <div className="space-y-2">
+          {docsLoading ? (
+            <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Checking document status…</div>
+          ) : allDocsApproved ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Check className="h-4 w-4 text-emerald-600" />
+                <span className="text-sm font-medium text-emerald-800">All documents approved</span>
+              </div>
+              <p className="text-xs text-emerald-700 mb-3">You can proceed to the Computation stage. You may still assign new documents before moving.</p>
+              <Button onClick={() => setShowMoveDialog(true)} className="bg-indigo-600 hover:bg-indigo-700">
+                <Calculator className="h-4 w-4 mr-2" /> Move to Computation
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-medium text-amber-800">Awaiting document approval</span>
+              </div>
+              <p className="text-xs text-amber-700 mt-1">All documents must be approved before moving to computation. You can still assign and review documents.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Calculator className="h-5 w-5 text-indigo-600" /> Move to Computation</DialogTitle></DialogHeader>
+          <p className="text-sm text-slate-600">All documents have been approved. Are you sure you want to move this filing to the Computation stage?</p>
+          <p className="text-xs text-slate-500 mt-1">The client will be notified that the documents phase is complete and computation will be prepared.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMoveDialog(false)}>Cancel</Button>
+            <Button onClick={doMoveToComputation} disabled={moving} className="bg-indigo-600 hover:bg-indigo-700">
+              {moving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm Move
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -12,7 +12,7 @@
           "Authentication"
         ],
         "summary": "Login",
-        "description": "Authenticate with email and password, returns a JWT access token.",
+        "description": "Authenticate with email and password, returns a JWT access token.\n\nOn first login (or if recovery codes have never been issued), the response\nwill include one-time recovery codes that the client should present as a\ndownloadable .txt file.",
         "operationId": "login_api_v1_auth_login_post",
         "requestBody": {
           "content": {
@@ -46,6 +46,124 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Reset Password",
+        "description": "Reset password using email and a valid recovery code (public endpoint, no auth).",
+        "operationId": "reset_password_api_v1_auth_reset_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Reset Password Api V1 Auth Reset Password Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Change Password",
+        "description": "Change password while authenticated. Requires old password confirmation.",
+        "operationId": "change_password_api_v1_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Change Password Api V1 Auth Change Password Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/regenerate-recovery-codes": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Regenerate Recovery Codes",
+        "description": "Generate a new set of recovery codes (invalidates all previous codes).",
+        "operationId": "regenerate_recovery_codes_api_v1_auth_regenerate_recovery_codes_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodesResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/auth/me": {
@@ -90,47 +208,6 @@
               "application/json": {
                 "schema": {
 
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/exchange": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Exchange Code For Token",
-        "operationId": "exchange_code_for_token_api_v1_auth_exchange_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TokenExchangeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1171,6 +1248,56 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Mark Payment Received Api V1 Filings  Filing Id  Mark Payment Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/filings/{filing_id}/move-to-computation": {
+      "post": {
+        "tags": [
+          "Filings"
+        ],
+        "summary": "Move To Computation",
+        "description": "Manually advance filing from Document Upload phase to Computation (Executive/Partner action).",
+        "operationId": "move_to_computation_api_v1_filings__filing_id__move_to_computation_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Move To Computation Api V1 Filings  Filing Id  Move To Computation Post"
                 }
               }
             }
@@ -9605,6 +9732,55 @@
         ],
         "title": "PartnerAnalyticsResponse"
       },
+      "PasswordChangeRequest": {
+        "properties": {
+          "old_password": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Old Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "old_password",
+          "new_password"
+        ],
+        "title": "PasswordChangeRequest"
+      },
+      "PasswordResetRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "recovery_code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Recovery Code"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "recovery_code",
+          "new_password"
+        ],
+        "title": "PasswordResetRequest"
+      },
       "PendingFilingItem": {
         "properties": {
           "filing_id": {
@@ -9745,6 +9921,27 @@
           "total"
         ],
         "title": "PendingVerificationResponse"
+      },
+      "RecoveryCodesResponse": {
+        "properties": {
+          "codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Codes"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codes",
+          "message"
+        ],
+        "title": "RecoveryCodesResponse"
       },
       "StageTiming": {
         "properties": {
@@ -9987,19 +10184,6 @@
         "type": "object",
         "title": "TagUpdateRequest"
       },
-      "TokenExchangeRequest": {
-        "properties": {
-          "code": {
-            "type": "string",
-            "title": "Code"
-          }
-        },
-        "type": "object",
-        "required": [
-          "code"
-        ],
-        "title": "TokenExchangeRequest"
-      },
       "TokenResponse": {
         "properties": {
           "access_token": {
@@ -10010,6 +10194,20 @@
             "type": "string",
             "title": "Token Type",
             "default": "bearer"
+          },
+          "recovery_codes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Codes"
           }
         },
         "type": "object",

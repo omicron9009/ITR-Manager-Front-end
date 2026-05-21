@@ -175,6 +175,17 @@ export default function FilingDetailPage() {
           )}
         </div>
 
+        {/* All documents approved banner */}
+        {docsMeta.all_approved && docsMeta.total > 0 && (state === 'PROCESSING' || state === 'DOCUMENT_UPLOAD') && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 mb-4 flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+            <div>
+              <div className="text-sm font-semibold text-emerald-800">All documents approved</div>
+              <div className="text-xs text-emerald-600 mt-0.5">Awaiting executive action to proceed to computation stage.</div>
+            </div>
+          </div>
+        )}
+
         {docs.length === 0 ? (
           <div className="text-center py-8 text-sm text-slate-400">
             {state === 'INITIATED' ? 'Your CA will assign a document checklist soon.' : 'No documents assigned yet.'}

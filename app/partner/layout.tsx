@@ -1,7 +1,7 @@
 "use client";
 
 import AppShell from '@/components/shared/AppShell';
-import { LayoutDashboard, Users, Shield, Layout, FileText, Bell, FileCheck, Mail, Tags } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Layout, FileText, Bell, FileCheck, Mail, Tags, User } from 'lucide-react';
 
 const NAV = [
   { href: '/partner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -13,8 +13,9 @@ const NAV = [
   { href: '/partner/email-config', label: 'Email Config', icon: Mail },
   { href: '/partner/notifications', label: 'Notifications', icon: Bell },
   { href: '/partner/audit', label: 'Audit Log', icon: FileText },
+  { href: '/partner/profile', label: 'Profile', icon: User },
 ];
 
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell nav={NAV} role="PARTNER">{children}</AppShell>;
+  return <AppShell nav={NAV} role="PARTNER" avatarHref="/partner/profile">{children}</AppShell>;
 }

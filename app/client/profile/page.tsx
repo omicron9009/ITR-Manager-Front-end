@@ -8,10 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { me, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl, getOnboardingFiles } from '@/lib/api';
+import { me, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl, getOnboardingFiles, changePassword } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Loader2, Upload, Eye, FileText, CheckCircle2 } from 'lucide-react';
+import { Loader2, Upload, Eye, FileText, CheckCircle2, Lock } from 'lucide-react';
 
 export default function ClientProfilePage() {
   const [profile, setProfile] = useState<any>({});
@@ -23,6 +23,10 @@ export default function ClientProfilePage() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerFileName, setViewerFileName] = useState<string | undefined>(undefined);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     me().then((p) => { setProfile(p); }).catch(() => {});
@@ -140,6 +144,47 @@ export default function ClientProfilePage() {
             </div>
           </>
         )}
+      </Card>
+
+      {/* Change Password Section */}
+      <Card className="rounded-xl p-6">
+        <h2 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Lock className="h-4 w-4 text-indigo-600" /> Change Password</h2>
+        <p className="text-sm text-slate-500 mb-4">Enter your current password to set a new one.</p>
+        <div className="space-y-4 max-w-sm">
+          <div>
+            <Label htmlFor="old_password" className="text-xs text-slate-500">Current Password</Label>
+            <Input id="old_password" type="password" placeholder="Enter current password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="mt-1" />
+          </div>
+          <div>
+            <Label htmlFor="new_password" className="text-xs text-slate-500">New Password</Label>
+            <Input id="new_password" type="password" placeholder="Min 8 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="mt-1" />
+          </div>
+          <div>
+            <Label htmlFor="confirm_new_password" className="text-xs text-slate-500">Confirm New Password</Label>
+            <Input id="confirm_new_password" type="password" placeholder="Re-enter new password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className="mt-1" />
+          </div>
+          <Button
+            disabled={changingPassword || !oldPassword || !newPassword || !confirmNewPassword}
+            className="bg-indigo-600 hover:bg-indigo-700"
+            onClick={async () => {
+              if (newPassword.length < 8) { toast.error('New password must be at least 8 characters'); return; }
+              if (newPassword.length > 128) { toast.error('New password is too long'); return; }
+              if (newPassword !== confirmNewPassword) { toast.error('New passwords do not match'); return; }
+              setChangingPassword(true);
+              try {
+                await changePassword({ old_password: oldPassword, new_password: newPassword });
+                toast.success('Password changed successfully');
+                setOldPassword(''); setNewPassword(''); setConfirmNewPassword('');
+              } catch (e: any) {
+                const detail = e?.response?.data?.detail;
+                toast.error(typeof detail === 'string' ? detail : 'Failed to change password. Check your current password.');
+              } finally { setChangingPassword(false); }
+            }}
+          >
+            {changingPassword && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Update Password
+          </Button>
+        </div>
       </Card>
 
       <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={viewerFileName} />

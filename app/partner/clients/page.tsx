@@ -181,7 +181,7 @@ function ClientsListPage() {
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filing State" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Filing States</SelectItem>
-              {['INITIATED','ON_BOARDING','PROCESSING','COMPUTATION','FILING','PAYMENT','COMPLETED','HALTED'].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {['INITIATED','DOCUMENT_UPLOAD','PROCESSING','COMPUTATION','FILING','PAYMENT','COMPLETED','HALTED'].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={financialYear || 'all'} onValueChange={(v) => setFinancialYear(v === 'all' ? '' : v)}>
