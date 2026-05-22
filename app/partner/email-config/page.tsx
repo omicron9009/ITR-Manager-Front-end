@@ -1,6 +1,6 @@
 // @ts-nocheck
 "use client";
-import { useEffect, useState , useRef } from "react";
+import { Suspense, useEffect, useState , useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,14 @@ interface EmailConfig {
 }
 
 export default function EmailConfigPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <EmailConfigContent />
+    </Suspense>
+  );
+}
+
+function EmailConfigContent() {
   const [config, setConfig] = useState<EmailConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
