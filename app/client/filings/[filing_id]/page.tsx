@@ -348,6 +348,7 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onView }: { doc: any; u
             <span className="inline-flex items-center justify-center w-full gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer transition-colors">
               <Upload className="h-3.5 w-3.5" /> {status === 'REJECTED' ? 'Re-upload' : 'Choose File'}
             </span>
+            <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, Word, Excel, CSV, PNG, JPG</p>
           </label>
         )}
         {pendingFile && (

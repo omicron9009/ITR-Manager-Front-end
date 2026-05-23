@@ -104,7 +104,7 @@ export default function ClientDetailPage() {
             {client.phone_number && <div className="flex items-center gap-2 text-slate-600"><Phone className="h-4 w-4" /> {client.phone_number}</div>}
           </div>
           <div className="mt-5 pt-5 border-t border-slate-200">
-            <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Executive</div>
+            <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Executive(Article)</div>
             <div className="text-sm font-medium text-slate-800">{client.assigned_executive_name || client.executive_name || 'Unassigned'}</div>
           </div>
           {client.pan_document_url && (
@@ -580,6 +580,7 @@ function ComputationPanel({ filingId, filingStatus }: { filingId: string; filing
                 {latestRejected ? 'Choose New Version' : 'Choose File'}
               </Button>
               <input id={`comp-upload-${filingId}`} type="file" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} />
+              <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, Word, Excel, CSV, PNG, JPG</p>
             </>
           )}
           {pendingFile && (
@@ -771,6 +772,7 @@ function FiledDocsPanel({ filingId, filingStatus }: { filingId: string; filingSt
                         Choose File
                       </Button>
                       <input id={`filed-${filingId}-${dt.key}`} type="file" hidden accept=".pdf,.json,.xlsx,.xls,.doc,.docx" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFiles(prev => ({ ...prev, [dt.key]: f })); e.target.value = ''; }} />
+                      <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, JSON, Word, Excel</p>
                     </>
                   )}
                 </div>

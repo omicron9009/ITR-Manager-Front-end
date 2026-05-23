@@ -27,7 +27,9 @@ export default function ClientOnboardingPage() {
 
   useEffect(() => {
     getOnboardingForm().then((r) => {
-      setFields(r?.fields || []);
+      const items = r?.fields || [];
+      items.sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
+      setFields(items);
       if (r?.submitted_data) {
         setValues(r.submitted_data);
         // Recover filenames from __filename keys
@@ -44,9 +46,14 @@ export default function ClientOnboardingPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  const isPanField = (f: any) => Array.isArray(f.field_options) && f.field_options.includes('__pan_validation');
+  const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
   const save = async () => {
     const missing = fields.filter((f) => f.is_required && !values[f.field_key]?.toString().trim());
     if (missing.length > 0) { toast.error(`Please fill: ${missing.map((f) => f.field_label).join(', ')}`); return; }
+    const invalidPan = fields.filter((f) => isPanField(f) && values[f.field_key] && !PAN_REGEX.test(values[f.field_key]));
+    if (invalidPan.length > 0) { toast.error(`Invalid PAN format: ${invalidPan.map((f) => f.field_label).join(', ')}. Expected: ABCDE1234F`); return; }
     setSaving(true);
     try {
       await submitOnboardingForm(values);
@@ -131,7 +138,7 @@ export default function ClientOnboardingPage() {
                   <SelectContent>{(f.field_options || []).map((opt: string) => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent>
                 </Select>
               ) : (
-                <Input value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: e.target.value })} className="mt-1.5" placeholder={`Enter ${f.field_label.toLowerCase()}`} />
+                <Input value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: isPanField(f) ? e.target.value.toUpperCase().slice(0, 10) : e.target.value })} className={`mt-1.5 ${isPanField(f) ? 'uppercase' : ''}`} placeholder={isPanField(f) ? 'ABCDE1234F' : `Enter ${f.field_label.toLowerCase()}`} maxLength={isPanField(f) ? 10 : undefined} />
               )}
             </div>
           ))}
@@ -187,6 +194,7 @@ function FileUploadField({ fieldKey, value, fileName, uploading, onUpload, onVie
           </span>
         </label>
       ) : null}
+      <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, Word, Excel, CSV, PNG, JPG</p>
     </div>
   );
 }

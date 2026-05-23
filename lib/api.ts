@@ -166,7 +166,7 @@ export const confirmOnboardingUpload = (params: any) => api.post('/api/v1/storag
 export const createTag = (data: { name: string; tag_type: string; description?: string }) =>
   api.post('/api/v1/tags', data).then((r) => r.data);
 export const listTags = (tag_type?: string) =>
-  api.get('/api/v1/tags', { params: tag_type ? { tag_type } : {} }).then((r) => r.data);
+  api.get('/api/v1/tags', { params: tag_type ? { type: tag_type } : {} }).then((r) => r.data);
 export const updateTag = (id: string, data: any) =>
   api.patch(`/api/v1/tags/${id}`, data).then((r) => r.data);
 export const deleteTag = (id: string) =>

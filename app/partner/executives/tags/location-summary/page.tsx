@@ -115,7 +115,7 @@ export default function LocationSummaryPage() {
                     )}
                     {detail.executives && (
                       <div>
-                        <div className="text-xs font-semibold text-slate-700 mb-2">Executives</div>
+                        <div className="text-xs font-semibold text-slate-700 mb-2">Executives(Articles)</div>
                         <div className="space-y-1.5">
                           {(detail.executives || []).map((e: any) => (
                             <div key={e.executive_id || e.id} className="flex items-center justify-between text-xs bg-white p-2 rounded">

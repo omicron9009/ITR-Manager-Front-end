@@ -25,7 +25,7 @@ export default function TagsManagementPage() {
     setLoading(true);
     try {
       const [t, e, et] = await Promise.all([listTags(), listExecutives(), listExecutivesWithTags()]);
-      setTags(t?.items || t || []);
+      setTags((t?.items || t || []).filter((tag: any) => tag.is_active !== false));
       setExecutives(e?.items || e?.executives || e || []);
       setExecsWithTags(et?.items || et || []);
     } finally { setLoading(false); }
@@ -49,7 +49,7 @@ export default function TagsManagementPage() {
 
   const handleDelete = async (id: string) => {
     try { await deleteTag(id); toast.success('Tag deleted'); load(); }
-    catch { toast.error('Failed to delete'); }
+    catch (err: any) { toast.error(err?.response?.data?.detail || 'Failed to delete tag'); }
   };
 
   const handleAssign = async (execId: string, tagId: string) => {
@@ -72,8 +72,8 @@ export default function TagsManagementPage() {
       {/* Header row with title + inline create form */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Tags Management</h1>
-          <p className="text-sm text-slate-500 mt-1">Create and assign Manager/Location tags to executives</p>
+          <h1 className="text-2xl font-bold text-slate-900">Management</h1>
+          <p className="text-sm text-slate-500 mt-1">Create and assign Manager/Location tags to executives(articles)</p>
         </div>
         <form onSubmit={handleCreate} className="flex items-end gap-2 flex-wrap">
           <div>
@@ -161,7 +161,7 @@ export default function TagsManagementPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setAssignModal(null)}>
           <Card className="w-full max-w-md rounded-xl p-6 m-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-slate-900">Assign &quot;{assignModal.name}&quot; to Executive</h3>
+              <h3 className="font-bold text-slate-900">Assign &quot;{assignModal.name}&quot; to Executive(Article)</h3>
               <Button variant="ghost" size="sm" onClick={() => setAssignModal(null)}><X className="h-4 w-4" /></Button>
             </div>
             <div className="space-y-2 max-h-80 overflow-y-auto">

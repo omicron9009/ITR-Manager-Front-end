@@ -82,7 +82,7 @@ function ClientsListPage() {
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus]);
 
   const onAssign = async (client_id: string, executive_id: string) => {
-    try { await assignExecutive(client_id, executive_id); toast.success('Executive assigned'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+    try { await assignExecutive(client_id, executive_id); toast.success('Executive(Article) assigned'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
   };
 
   // Build expanded rows combining clients list + analytics filing data
@@ -208,7 +208,7 @@ function ClientsListPage() {
                   <th className="text-left px-5 py-3 font-semibold">Phone</th>
                   <th className="text-left px-5 py-3 font-semibold w-[160px]">Financial Year</th>
                   <th className="text-left px-5 py-3 font-semibold">Account</th>
-                  {routePrefix === '/partner' && <th className="text-left px-5 py-3 font-semibold">Executive</th>}
+                  {routePrefix === '/partner' && <th className="text-left px-5 py-3 font-semibold">Executive(Article)</th>}
                   <th className="text-left px-5 py-3 font-semibold">Current State</th>
                   <th className="text-left px-5 py-3 font-semibold">Updated</th>
                   <th className="text-right px-5 py-3 font-semibold">Actions</th>

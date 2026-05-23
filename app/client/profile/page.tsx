@@ -33,7 +33,9 @@ export default function ClientProfilePage() {
     const loadForm = async () => {
       try {
         const r = await getOnboardingForm();
-        setFields(r?.fields || []);
+        const items = r?.fields || [];
+        items.sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        setFields(items);
         const formValues: Record<string, any> = r?.submitted_data || {};
         const names: Record<string, string> = {};
         Object.keys(formValues).forEach((k) => {
@@ -64,7 +66,12 @@ export default function ClientProfilePage() {
     loadForm();
   }, []);
 
+  const isPanField = (f: any) => Array.isArray(f.field_options) && f.field_options.includes('__pan_validation');
+  const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
   const save = async () => {
+    const invalidPan = fields.filter((f) => isPanField(f) && values[f.field_key] && !PAN_REGEX.test(values[f.field_key]));
+    if (invalidPan.length > 0) { toast.error(`Invalid PAN format: ${invalidPan.map((f) => f.field_label).join(', ')}. Expected: ABCDE1234F`); return; }
     setSaving(true);
     try { await submitOnboardingForm(values); toast.success('Profile saved'); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
     finally { setSaving(false); }
@@ -136,7 +143,7 @@ export default function ClientProfilePage() {
                       <SelectContent>{(f.field_options || []).map((opt: string) => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent>
                     </Select>
                   ) : (
-                    <Input value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: e.target.value })} className="mt-1" />
+                    <Input value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: isPanField(f) ? e.target.value.toUpperCase().slice(0, 10) : e.target.value })} className={`mt-1 ${isPanField(f) ? 'uppercase' : ''}`} placeholder={isPanField(f) ? 'ABCDE1234F' : undefined} maxLength={isPanField(f) ? 10 : undefined} />
                   )}
                 </div>
               ))}
@@ -235,6 +242,7 @@ function FileField({ fieldKey, value, fileName, uploading, onUpload, onView }: {
           </span>
         </label>
       ) : null}
+      <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, Word, Excel, CSV, PNG, JPG</p>
     </div>
   );
 }

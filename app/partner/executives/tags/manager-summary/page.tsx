@@ -56,7 +56,7 @@ export default function ManagerSummaryPage() {
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <div className="text-center p-2 bg-slate-50 rounded-lg">
                   <div className="text-lg font-bold text-slate-900">{m.executive_count ?? 0}</div>
-                  <div className="text-[10px] text-slate-500 uppercase">Executives</div>
+                  <div className="text-[10px] text-slate-500 uppercase">Executives(Articles)</div>
                 </div>
                 <div className="text-center p-2 bg-emerald-50 rounded-lg">
                   <div className="text-lg font-bold text-emerald-700">{m.completed_filings ?? m.completed ?? 0}</div>
@@ -100,7 +100,7 @@ export default function ManagerSummaryPage() {
                     {/* Executives list */}
                     {detail.executives && (
                       <div>
-                        <div className="text-xs font-semibold text-slate-700 mb-2">Executives</div>
+                        <div className="text-xs font-semibold text-slate-700 mb-2">Executives(Articles)</div>
                         <div className="space-y-1.5">
                           {(detail.executives || []).map((e: any) => (
                             <div key={e.executive_id || e.id} className="flex items-center justify-between text-xs bg-white p-2 rounded">

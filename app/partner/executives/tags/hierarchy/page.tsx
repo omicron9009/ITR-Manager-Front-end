@@ -39,7 +39,7 @@ export default function HierarchyPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Hierarchy View</h1>
-        <p className="text-sm text-slate-500 mt-1">Location → Managers → Executives → Filing Stats</p>
+        <p className="text-sm text-slate-500 mt-1">Location → Managers → Executives(Articles) → Filing Stats</p>
       </div>
 
       {loading && <p className="text-sm text-slate-500">Loading…</p>}
@@ -62,7 +62,7 @@ export default function HierarchyPage() {
                   <div>
                     <div className="font-bold text-slate-900">{location.location_name || location.name}</div>
                     <div className="text-xs text-slate-500">
-                      {location.manager_count ?? location.managers?.length ?? 0} managers · {location.executive_count ?? 0} executives
+                      {location.manager_count ?? location.managers?.length ?? 0} managers · {location.executive_count ?? 0} executives(articles)
                     </div>
                   </div>
                 </div>
@@ -93,7 +93,7 @@ export default function HierarchyPage() {
                             </div>
                             <div>
                               <div className="font-semibold text-sm text-slate-900">{manager.manager_name || manager.name}</div>
-                              <div className="text-xs text-slate-500">{manager.executive_count ?? manager.executives?.length ?? 0} executives</div>
+                              <div className="text-xs text-slate-500">{manager.executive_count ?? manager.executives?.length ?? 0} executives(articles)</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -126,7 +126,7 @@ export default function HierarchyPage() {
                               </div>
                             ))}
                             {(!manager.executives || manager.executives.length === 0) && (
-                              <div className="text-xs text-slate-400 py-2">No executives under this manager</div>
+                              <div className="text-xs text-slate-400 py-2">No executives(articles) under this manager</div>
                             )}
                           </div>
                         )}
@@ -146,7 +146,7 @@ export default function HierarchyPage() {
       {!loading && data.length === 0 && (
         <Card className="rounded-xl p-10 text-center">
           <Network className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">No hierarchy data available. Assign location and manager tags to executives first.</p>
+          <p className="text-sm text-slate-500">No hierarchy data available. Assign location and manager tags to executives(articles) first.</p>
         </Card>
       )}
     </div>

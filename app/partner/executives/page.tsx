@@ -37,7 +37,7 @@ export default function ExecutivesPage() {
         if (selectedLocation) assignments.push(assignTag(execId, selectedLocation));
         if (assignments.length > 0) await Promise.allSettled(assignments);
       }
-      toast.success('Executive created');
+      toast.success('Executive(Article) created');
       setForm({ full_name: '', email: '', password: '' });
       setSelectedManager('');
       setSelectedLocation('');
@@ -53,7 +53,7 @@ export default function ExecutivesPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2 space-y-3">
-        <h1 className="text-2xl font-bold text-slate-900">Executives</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Executives(Articles)</h1>
         {loading && <p className="text-sm text-slate-500">Loading…</p>}
         {execs.map((e) => {
           const execTagData = execsWithTags.find((et: any) => (et.executive_id || et.id) === e.id);
@@ -85,10 +85,10 @@ export default function ExecutivesPage() {
           </Card>
           );
         })}
-        {!loading && execs.length === 0 && <Card className="rounded-xl p-10 text-center text-sm text-slate-500">No executives yet.</Card>}
+        {!loading && execs.length === 0 && <Card className="rounded-xl p-10 text-center text-sm text-slate-500">No executives(articles) yet.</Card>}
       </div>
       <Card className="rounded-xl p-6 h-fit">
-        <div className="flex items-center gap-2 mb-4"><Shield className="h-4 w-4 text-indigo-600" /><h2 className="font-bold text-slate-900">Create Executive</h2></div>
+        <div className="flex items-center gap-2 mb-4"><Shield className="h-4 w-4 text-indigo-600" /><h2 className="font-bold text-slate-900">Create Executive(Article)</h2></div>
         <form onSubmit={submit} className="space-y-3">
           <div><Label>Full Name</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required className="mt-1.5" /></div>
           <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required className="mt-1.5" /></div>

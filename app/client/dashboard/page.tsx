@@ -326,6 +326,7 @@ function OnboardingFileInput({ fieldKey, value, onUploaded }: { fieldKey: string
           </span>
         </label>
       )}
+      <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, Word, Excel, CSV, PNG, JPG</p>
     </div>
   );
 }
