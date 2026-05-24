@@ -50,7 +50,7 @@ export default function FilingDetailPage() {
         setComputations(c?.items || []);
         setCurrentComp(c?.current_version || null);
       }
-      if (['COMPLETED'].includes(state)) {
+      if (['FILING', 'PAYMENT', 'COMPLETED'].includes(state)) {
         const cd = await completedDocs(filingId);
         setCompleted(cd || []);
       }
