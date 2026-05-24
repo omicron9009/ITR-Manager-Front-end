@@ -39,10 +39,10 @@ docker pull omicron9009/itr-platform-frontend:latest
 docker run -it -p 3001:3000 --name itr-frontend omicron9009/itr-platform-frontend:latest
 ```
 
-### With custom API URL
+### With custom API URL - office 
 
 ```bash
-docker run -it -p 3000:3000 -e NEXT_PUBLIC_API_URL=http://your-api-host:8000 --name itr-frontend omicron9009/itr-platform-frontend:latest
+docker run -it -p 3000:3000 -e NEXT_PUBLIC_API_URL=http:192.167.201.15:8000 --name itr-frontend omicron9009/itr-platform-frontend:latest
 ```
 
 ### Stop & Remove
