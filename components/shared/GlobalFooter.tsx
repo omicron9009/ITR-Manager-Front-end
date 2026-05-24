@@ -43,6 +43,12 @@ export default function GlobalFooter() {
         <span>© {new Date().getFullYear()} ITR Manager. All rights reserved.</span>
         <span className="font-medium text-indigo-600">A Pgjco Product</span>
       </div>
+      <div className="max-w-7xl mx-auto px-6 mt-3 text-xs text-slate-500 flex flex-col md:flex-row items-center md:items-start gap-1 md:gap-4">
+        <span className="font-semibold text-slate-700">Developer Info</span>
+        <span className="text-slate-600">Aditya Joshi</span>
+        <span className="flex items-center gap-1"><Mail className="h-3 w-3 text-indigo-500" /> jaditya2020@gmail.com</span>
+        <span className="flex items-center gap-1"><Phone className="h-3 w-3 text-indigo-500" /> 9423685389</span>
+      </div>
     </footer>
   );
 }

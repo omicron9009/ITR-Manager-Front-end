@@ -280,7 +280,7 @@ function FilingAccordionItem({ filing: f, docs, load, viewDoc }: { filing: any; 
                 </div>
               </TabsContent>
               <TabsContent value="computations" className="mt-3">
-                <ComputationPanel filingId={f.id} filingStatus={status} />
+                <ComputationPanel filingId={f.id} filingStatus={status} filing={f} />
               </TabsContent>
               <TabsContent value="filed-docs" className="mt-3">
                 <FiledDocsPanel filingId={f.id} filingStatus={status} />
@@ -386,18 +386,63 @@ function StateActions({ filing, onChange }: { filing: any; onChange: () => void 
     try { await markPayment(filing.id); toast.success('Payment received — filing completed!'); onChange(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
   };
 
-  const items: { label: string; target: string; cls?: string; action?: () => void }[] = [];
+  const items: { label: string; target: string; cls?: string; action?: () => void; disabled?: boolean; tooltip?: string }[] = [];
   if (state === 'INITIATED') items.push({ label: 'Move to Document Upload', target: 'DOCUMENT_UPLOAD' });
   if (state === 'COMPUTATION') items.push({ label: 'Send back to Processing', target: 'PROCESSING', cls: 'bg-amber-600 hover:bg-amber-700' });
-  if (state === 'COMPUTATION') items.push({ label: 'Move to Filing', target: 'FILING' });
+  if (state === 'COMPUTATION') {
+    const canMoveToFiling = filing.is_tax_paid === true;
+    items.push({
+      label: canMoveToFiling ? 'Move to Filing' : 'Move to Filing (Tax Payment Pending)',
+      target: 'FILING',
+      disabled: !canMoveToFiling,
+      tooltip: !canMoveToFiling ? 'Client must confirm tax payment before transitioning to Filing' : undefined,
+    });
+  }
   if (state === 'FILING') items.push({ label: 'Move to Payment', target: 'PAYMENT' });
   if (state === 'PAYMENT') items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
 
   return (
     <div className="space-y-3">
+      {/* Tax Payment Status indicator in COMPUTATION state */}
+      {state === 'COMPUTATION' && (
+        <div className={`rounded-lg p-3 flex items-center gap-3 ${filing.is_tax_paid ? 'border border-emerald-200 bg-emerald-50' : 'border border-amber-200 bg-amber-50'}`}>
+          {filing.is_tax_paid ? (
+            <>
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+              <div>
+                <div className="text-sm font-medium text-emerald-800">Tax Payment Confirmed</div>
+                {filing.tax_paid_at && <div className="text-xs text-emerald-600">Confirmed on {new Date(filing.tax_paid_at).toLocaleDateString('en-IN')}</div>}
+              </div>
+            </>
+          ) : (
+            <>
+              <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
+              <div>
+                <div className="text-sm font-medium text-amber-800">Awaiting Tax Payment Confirmation</div>
+                <div className="text-xs text-amber-600">Client has not yet confirmed tax payment. Cannot advance to Filing.</div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {items.length === 0 && <p className="text-sm text-slate-500">No state actions available.</p>}
-        {items.map((it) => <Button key={it.target} onClick={() => it.action ? it.action() : tx(it.target)} className={it.cls || 'bg-indigo-600 hover:bg-indigo-700'}>{it.label}</Button>)}
+        {items.map((it) => (
+          <div key={it.target} className="relative group">
+            <Button
+              onClick={() => it.action ? it.action() : tx(it.target)}
+              className={it.cls || 'bg-indigo-600 hover:bg-indigo-700'}
+              disabled={it.disabled}
+            >
+              {it.label}
+            </Button>
+            {it.tooltip && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block whitespace-nowrap bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded shadow-lg z-10">
+                {it.tooltip}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -487,7 +532,7 @@ function AssignChecklistButton({ filingId, existingDocTypeNames, onAssigned }: {
   );
 }
 
-function ComputationPanel({ filingId, filingStatus }: { filingId: string; filingStatus: string }) {
+function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string; filingStatus: string; filing?: any }) {
   const [computations, setComputations] = useState<any[]>([]);
   const [currentVersion, setCurrentVersion] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
@@ -613,17 +658,39 @@ function ComputationPanel({ filingId, filingStatus }: { filingId: string; filing
 
       {/* Computation stage transition actions */}
       {filingStatus === 'COMPUTATION' && (
-        <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-200">
-          <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={async () => {
-            try { await transitionFiling(filingId, { to_status: 'PROCESSING' }); toast.success('Sent back to Processing'); window.location.reload(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
-          }}>
-            Send back to Processing
-          </Button>
-          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={async () => {
-            try { await transitionFiling(filingId, { to_status: 'FILING' }); toast.success('Moved to Filing'); window.location.reload(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
-          }}>
-            Move to Filing
-          </Button>
+        <div className="space-y-3 pt-3 border-t border-slate-200">
+          {/* Tax Payment Status */}
+          <div className={`rounded-lg p-3 flex items-center gap-3 ${filing?.is_tax_paid ? 'border border-emerald-200 bg-emerald-50' : 'border border-amber-200 bg-amber-50'}`}>
+            {filing?.is_tax_paid ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <div>
+                  <div className="text-sm font-medium text-emerald-800">Tax Payment Confirmed by Client</div>
+                  {filing?.tax_paid_at && <div className="text-xs text-emerald-600">Confirmed on {new Date(filing.tax_paid_at).toLocaleDateString('en-IN')}</div>}
+                </div>
+              </>
+            ) : (
+              <>
+                <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                <div>
+                  <div className="text-sm font-medium text-amber-800">Awaiting Tax Payment Confirmation</div>
+                  <div className="text-xs text-amber-600">Client must confirm tax payment before filing can proceed.</div>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={async () => {
+              try { await transitionFiling(filingId, { to_status: 'PROCESSING' }); toast.success('Sent back to Processing'); window.location.reload(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+            }}>
+              Send back to Processing
+            </Button>
+            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" disabled={!filing?.is_tax_paid} onClick={async () => {
+              try { await transitionFiling(filingId, { to_status: 'FILING' }); toast.success('Moved to Filing'); window.location.reload(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+            }}>
+              {filing?.is_tax_paid ? 'Move to Filing' : 'Move to Filing (Tax Pending)'}
+            </Button>
+          </div>
         </div>
       )}
 

@@ -7,18 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { EmptyState } from '@/components/shared/EmptyState';
-import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient } from '@/lib/api';
+import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, getFilingsByStatus } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
-import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader2, FileText } from 'lucide-react';
+import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader2, FileText, IndianRupee, AlertTriangle } from 'lucide-react';
 
 const CARDS = [
-  { key: 'PENDING_VERIFICATION', label: 'Pending Activations', color: 'border-l-amber-500 bg-amber-50', text: 'text-amber-700' },
   { key: 'INITIATED', label: 'Initiated', color: 'border-l-slate-400 bg-slate-50', text: 'text-slate-700' },
   { key: 'DOCUMENT_UPLOAD', label: 'Document Upload', color: 'border-l-blue-500 bg-blue-50', text: 'text-blue-700' },
   { key: 'PROCESSING', label: 'Processing', color: 'border-l-indigo-500 bg-indigo-50', text: 'text-indigo-700' },
   { key: 'COMPUTATION', label: 'Computation', color: 'border-l-violet-500 bg-violet-50', text: 'text-violet-700' },
+  { key: 'AWAITING_TAX_PAYMENT', label: 'Awaiting Tax Payment', color: 'border-l-amber-600 bg-amber-50', text: 'text-amber-800' },
   { key: 'FILING', label: 'Filing', color: 'border-l-orange-500 bg-orange-50', text: 'text-orange-700' },
   { key: 'PAYMENT', label: 'Payment', color: 'border-l-yellow-500 bg-yellow-50', text: 'text-yellow-700' },
   { key: 'COMPLETED', label: 'Completed', color: 'border-l-emerald-500 bg-emerald-50', text: 'text-emerald-700' },
@@ -33,21 +32,28 @@ export default function PartnerDashboardPage() {
   const [rejectFor, setRejectFor] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [acting, setActing] = useState(false);
+  const [awaitingTaxPayment, setAwaitingTaxPayment] = useState<any[]>([]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [s, p, a] = await Promise.allSettled([getSummary(), getPendingVerification(), getPartnerAnalytics()]);
+      const [s, p, a, compFilings] = await Promise.allSettled([getSummary(), getPendingVerification(), getPartnerAnalytics(), getFilingsByStatus('COMPUTATION', 1, 100)]);
       if (s.status === 'fulfilled') setSummary(s.value || {});
       if (p.status === 'fulfilled') setPending(p.value?.items || []);
       if (a.status === 'fulfilled') setAnalytics(a.value);
+      // Filter computation filings where computation is approved but tax not paid
+      if (compFilings.status === 'fulfilled') {
+        const items = compFilings.value?.items || compFilings.value?.filings || [];
+        const awaitingTax = items.filter((f: any) => f.is_tax_paid === false);
+        setAwaitingTaxPayment(awaitingTax);
+      }
     } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
 
   const getCount = (key: string) => {
-    if (key === 'PENDING_VERIFICATION') return summary?.pending_verification_count ?? pending.length ?? 0;
+    if (key === 'AWAITING_TAX_PAYMENT') return awaitingTaxPayment.length;
     const counters = summary?.counters || [];
     const found = counters.find((c: any) => c.status === key);
     return found?.count ?? 0;
@@ -87,26 +93,87 @@ export default function PartnerDashboardPage() {
           <h1 className="text-2xl font-bold text-slate-900">Partner Dashboard</h1>
           <p className="text-sm text-slate-500 mt-1">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <Link href="/partner/audit"><Button variant="outline" className="border-slate-300"><FileText className="h-4 w-4 mr-2" /> Generate Audit Log</Button></Link>
+        <div className="flex items-center gap-2">
+          {pending.length > 0 && (
+            <a href="#activation-queue">
+              <Card className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 px-3 py-2 cursor-pointer hover:shadow-md transition-all">
+                <div className="flex items-center gap-2">
+                  <Hourglass className="h-4 w-4 text-amber-600" />
+                  <span className="text-lg font-bold text-amber-700">{pending.length}</span>
+                  <span className="text-xs font-medium text-slate-600">Pending Activations</span>
+                </div>
+              </Card>
+            </a>
+          )}
+          <Link href="/partner/audit"><Button variant="outline" className="border-slate-300"><FileText className="h-4 w-4 mr-2" /> Generate Audit Log</Button></Link>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
         {CARDS.map((c) => (
-          <Card key={c.key} className={`rounded-xl border-l-4 ${c.color} p-4 cursor-pointer hover:shadow-md transition-all`} onClick={() => router.push(`/partner/clients?status=${c.key}`)}>
+          <Card key={c.key} className={`rounded-xl border-l-4 ${c.color} p-4 cursor-pointer hover:shadow-md transition-all`} onClick={() => {
+            router.push(`/partner/clients?status=${c.key}`);
+          }}>
             <div className="flex items-start justify-between">
               <div>
                 <div className={`text-3xl font-bold ${c.text}`}>{loading ? '—' : getCount(c.key)}</div>
                 <div className="text-xs font-medium text-slate-600 mt-1">{c.label}</div>
               </div>
-              <ArrowRight className="h-4 w-4 text-slate-300" />
+              {c.key === 'AWAITING_TAX_PAYMENT' ? <IndianRupee className="h-4 w-4 text-amber-600" /> : <ArrowRight className="h-4 w-4 text-slate-300" />}
             </div>
           </Card>
         ))}
       </div>
 
-      {/* Activation Queue */}
-      <Card className="rounded-xl p-0 overflow-hidden">
+      {/* Awaiting Tax Payment Queue */}
+      {awaitingTaxPayment.length > 0 && (
+        <Card className="rounded-xl p-0 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-amber-50/60">
+            <div className="flex items-center gap-2">
+              <IndianRupee className="h-4 w-4 text-amber-700" />
+              <h2 className="font-semibold text-slate-900">Awaiting Tax Payment Confirmation</h2>
+              <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">{awaitingTaxPayment.length}</span>
+            </div>
+            <span className="text-xs text-slate-500">Computation approved — waiting for client to confirm tax paid</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                <tr>
+                  <th className="text-left px-5 py-3 font-semibold">Client</th>
+                  <th className="text-left px-5 py-3 font-semibold">Financial Year</th>
+                  <th className="text-left px-5 py-3 font-semibold">Status</th>
+                  <th className="text-left px-5 py-3 font-semibold">Tax Payment</th>
+                  <th className="text-right px-5 py-3 font-semibold">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {awaitingTaxPayment.map((f: any) => (
+                  <tr key={f.id} className="border-t border-slate-100 hover:bg-slate-50/60">
+                    <td className="px-5 py-3 font-medium text-slate-900">{f.client_name || f.client?.full_name || '—'}</td>
+                    <td className="px-5 py-3 text-slate-600">{f.financial_year}</td>
+                    <td className="px-5 py-3"><StatusBadge status="COMPUTATION" /></td>
+                    <td className="px-5 py-3">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        <AlertTriangle className="h-3 w-3" /> Pending
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <Link href={`/partner/clients/${f.client_id}`}>
+                        <Button size="sm" variant="outline" className="text-indigo-700 border-indigo-200 hover:bg-indigo-50">View <ArrowRight className="h-3 w-3 ml-1" /></Button>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Account Activation Queue */}
+      <Card id="activation-queue" className="rounded-xl p-0 overflow-hidden scroll-mt-4">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-amber-50/40">
           <div className="flex items-center gap-2">
             <Hourglass className="h-4 w-4 text-amber-600" />
@@ -115,7 +182,7 @@ export default function PartnerDashboardPage() {
           </div>
         </div>
         {pending.length === 0 ? (
-          <EmptyState icon={CheckCircle2} title="No pending verifications" subtitle="All registered clients are activated." />
+          <div className="px-5 py-8 text-center text-sm text-slate-500">No pending verifications — all registered clients are activated.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

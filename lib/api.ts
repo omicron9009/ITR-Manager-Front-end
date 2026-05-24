@@ -113,7 +113,8 @@ export const rejectDoc = (rejections: { document_id: string; reason: string }[])
 export const compUploadUrl = (data: any) => api.post('/api/v1/computations/upload-url', data).then((r) => r.data);
 export const compConfirm = (params: any) => api.post('/api/v1/computations/confirm-upload', null, { params }).then((r) => r.data);
 export const compForFiling = (filing_id: string) => api.get(`/api/v1/computations/filing/${filing_id}`).then((r) => r.data);
-export const approveComp = (computation_id: string) => api.post('/api/v1/computations/approve', { computation_id }).then((r) => r.data);
+export const approveComp = (computation_id: string, is_tax_paid: boolean = false) => api.post('/api/v1/computations/approve', { computation_id, is_tax_paid }).then((r) => r.data);
+export const confirmTaxPaid = (computation_id: string) => api.post('/api/v1/computations/approve', { computation_id, is_tax_paid: true }).then((r) => r.data);
 export const rejectComp = (computation_id: string, reason: string) => api.post('/api/v1/computations/reject', { computation_id, reason }).then((r) => r.data);
 export const compDownloadUrl = (id: string) => api.get(`/api/v1/computations/${id}/download-url`).then((r) => r.data);
 

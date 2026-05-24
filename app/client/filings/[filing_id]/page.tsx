@@ -9,10 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, compForFiling, compDownloadUrl, approveComp, rejectComp, completedDocs, storageDownloadUrl, submitDocs } from '@/lib/api';
+import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee } from 'lucide-react';
 
 export default function FilingDetailPage() {
   const params = useParams();
@@ -229,6 +229,52 @@ export default function FilingDetailPage() {
                 <Button size="sm" variant="outline" className="text-rose-600 border-rose-200 hover:bg-rose-50" onClick={() => setRejectingComp(currentComp)}>
                   <X className="h-3.5 w-3.5 mr-1" /> Request Changes
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Tax Payment Confirmation - shown when computation is approved but tax not yet paid */}
+          {currentComp && currentComp.status === 'APPROVED' && !filing.is_tax_paid && state === 'COMPUTATION' && (
+            <div className="rounded-lg border-2 border-amber-200 bg-amber-50/50 p-4 mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <IndianRupee className="h-5 w-5 text-amber-700" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-amber-900">Tax Payment Confirmation Required</div>
+                  <div className="text-xs text-amber-700 mt-0.5">Computation has been approved. Please confirm that the tax payment has been made to proceed with filing.</div>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  setActing(true);
+                  try {
+                    await confirmTaxPaid(currentComp.id);
+                    toast.success('Tax payment confirmed! Ready for filing.');
+                    load();
+                  } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to confirm tax payment'); }
+                  finally { setActing(false); }
+                }}
+                disabled={acting}
+                className="bg-amber-600 hover:bg-amber-700 w-full"
+              >
+                {acting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <IndianRupee className="h-4 w-4 mr-2" />}
+                I Confirm Tax Payment Has Been Made
+              </Button>
+            </div>
+          )}
+
+          {/* Tax Payment Confirmed indicator */}
+          {filing.is_tax_paid && state === 'COMPUTATION' && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 mb-4 flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+              <div>
+                <div className="text-sm font-semibold text-emerald-800">Tax Payment Confirmed</div>
+                <div className="text-xs text-emerald-600 mt-0.5">
+                  Awaiting partner/executive to advance filing.
+                  {filing.tax_paid_at && <span className="ml-1">Confirmed on {new Date(filing.tax_paid_at).toLocaleDateString('en-IN')}.</span>}
+                </div>
               </div>
             </div>
           )}

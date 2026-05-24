@@ -18,6 +18,7 @@ export default function Hero() {
         <p className="mt-6 max-w-2xl mx-auto text-lg text-white/80 leading-relaxed">
           Upload your documents, track every step in real time, and approve your computation with one click. Your CA handles the rest. No more endless emails, calls, or WhatsApp follow-ups.
         </p>
+        <p className="mt-2 text-[10px] tracking-wide text-white/20 font-medium select-none">Developed by Aditya Joshi</p>
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
           <Link href="/auth/register">
             <Button size="lg" className="bg-white hover:bg-slate-100 text-indigo-700 font-semibold px-8 rounded-lg shadow-lg">

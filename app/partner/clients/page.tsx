@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { listClients, listExecutives, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics } from '@/lib/api';
-import { Search, Users, Eye } from 'lucide-react';
+import { listClients, listExecutives, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus } from '@/lib/api';
+import { Search, Users, Eye, IndianRupee, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 function getFYOptions() {
@@ -42,6 +42,7 @@ function ClientsListPage() {
   const [financialYear, setFinancialYear] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [filingRows, setFilingRows] = useState<any[]>([]); // from analytics: all client-FY-status combos
+  const [awaitingTaxRows, setAwaitingTaxRows] = useState<any[]>([]); // computation filings with tax not paid
   const [execs, setExecs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,15 +72,25 @@ function ClientsListPage() {
               filing_status: group.status,
               assigned_executive: item.assigned_executive,
               last_updated: item.last_updated,
+              is_tax_paid: item.is_tax_paid,
             });
           }
         }
       }
       setFilingRows(rows);
+
+      // Fetch COMPUTATION filings for tax payment filter
+      if (filingStatus === 'AWAITING_TAX_PAYMENT' || initialStatus === 'AWAITING_TAX_PAYMENT') {
+        try {
+          const compRes = await getFilingsByStatus('COMPUTATION', 1, 100);
+          const items = compRes?.items || compRes?.filings || [];
+          setAwaitingTaxRows(items.filter((f: any) => f.is_tax_paid === false));
+        } catch { setAwaitingTaxRows([]); }
+      }
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); listExecutives().then((r) => setExecs(r?.items || r?.executives || r || [])).catch(() => {}); }, []);
-  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus]);
+  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus, filingStatus]);
 
   const onAssign = async (client_id: string, executive_id: string) => {
     try { await assignExecutive(client_id, executive_id); toast.success('Executive(Article) assigned'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
@@ -142,6 +153,29 @@ function ClientsListPage() {
 
   // Apply filters
   const filtered = useMemo(() => {
+    // Special case: AWAITING_TAX_PAYMENT uses data from getFilingsByStatus
+    if (filingStatus === 'AWAITING_TAX_PAYMENT') {
+      const clientMap = new Map<string, any>();
+      for (const c of clients) clientMap.set(c.id, c);
+      return awaitingTaxRows.map((f: any) => {
+        const clientInfo = clientMap.get(f.client_id);
+        return {
+          id: f.client_id,
+          full_name: clientInfo?.full_name || clientInfo?.name || f.client_name,
+          email: clientInfo?.email || '',
+          phone_number: clientInfo?.phone_number || null,
+          account_status: clientInfo?.account_status || 'ACTIVE',
+          assigned_executive_id: clientInfo?.assigned_executive_id || null,
+          assigned_executive_name: clientInfo?.assigned_executive_name || f.assigned_executive_name || null,
+          current_state: 'COMPUTATION',
+          is_tax_paid: false,
+          last_updated: f.last_updated || f.updated_at,
+          _fy: f.financial_year,
+          _rowKey: `${f.client_id}-${f.financial_year}-tax`,
+        };
+      });
+    }
+
     let result = expandedRows;
     if (financialYear) {
       result = result.filter((c) => c._fy === financialYear);
@@ -150,7 +184,7 @@ function ClientsListPage() {
       result = result.filter((c) => (c.current_state || c.filing_state) === filingStatus);
     }
     return result;
-  }, [expandedRows, financialYear, filingStatus]);
+  }, [expandedRows, financialYear, filingStatus, awaitingTaxRows, clients]);
 
   return (
     <div className="space-y-5">
@@ -181,6 +215,7 @@ function ClientsListPage() {
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filing State" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Filing States</SelectItem>
+              <SelectItem value="AWAITING_TAX_PAYMENT">Awaiting Tax Payment</SelectItem>
               {['INITIATED','DOCUMENT_UPLOAD','PROCESSING','COMPUTATION','FILING','PAYMENT','COMPLETED','HALTED'].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -210,6 +245,7 @@ function ClientsListPage() {
                   <th className="text-left px-5 py-3 font-semibold">Account</th>
                   {routePrefix === '/partner' && <th className="text-left px-5 py-3 font-semibold">Executive(Article)</th>}
                   <th className="text-left px-5 py-3 font-semibold">Current State</th>
+                  {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && <th className="text-left px-5 py-3 font-semibold">Tax Payment</th>}
                   <th className="text-left px-5 py-3 font-semibold">Updated</th>
                   <th className="text-right px-5 py-3 font-semibold">Actions</th>
                 </tr>
@@ -237,6 +273,19 @@ function ClientsListPage() {
                       </td>
                     )}
                     <td className="px-5 py-3">{(c.current_state || c.filing_state) ? <StatusBadge status={c.current_state || c.filing_state} /> : <span className="text-xs text-slate-400">—</span>}</td>
+                    {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && (
+                      <td className="px-5 py-3">
+                        {c.is_tax_paid === true ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            <IndianRupee className="h-3 w-3" /> Paid
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            <AlertTriangle className="h-3 w-3" /> Pending
+                          </span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-5 py-3 text-xs text-slate-500">{c.last_updated ? new Date(c.last_updated).toLocaleDateString() : '—'}</td>
                     <td className="px-5 py-3 text-right">
                       <Link href={`${routePrefix}/clients/${c.id}`}><Button size="sm" variant="outline"><Eye className="h-3.5 w-3.5 mr-1" /> View</Button></Link>
