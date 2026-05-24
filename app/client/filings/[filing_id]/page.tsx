@@ -188,7 +188,7 @@ export default function FilingDetailPage() {
 
         {docs.length === 0 ? (
           <div className="text-center py-8 text-sm text-slate-400">
-            {state === 'INITIATED' ? 'Your CA will assign a document checklist soon.' : 'No documents assigned yet.'}
+            {state === 'INITIATED' ? 'Document checklist will be assigned soon...' : 'No documents assigned yet.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -251,7 +251,7 @@ export default function FilingDetailPage() {
             </div>
           )}
 
-          {computations.length === 0 && <p className="text-sm text-slate-500">Waiting for your CA to upload computation...</p>}
+          {computations.length === 0 && <p className="text-sm text-slate-500">Computation will be uploaded shortly...</p>}
         </Card>
       )}
 
@@ -352,7 +352,11 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onView }: { doc: any; u
           </label>
         )}
         {pendingFile && (
-          <Button size="sm" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-xs" disabled={uploading} onClick={() => { onUpload(pendingFile); setPendingFile(null); }}>
+          <Button size="sm" className="relative overflow-visible bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md text-xs" disabled={uploading} onClick={() => { onUpload(pendingFile); setPendingFile(null); }}>
+            <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded shadow-lg animate-bounce pointer-events-none">
+              Click to confirm your upload
+              <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-900" />
+            </span>
             {uploading ? <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
             Confirm Upload
           </Button>

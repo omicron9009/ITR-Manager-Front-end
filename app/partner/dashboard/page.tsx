@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader2, FileText } from 'lucide-react';
 
 const CARDS = [
+  { key: 'PENDING_VERIFICATION', label: 'Pending Activations', color: 'border-l-amber-500 bg-amber-50', text: 'text-amber-700' },
   { key: 'INITIATED', label: 'Initiated', color: 'border-l-slate-400 bg-slate-50', text: 'text-slate-700' },
   { key: 'DOCUMENT_UPLOAD', label: 'Document Upload', color: 'border-l-blue-500 bg-blue-50', text: 'text-blue-700' },
   { key: 'PROCESSING', label: 'Processing', color: 'border-l-indigo-500 bg-indigo-50', text: 'text-indigo-700' },
@@ -21,7 +22,6 @@ const CARDS = [
   { key: 'FILING', label: 'Filing', color: 'border-l-orange-500 bg-orange-50', text: 'text-orange-700' },
   { key: 'PAYMENT', label: 'Payment', color: 'border-l-yellow-500 bg-yellow-50', text: 'text-yellow-700' },
   { key: 'COMPLETED', label: 'Completed', color: 'border-l-emerald-500 bg-emerald-50', text: 'text-emerald-700' },
-  { key: 'PENDING_VERIFICATION', label: 'Pending Verification', color: 'border-l-amber-500 bg-amber-50', text: 'text-amber-700' },
 ];
 
 export default function PartnerDashboardPage() {

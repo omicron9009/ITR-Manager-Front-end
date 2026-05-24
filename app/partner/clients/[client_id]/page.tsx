@@ -273,15 +273,9 @@ function FilingAccordionItem({ filing: f, docs, load, viewDoc }: { filing: any; 
                       </div>
                     </div>
                   ))}
-                  {/* All docs approved banner */}
+                  {/* Move to Computation — shown when all docs are uploaded/approved */}
                   {(docs[f.id] || []).length > 0 && (docs[f.id] || []).every((d: any) => d.status === 'APPROVED') && (status === 'PROCESSING' || status === 'DOCUMENT_UPLOAD') && (
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 mt-3 flex items-center gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-emerald-800">All documents approved</div>
-                        <div className="text-xs text-emerald-600 mt-0.5">Go to the Actions tab to move this filing to Computation stage. You can still assign new documents if needed.</div>
-                      </div>
-                    </div>
+                    <MoveToComputationButton filingId={f.id} onMoved={load} />
                   )}
                 </div>
               </TabsContent>
@@ -337,86 +331,34 @@ function FilingAccordionItem({ filing: f, docs, load, viewDoc }: { filing: any; 
   );
 }
 
-function StateActions({ filing, onChange }: { filing: any; onChange: () => void }) {
-  const state = filing.status || filing.current_state;
-  const [allDocsApproved, setAllDocsApproved] = useState<boolean | null>(null);
-  const [docsLoading, setDocsLoading] = useState(false);
+function MoveToComputationButton({ filingId, onMoved }: { filingId: string; onMoved: () => void }) {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [moving, setMoving] = useState(false);
 
-  // Check document approval status for PROCESSING/DOCUMENT_UPLOAD states
-  useEffect(() => {
-    if (state === 'PROCESSING' || state === 'DOCUMENT_UPLOAD') {
-      setDocsLoading(true);
-      filingDocs(filing.id).then((d: any) => {
-        const items = d?.items || d?.documents || d || [];
-        const total = items.length;
-        const approved = items.filter((doc: any) => doc.status === 'APPROVED').length;
-        setAllDocsApproved(total > 0 && approved === total);
-      }).catch(() => setAllDocsApproved(false)).finally(() => setDocsLoading(false));
-    }
-  }, [filing.id, state]);
-
-  const tx = async (target: string) => {
-    try { await transitionFiling(filing.id, { to_status: target }); toast.success(`Moved to ${target}`); onChange(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
-  };
-  const doMarkPayment = async () => {
-    try { await markPayment(filing.id); toast.success('Payment received — filing completed!'); onChange(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
-  };
   const doMoveToComputation = async () => {
     setMoving(true);
     try {
-      await moveToComputation(filing.id);
+      await moveToComputation(filingId);
       toast.success('Moved to Computation stage');
       setShowMoveDialog(false);
-      onChange();
+      onMoved();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to move to computation'); }
     finally { setMoving(false); }
   };
 
-  const items: { label: string; target: string; cls?: string; action?: () => void }[] = [];
-  if (state === 'INITIATED') items.push({ label: 'Move to Document Upload', target: 'DOCUMENT_UPLOAD' });
-  // DOCUMENT_UPLOAD and PROCESSING → COMPUTATION uses the dedicated endpoint with doc approval check (shown below)
-  if (state === 'COMPUTATION') items.push({ label: 'Move to Filing', target: 'FILING' });
-  if (state === 'FILING') items.push({ label: 'Move to Payment', target: 'PAYMENT' });
-  if (state === 'PAYMENT') items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
-
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {items.length === 0 && state !== 'PROCESSING' && state !== 'DOCUMENT_UPLOAD' && <p className="text-sm text-slate-500">No state actions available.</p>}
-        {items.map((it) => <Button key={it.target} onClick={() => it.action ? it.action() : tx(it.target)} className={it.cls || 'bg-indigo-600 hover:bg-indigo-700'}>{it.label}</Button>)}
+    <>
+      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 mt-3">
+        <div className="flex items-center gap-2 mb-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <span className="text-sm font-medium text-emerald-800">All documents approved</span>
+        </div>
+        <p className="text-xs text-emerald-700 mb-3">You can proceed to the Computation stage. You may still assign new documents before moving.</p>
+        <Button onClick={() => setShowMoveDialog(true)} className="bg-indigo-600 hover:bg-indigo-700">
+          <Calculator className="h-4 w-4 mr-2" /> Move to Computation
+        </Button>
       </div>
 
-      {/* Move to Computation — dedicated action for DOCUMENT_UPLOAD / PROCESSING state */}
-      {(state === 'DOCUMENT_UPLOAD' || state === 'PROCESSING') && (
-        <div className="space-y-2">
-          {docsLoading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Checking document status…</div>
-          ) : allDocsApproved ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Check className="h-4 w-4 text-emerald-600" />
-                <span className="text-sm font-medium text-emerald-800">All documents approved</span>
-              </div>
-              <p className="text-xs text-emerald-700 mb-3">You can proceed to the Computation stage. You may still assign new documents before moving.</p>
-              <Button onClick={() => setShowMoveDialog(true)} className="bg-indigo-600 hover:bg-indigo-700">
-                <Calculator className="h-4 w-4 mr-2" /> Move to Computation
-              </Button>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-amber-600" />
-                <span className="text-sm font-medium text-amber-800">Awaiting document approval</span>
-              </div>
-              <p className="text-xs text-amber-700 mt-1">All documents must be approved before moving to computation. You can still assign and review documents.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Confirmation Dialog */}
       <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Calculator className="h-5 w-5 text-indigo-600" /> Move to Computation</DialogTitle></DialogHeader>
@@ -430,6 +372,32 @@ function StateActions({ filing, onChange }: { filing: any; onChange: () => void 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
+
+function StateActions({ filing, onChange }: { filing: any; onChange: () => void }) {
+  const state = filing.status || filing.current_state;
+
+  const tx = async (target: string) => {
+    try { await transitionFiling(filing.id, { to_status: target }); toast.success(`Moved to ${target}`); onChange(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+  };
+  const doMarkPayment = async () => {
+    try { await markPayment(filing.id); toast.success('Payment received — filing completed!'); onChange(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+  };
+
+  const items: { label: string; target: string; cls?: string; action?: () => void }[] = [];
+  if (state === 'INITIATED') items.push({ label: 'Move to Document Upload', target: 'DOCUMENT_UPLOAD' });
+  if (state === 'COMPUTATION') items.push({ label: 'Move to Filing', target: 'FILING' });
+  if (state === 'FILING') items.push({ label: 'Move to Payment', target: 'PAYMENT' });
+  if (state === 'PAYMENT') items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {items.length === 0 && <p className="text-sm text-slate-500">No state actions available.</p>}
+        {items.map((it) => <Button key={it.target} onClick={() => it.action ? it.action() : tx(it.target)} className={it.cls || 'bg-indigo-600 hover:bg-indigo-700'}>{it.label}</Button>)}
+      </div>
     </div>
   );
 }
@@ -587,7 +555,11 @@ function ComputationPanel({ filingId, filingStatus }: { filingId: string; filing
             <>
               <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 truncate max-w-[160px]">{pendingFile.name}</span>
               <Button size="sm" variant="ghost" className="h-7 px-1 text-rose-500" onClick={() => setPendingFile(null)}>✕</Button>
-              <Button size="sm" className="bg-violet-600 hover:bg-violet-700" disabled={uploading} onClick={() => { handleUpload(pendingFile); setPendingFile(null); }}>
+              <Button size="sm" className="relative overflow-visible bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md" disabled={uploading} onClick={() => { handleUpload(pendingFile); setPendingFile(null); }}>
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded shadow-lg animate-bounce pointer-events-none">
+                  Click to confirm your upload
+                  <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-900" />
+                </span>
                 {uploading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
                 Confirm Upload
               </Button>
@@ -780,7 +752,11 @@ function FiledDocsPanel({ filingId, filingStatus }: { filingId: string; filingSt
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 truncate flex-1">{pending.name}</span>
                     <Button size="sm" variant="ghost" className="h-6 px-1 text-rose-500" onClick={() => setPendingFiles(prev => { const n = { ...prev }; delete n[dt.key]; return n; })}>✕</Button>
-                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs h-7" disabled={isUploading} onClick={() => { handleUpload(dt.key, pending); setPendingFiles(prev => { const n = { ...prev }; delete n[dt.key]; return n; }); }}>
+                    <Button size="sm" className="relative overflow-visible bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md text-xs h-7" disabled={isUploading} onClick={() => { handleUpload(dt.key, pending); setPendingFiles(prev => { const n = { ...prev }; delete n[dt.key]; return n; }); }}>
+                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded shadow-lg animate-bounce pointer-events-none">
+                        Click to confirm your upload
+                        <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-900" />
+                      </span>
                       {isUploading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
                       Confirm Upload
                     </Button>

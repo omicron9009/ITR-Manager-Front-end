@@ -1,16 +1,42 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Bell } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { listNotifications, getUnreadCount, markAllRead, markRead } from '@/lib/api';
+import { listNotifications, getUnreadCount, markAllRead, markRead, getFiling } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+
+function getRoleFromPath(pathname: string): 'client' | 'partner' | 'executive' {
+  if (pathname.startsWith('/client')) return 'client';
+  if (pathname.startsWith('/executive')) return 'executive';
+  return 'partner';
+}
+
+async function resolveNotificationRoute(n: any, role: string): Promise<string | null> {
+  if (role === 'client') {
+    if (n.related_filing_id) return `/client/filings/${n.related_filing_id}`;
+    return null;
+  }
+  // partner or executive
+  if (n.related_client_id) return `/${role}/clients/${n.related_client_id}`;
+  if (n.related_filing_id) {
+    try {
+      const filing = await getFiling(n.related_filing_id);
+      const clientId = filing?.client_id;
+      if (clientId) return `/${role}/clients/${clientId}`;
+    } catch {}
+  }
+  return null;
+}
 
 export default function NotificationBell() {
   const [count, setCount] = useState(0);
   const [items, setItems] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const refresh = async () => {
     try {
@@ -52,7 +78,7 @@ export default function NotificationBell() {
             <div className="py-8 text-center text-sm text-slate-500">No notifications yet</div>
           )}
           {items.map((n: any) => (
-            <button key={n.id} onClick={async () => { await markRead([n.id]); refresh(); load(); }} className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0">
+            <button key={n.id} onClick={async () => { await markRead([n.id]); refresh(); load(); const role = getRoleFromPath(pathname); const route = await resolveNotificationRoute(n, role); if (route) { setOpen(false); router.push(route); } }} className={`w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0 ${(n.related_filing_id || n.related_client_id) ? 'cursor-pointer' : ''}`}>
               <div className="flex items-start gap-3">
                 <span className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${n.is_read ? 'bg-slate-300' : 'bg-indigo-500'}`} />
                 <div className="flex-1 min-w-0">
