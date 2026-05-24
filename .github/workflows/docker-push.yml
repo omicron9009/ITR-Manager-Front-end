@@ -3,7 +3,7 @@ name: Build and Push to Docker Hub
 on:
   push:
     # Triggers the pipeline on every commit pushed to your main branch
-    branches: [ "backend_only" ]
+    branches: [ "main" ]
 
 jobs:
   build-and-deploy:
