@@ -388,6 +388,7 @@ function StateActions({ filing, onChange }: { filing: any; onChange: () => void 
 
   const items: { label: string; target: string; cls?: string; action?: () => void }[] = [];
   if (state === 'INITIATED') items.push({ label: 'Move to Document Upload', target: 'DOCUMENT_UPLOAD' });
+  if (state === 'COMPUTATION') items.push({ label: 'Send back to Processing', target: 'PROCESSING', cls: 'bg-amber-600 hover:bg-amber-700' });
   if (state === 'COMPUTATION') items.push({ label: 'Move to Filing', target: 'FILING' });
   if (state === 'FILING') items.push({ label: 'Move to Payment', target: 'PAYMENT' });
   if (state === 'PAYMENT') items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
@@ -607,6 +608,22 @@ function ComputationPanel({ filingId, filingStatus }: { filingId: string; filing
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Computation stage transition actions */}
+      {filingStatus === 'COMPUTATION' && (
+        <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-200">
+          <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={async () => {
+            try { await transitionFiling(filingId, { to_status: 'PROCESSING' }); toast.success('Sent back to Processing'); window.location.reload(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+          }}>
+            Send back to Processing
+          </Button>
+          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={async () => {
+            try { await transitionFiling(filingId, { to_status: 'FILING' }); toast.success('Moved to Filing'); window.location.reload(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+          }}>
+            Move to Filing
+          </Button>
         </div>
       )}
 

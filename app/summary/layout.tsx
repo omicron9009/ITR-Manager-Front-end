@@ -2,12 +2,113 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { FileCheck2, LogOut, Menu, LayoutDashboard, Trophy } from "lucide-react";
+import { FileCheck2, LogOut, Menu, LayoutDashboard, Trophy, PartyPopper } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { clearAuth, getUser } from "@/lib/auth";
-import GlobalFooter from "@/components/shared/GlobalFooter";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { getReportDashboard } from "@/lib/api";
+
+// ─── Confetti Celebration ───────────────────────────────────────────────
+async function fireCelebration() {
+  const confettiModule = await import("canvas-confetti");
+  const confetti = confettiModule.default;
+  const duration = 4000;
+  const end = Date.now() + duration;
+  const colors = ["#6366f1", "#10b981", "#f59e0b", "#22d3ee", "#a78bfa"];
+
+  (function frame() {
+    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors, zIndex: 99999 });
+    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors, zIndex: 99999 });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+
+  confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors, zIndex: 99999 });
+  setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 }, colors, zIndex: 99999 }), 1500);
+  setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.4 }, colors, zIndex: 99999 }), 3000);
+}
+
+function playTadaSound() {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const clapTimes = [0, 120, 240, 400, 520, 680, 800, 950, 1100, 1250, 1400, 1580, 1750, 1900, 2050];
+    clapTimes.forEach((delay) => {
+      setTimeout(() => {
+        const bufferSize = Math.floor(audioCtx.sampleRate * 0.04);
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          const envelope = Math.exp(-i / (bufferSize * 0.15));
+          data[i] = (Math.random() * 2 - 1) * envelope * (0.3 + Math.random() * 0.3);
+        }
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 2000 + Math.random() * 1500;
+        filter.Q.value = 0.8;
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.6 + Math.random() * 0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+        source.start();
+      }, delay);
+    });
+    setTimeout(() => {
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.12 + 0.6);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + i * 0.12);
+        osc.stop(audioCtx.currentTime + i * 0.12 + 0.6);
+      });
+    }, 500);
+  } catch {}
+}
+
+function CelebrationBanner({ executive, client, manager, financialYear, onClose }: { executive: string; client: string; manager: string; financialYear: string; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(() => { onClose(); }, 30000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[99998] pointer-events-none flex items-center justify-center">
+      <div className="pointer-events-auto animate-bounce-in bg-white rounded-2xl shadow-2xl border-2 border-indigo-200 p-8 max-w-md mx-4 text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 opacity-80" />
+        <div className="relative z-10">
+          <div className="text-5xl mb-4 animate-pulse">🎉</div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Filing Completed!</h2>
+          <div className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent text-lg font-bold mb-3">
+            {executive}
+          </div>
+          <p className="text-slate-600 text-sm">has successfully completed the filing for</p>
+          <div className="mt-2 inline-block px-4 py-2 rounded-full bg-indigo-50 border border-indigo-200">
+            <span className="font-bold text-indigo-700">{client}</span>
+          </div>
+          <div className="mt-3 flex flex-col items-center gap-1 text-sm text-slate-500">
+            {manager && <span>Manager: <span className="font-semibold text-slate-700">{manager}</span></span>}
+            {financialYear && <span>Financial Year: <span className="font-semibold text-slate-700">{financialYear}</span></span>}
+          </div>
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-400">
+            <PartyPopper className="w-4 h-4" />
+            <span>Great work! Keep it up!</span>
+          </div>
+          <button onClick={onClose} className="mt-4 text-xs text-slate-400 hover:text-slate-600 transition">Dismiss</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const NAV = [
   { href: "/summary/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -19,8 +120,66 @@ export default function SummaryLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [celebration, setCelebration] = useState<{ executive: string; client: string; manager: string; financialYear: string } | null>(null);
+  const prevDataRef = useRef<any>(null);
+  const isFirstLoad = useRef(true);
+  const celebratedIdsRef = useRef<Set<string>>(new Set(
+    JSON.parse(typeof window !== 'undefined' ? (sessionStorage.getItem('celebrated_filings') || '[]') : '[]')
+  ));
+
+  const markCelebrated = (filingId: string) => {
+    celebratedIdsRef.current.add(filingId);
+    sessionStorage.setItem('celebrated_filings', JSON.stringify([...celebratedIdsRef.current]));
+  };
 
   useEffect(() => { setUser(getUser()); }, []);
+
+  // Celebration polling — runs at layout level covering all pages
+  const checkForCompletions = useCallback(async () => {
+    try {
+      const res = await getReportDashboard(undefined);
+      const prevData = prevDataRef.current;
+
+      if (!isFirstLoad.current && prevData) {
+        const prevTotal = prevData.overall?.completed_filings || 0;
+        const newTotal = res.overall?.completed_filings || 0;
+
+        if (newTotal > prevTotal) {
+          const prevPendingIds = new Set((prevData.pending_report || []).map((p: any) => p.filing_id));
+          const newPendingIds = new Set((res.pending_report || []).map((p: any) => p.filing_id));
+          const justCompleted = [...prevPendingIds].filter(id => !newPendingIds.has(id));
+
+          if (justCompleted.length > 0) {
+            const uncelebrated = justCompleted.find(id => !celebratedIdsRef.current.has(id));
+            if (uncelebrated) {
+              const completedFiling = (prevData.pending_report || []).find((p: any) => p.filing_id === uncelebrated);
+              if (completedFiling) {
+                markCelebrated(uncelebrated);
+                setCelebration({
+                  executive: completedFiling.assigned_executive_name || "An Executive",
+                  client: completedFiling.client_name,
+                  manager: completedFiling.manager_tag || "",
+                  financialYear: completedFiling.financial_year || "",
+                });
+                fireCelebration();
+                playTadaSound();
+              }
+            }
+            justCompleted.forEach(id => markCelebrated(id));
+          }
+        }
+      }
+
+      isFirstLoad.current = false;
+      prevDataRef.current = res;
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    checkForCompletions();
+    const interval = setInterval(checkForCompletions, 30000);
+    return () => clearInterval(interval);
+  }, [checkForCompletions]);
 
   const logout = () => {
     clearAuth();
@@ -67,16 +226,20 @@ export default function SummaryLayout({ children }: { children: React.ReactNode 
 
       {/* Main */}
       <div className="md:pl-64 flex flex-col min-h-screen">
-        <header className="sticky top-0 z-30 bg-indigo-50 border-b border-indigo-100 h-16 flex items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileOpen((v) => !v)}><Menu className="h-5 w-5" /></Button>
-            <h1 className="font-semibold text-slate-900">{currentNav?.label || "Dashboard"}</h1>
-          </div>
-        </header>
         <main className="p-6 flex-1">{children}</main>
-        <GlobalFooter />
       </div>
       {mobileOpen && <div className="fixed inset-0 bg-black/30 z-30 md:hidden" onClick={() => setMobileOpen(false)} />}
+
+      {/* Celebration overlay — covers entire viewport */}
+      {celebration && (
+        <CelebrationBanner
+          executive={celebration.executive}
+          client={celebration.client}
+          manager={celebration.manager}
+          financialYear={celebration.financialYear}
+          onClose={() => setCelebration(null)}
+        />
+      )}
     </div>
   );
 }

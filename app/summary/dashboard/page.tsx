@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { getReportDashboard, downloadReport } from "@/lib/api";
 import {
   BarChart3, Users, TrendingUp, Clock, Activity, Download, FileText,
-  FileSpreadsheet, Database, AlertTriangle, MapPin, Calendar, Crown, PartyPopper
+  FileSpreadsheet, Database, AlertTriangle, MapPin, Calendar, Crown
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -116,104 +116,6 @@ function initials(name: string) {
   return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
 }
 
-// ─── Confetti Celebration ───────────────────────────────────────────────
-async function fireCelebration() {
-  const confettiModule = await import("canvas-confetti");
-  const confetti = confettiModule.default;
-  const duration = 4000;
-  const end = Date.now() + duration;
-  const colors = ["#6366f1", "#10b981", "#f59e0b", "#22d3ee", "#a78bfa"];
-
-  (function frame() {
-    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors });
-    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors });
-    if (Date.now() < end) requestAnimationFrame(frame);
-  })();
-
-  // Big burst in center
-  confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors });
-  setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 }, colors }), 1500);
-  setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.4 }, colors }), 3000);
-}
-
-// Sound effect
-function playTadaSound() {
-  try {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-
-    notes.forEach((freq, i) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime + i * 0.15);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.15 + 0.8);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(audioCtx.currentTime + i * 0.15);
-      osc.stop(audioCtx.currentTime + i * 0.15 + 0.8);
-    });
-
-    // Clap sounds (noise bursts)
-    setTimeout(() => {
-      [0, 200, 400].forEach((delay) => {
-        setTimeout(() => {
-          const bufferSize = audioCtx.sampleRate * 0.05;
-          const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.4;
-          const source = audioCtx.createBufferSource();
-          const gain = audioCtx.createGain();
-          source.buffer = buffer;
-          gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-          source.connect(gain);
-          gain.connect(audioCtx.destination);
-          source.start();
-        }, delay);
-      });
-    }, 1200);
-  } catch {}
-}
-
-// ─── Celebration Banner Component ───────────────────────────────────────
-function CelebrationBanner({ executive, client, onClose }: { executive: string; client: string; onClose: () => void }) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 30000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
-      <div className="pointer-events-auto animate-bounce-in bg-white rounded-2xl shadow-2xl border-2 border-indigo-200 p-8 max-w-md mx-4 text-center relative overflow-hidden">
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 opacity-80" />
-        <div className="relative z-10">
-          <div className="text-5xl mb-4 animate-pulse">🎉</div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Filing Completed!</h2>
-          <div className="bg-gradient-to-r from-indigo-500 to-emerald-500 bg-clip-text text-transparent text-lg font-bold mb-3">
-            {executive}
-          </div>
-          <p className="text-slate-600 text-sm">
-            has successfully completed the filing for
-          </p>
-          <div className="mt-2 inline-block px-4 py-2 rounded-full bg-indigo-50 border border-indigo-200">
-            <span className="font-bold text-indigo-700">{client}</span>
-          </div>
-          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-400">
-            <PartyPopper className="w-4 h-4" />
-            <span>Great work! Keep it up!</span>
-          </div>
-          <button onClick={onClose} className="mt-4 text-xs text-slate-400 hover:text-slate-600 transition">
-            Dismiss
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Page ──────────────────────────────────────────────────────────
 export default function SummaryDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -221,43 +123,11 @@ export default function SummaryDashboardPage() {
   const [error, setError] = useState("");
   const [selectedFY, setSelectedFY] = useState<string>("");
   const [downloading, setDownloading] = useState(false);
-  const [celebration, setCelebration] = useState<{ executive: string; client: string } | null>(null);
   const prevDataRef = useRef<DashboardData | null>(null);
-  const isFirstLoad = useRef(true);
 
   const fetchData = useCallback(async (fy?: string) => {
     try {
       const res = await getReportDashboard(fy || undefined);
-
-      // Detect newly completed filings (compare with previous data)
-      const prevData = prevDataRef.current;
-      if (!isFirstLoad.current && prevData) {
-        const prevTotal = prevData.overall?.completed_filings || 0;
-        const newTotal = res.overall?.completed_filings || 0;
-
-        if (newTotal > prevTotal) {
-          // Find the newly completed filing by checking pending_report changes
-          const prevPendingIds = new Set((prevData.pending_report || []).map((p: PendingFilingItem) => p.filing_id));
-          const newPendingIds = new Set((res.pending_report || []).map((p: PendingFilingItem) => p.filing_id));
-
-          // Filings that were pending before but not anymore = just completed
-          const justCompleted = [...prevPendingIds].filter(id => !newPendingIds.has(id));
-
-          if (justCompleted.length > 0) {
-            const completedFiling = (prevData.pending_report || []).find((p: PendingFilingItem) => p.filing_id === justCompleted[0]);
-            if (completedFiling) {
-              setCelebration({
-                executive: completedFiling.assigned_executive_name || "An Executive",
-                client: completedFiling.client_name,
-              });
-              fireCelebration();
-              playTadaSound();
-            }
-          }
-        }
-      }
-
-      isFirstLoad.current = false;
       prevDataRef.current = res;
       setData(res);
       setError("");
@@ -351,15 +221,6 @@ export default function SummaryDashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Celebration Banner */}
-      {celebration && (
-        <CelebrationBanner
-          executive={celebration.executive}
-          client={celebration.client}
-          onClose={() => setCelebration(null)}
-        />
-      )}
-
       {/* Header + FY Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
