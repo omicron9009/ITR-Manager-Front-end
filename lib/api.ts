@@ -53,6 +53,10 @@ export const resetPassword = (data: { email: string; recovery_code: string; new_
   api.post('/api/v1/auth/reset-password', data).then((r) => r.data);
 export const changePassword = (data: { old_password: string; new_password: string }) =>
   api.post('/api/v1/auth/change-password', data).then((r) => r.data);
+export const changeEmail = (data: { new_email: string; password: string }) =>
+  api.post('/api/v1/auth/change-email', data).then((r) => r.data);
+export const adminGenerateRecoveryCodes = (data: { email: string }) =>
+  api.post('/api/v1/auth/admin/generate-recovery-codes', data).then((r) => r.data);
 export const regenerateRecoveryCodes = () =>
   api.post('/api/v1/auth/regenerate-recovery-codes').then((r) => r.data);
 

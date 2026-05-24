@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { me, changePassword } from '@/lib/api';
+import { me, changePassword, changeEmail } from '@/lib/api';
 import { toast } from 'sonner';
-import { Loader2, Lock } from 'lucide-react';
+import { Loader2, Lock, Mail } from 'lucide-react';
 
 export default function PartnerProfilePage() {
   const [profile, setProfile] = useState<any>({});
@@ -16,6 +16,9 @@ export default function PartnerProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [changingEmail, setChangingEmail] = useState(false);
 
   useEffect(() => {
     me().then((p) => setProfile(p)).catch(() => {});
@@ -36,6 +39,21 @@ export default function PartnerProfilePage() {
     } finally { setChangingPassword(false); }
   };
 
+  const handleChangeEmail = async () => {
+    if (!newEmail || !emailPassword) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { toast.error('Enter a valid email address'); return; }
+    setChangingEmail(true);
+    try {
+      await changeEmail({ new_email: newEmail, password: emailPassword });
+      toast.success('Email changed successfully');
+      setNewEmail(''); setEmailPassword('');
+      me().then((p) => setProfile(p)).catch(() => {});
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      toast.error(typeof detail === 'string' ? detail : 'Failed to change email. Check your password.');
+    } finally { setChangingEmail(false); }
+  };
+
   return (
     <div className="max-w-2xl space-y-6">
       <h1 className="text-2xl font-bold text-slate-900">Profile</h1>
@@ -48,6 +66,30 @@ export default function PartnerProfilePage() {
           <div><div className="text-xs text-slate-500">Email</div><div className="font-medium text-slate-900">{profile.email || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Phone</div><div className="font-medium text-slate-900">{profile.phone_number || profile.phone || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Role</div><div className="font-medium text-slate-900">Partner</div></div>
+        </div>
+      </Card>
+
+      {/* Change Email */}
+      <Card className="rounded-xl p-6">
+        <h2 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Mail className="h-4 w-4 text-indigo-600" /> Change Email</h2>
+        <p className="text-sm text-slate-500 mb-4">Enter your new email and confirm with your password.</p>
+        <div className="space-y-4 max-w-sm">
+          <div>
+            <Label htmlFor="new_email" className="text-xs text-slate-500">New Email</Label>
+            <Input id="new_email" type="email" placeholder="Enter new email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="mt-1" />
+          </div>
+          <div>
+            <Label htmlFor="email_password" className="text-xs text-slate-500">Password</Label>
+            <Input id="email_password" type="password" placeholder="Enter your password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} className="mt-1" />
+          </div>
+          <Button
+            disabled={changingEmail || !newEmail || !emailPassword}
+            className="bg-indigo-600 hover:bg-indigo-700"
+            onClick={handleChangeEmail}
+          >
+            {changingEmail && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Update Email
+          </Button>
         </div>
       </Card>
 
