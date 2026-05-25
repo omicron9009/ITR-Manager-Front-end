@@ -3,7 +3,12 @@ import axios, { AxiosError, AxiosInstance } from 'axios';
 import { getToken, clearAuth } from './auth';
 import { toast } from 'sonner';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const BASE = (() => {
+  const url = process.env.NEXT_PUBLIC_API_URL || '__NEXT_PUBLIC_API_URL__';
+  // If the placeholder was never replaced at runtime, fall back to relative path
+  if (url.startsWith('__')) return '';
+  return url;
+})();
 
 export const api: AxiosInstance = axios.create({
   baseURL: BASE,

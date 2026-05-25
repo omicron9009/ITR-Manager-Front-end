@@ -4,8 +4,10 @@ import { getToken, clearAuth } from './auth';
 import { toast } from 'sonner';
 
 function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-  return 'http://localhost:8000';
+  const url = process.env.NEXT_PUBLIC_API_URL || '__NEXT_PUBLIC_API_URL__';
+  // If the placeholder was never replaced at runtime, fall back to relative path
+  if (url.startsWith('__')) return '';
+  return url;
 }
 
 const BASE = getBaseUrl();
