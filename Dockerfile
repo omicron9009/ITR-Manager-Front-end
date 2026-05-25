@@ -31,9 +31,12 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy standalone output
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/entrypoint.sh ./entrypoint.sh
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
+
+# Give nextjs ownership of the entire app directory (needed for sed -i at runtime)
+RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 EXPOSE 3000
