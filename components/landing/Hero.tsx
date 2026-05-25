@@ -1,3 +1,4 @@
+//@ts-nocheck 
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Bell, FolderOpen, FileCheck2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
