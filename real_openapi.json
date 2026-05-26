@@ -6194,13 +6194,19 @@
               }
             ],
             "title": "Phone Number"
+          },
+          "declaration_accepted": {
+            "type": "boolean",
+            "title": "Declaration Accepted",
+            "description": "Must be true to indicate consent to the data protection declaration"
           }
         },
         "type": "object",
         "required": [
           "email",
           "full_name",
-          "password"
+          "password",
+          "declaration_accepted"
         ],
         "title": "ClientRegistrationRequest"
       },
