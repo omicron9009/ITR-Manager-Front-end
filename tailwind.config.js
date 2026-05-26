@@ -91,11 +91,47 @@ module.exports = {
     				to: {
     					height: '0'
     				}
+    			},
+    			'popUp': {
+    				'0%': {
+    					opacity: '0',
+    					transform: 'translateY(-8px) scale(0.95)'
+    				},
+    				'100%': {
+    					opacity: '1',
+    					transform: 'translateY(0) scale(1)'
+    				}
+    			},
+    			'fadeSlideIn': {
+    				'0%': {
+    					opacity: '0',
+    					transform: 'translateX(-8px)'
+    				},
+    				'100%': {
+    					opacity: '1',
+    					transform: 'translateX(0)'
+    				}
+    			},
+    			'bounceIn': {
+    				'0%': {
+    					opacity: '0',
+    					transform: 'scale(0.8)'
+    				},
+    				'50%': {
+    					transform: 'scale(1.05)'
+    				},
+    				'100%': {
+    					opacity: '1',
+    					transform: 'scale(1)'
+    				}
     			}
     		},
     		animation: {
     			'accordion-down': 'accordion-down 0.2s ease-out',
-    			'accordion-up': 'accordion-up 0.2s ease-out'
+    			'accordion-up': 'accordion-up 0.2s ease-out',
+    			'pop-up': 'popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+    			'fade-slide-in': 'fadeSlideIn 0.3s ease-out',
+    			'bounce-in': 'bounceIn 0.4s ease-out'
     		}
     	}
     },

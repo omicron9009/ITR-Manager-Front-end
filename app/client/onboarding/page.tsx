@@ -155,45 +155,77 @@ export default function ClientOnboardingPage() {
 
 function FileUploadField({ fieldKey, value, fileName, uploading, onUpload, onView }: { fieldKey: string; value: any; fileName?: string; uploading: boolean; onUpload: (f: File) => void; onView: () => void }) {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
   const hasFile = !!value && typeof value === 'string' && value.length > 0;
   const filename = fileName || (hasFile ? 'Uploaded file' : null);
 
+  useEffect(() => {
+    if (pendingFile) {
+      setShowConfirmPopup(true);
+    } else {
+      setShowConfirmPopup(false);
+    }
+  }, [pendingFile]);
+
   return (
-    <div className="mt-1.5 flex items-center gap-2">
-      {uploading ? (
-        <div className="flex items-center gap-2 flex-1 rounded-md border border-indigo-200 bg-indigo-50/50 px-3 py-2">
-          <Loader2 className="h-4 w-4 text-indigo-600 animate-spin flex-shrink-0" />
-          <span className="text-sm text-indigo-700 truncate flex-1">Uploading{pendingFile ? ` ${pendingFile.name}` : ''}...</span>
+    <div className="mt-1.5 relative">
+      <div className="flex items-center gap-2">
+        {uploading ? (
+          <div className="flex items-center gap-2 flex-1 rounded-md border border-indigo-200 bg-indigo-50/50 px-3 py-2">
+            <Loader2 className="h-4 w-4 text-indigo-600 animate-spin flex-shrink-0" />
+            <span className="text-sm text-indigo-700 truncate flex-1">Uploading{pendingFile ? ` ${pendingFile.name}` : ''}...</span>
+          </div>
+        ) : pendingFile ? (
+          <div className="flex items-center gap-2 flex-1 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 animate-[fadeSlideIn_0.3s_ease-out]">
+            <Upload className="h-4 w-4 text-amber-600 flex-shrink-0" />
+            <span className="text-sm text-slate-700 truncate flex-1">{pendingFile.name}</span>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-rose-500 hover:bg-rose-50" onClick={() => setPendingFile(null)}>✕</Button>
+          </div>
+        ) : hasFile ? (
+          <div className="flex items-center gap-2 flex-1 rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+            <span className="text-sm text-slate-700 truncate flex-1">{filename}</span>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-indigo-600 hover:bg-indigo-50" onClick={onView}><Eye className="h-3.5 w-3.5" /></Button>
+          </div>
+        ) : (
+          <div className="flex-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-400">No file uploaded</div>
+        )}
+        {!uploading && pendingFile ? (
+          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs px-3 py-2 animate-[bounceIn_0.4s_ease-out]" onClick={() => { onUpload(pendingFile); setPendingFile(null); }}>
+            <Upload className="h-3.5 w-3.5 mr-1" />
+            Confirm
+          </Button>
+        ) : !uploading ? (
+          <label className="cursor-pointer">
+            <input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} />
+            <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+              <Upload className="h-3.5 w-3.5" />
+              {hasFile ? 'Replace' : 'Choose File'}
+            </span>
+          </label>
+        ) : null}
+      </div>
+      {/* Animated confirm upload popup */}
+      {showConfirmPopup && !uploading && (
+        <div className="absolute left-0 right-0 mt-2 z-10 animate-[popUp_0.4s_cubic-bezier(0.175,0.885,0.32,1.275)]">
+          <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-4 py-3 shadow-lg">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 animate-pulse">
+              <Upload className="h-4 w-4 text-indigo-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-800">File ready to upload</p>
+              <p className="text-xs text-slate-500">Click <span className="font-semibold text-indigo-600">"Confirm"</span> to upload your file</p>
+            </div>
+            <button
+              onClick={() => { onUpload(pendingFile!); setPendingFile(null); }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 transition-all hover:scale-105 active:scale-95 animate-[pulse_2s_infinite]"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Confirm Upload
+            </button>
+          </div>
         </div>
-      ) : pendingFile ? (
-        <div className="flex items-center gap-2 flex-1 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2">
-          <Upload className="h-4 w-4 text-amber-600 flex-shrink-0" />
-          <span className="text-sm text-slate-700 truncate flex-1">{pendingFile.name}</span>
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-rose-500 hover:bg-rose-50" onClick={() => setPendingFile(null)}>✕</Button>
-        </div>
-      ) : hasFile ? (
-        <div className="flex items-center gap-2 flex-1 rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-          <span className="text-sm text-slate-700 truncate flex-1">{filename}</span>
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-indigo-600 hover:bg-indigo-50" onClick={onView}><Eye className="h-3.5 w-3.5" /></Button>
-        </div>
-      ) : (
-        <div className="flex-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-400">No file uploaded</div>
       )}
-      {!uploading && pendingFile ? (
-        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs px-3 py-2" onClick={() => { onUpload(pendingFile); setPendingFile(null); }}>
-          <Upload className="h-3.5 w-3.5 mr-1" />
-          Confirm
-        </Button>
-      ) : !uploading ? (
-        <label className="cursor-pointer">
-          <input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} />
-          <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-            <Upload className="h-3.5 w-3.5" />
-            {hasFile ? 'Replace' : 'Choose File'}
-          </span>
-        </label>
-      ) : null}
       <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, Word, Excel, CSV, PNG, JPG</p>
     </div>
   );
