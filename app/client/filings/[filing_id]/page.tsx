@@ -28,6 +28,7 @@ export default function FilingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [rejectingComp, setRejectingComp] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -251,6 +252,8 @@ export default function FilingDetailPage() {
                   setActing(true);
                   try {
                     await confirmTaxPaid(currentComp.id);
+                    setShowCelebration(true);
+                    setTimeout(() => { setShowCelebration(false); }, 5000);
                     toast.success('Tax payment confirmed! Ready for filing.');
                     load();
                   } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to confirm tax payment'); }
@@ -341,6 +344,47 @@ export default function FilingDetailPage() {
       </Dialog>
 
       <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={viewerFileName} />
+
+      {/* Celebration video overlay with confetti */}
+      {showCelebration && (
+        <CelebrationOverlay onClose={() => setShowCelebration(false)} />
+      )}
+    </div>
+  );
+}
+
+/** Fullscreen celebration with confetti + video */
+function CelebrationOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    let cancelled = false;
+    import('canvas-confetti').then((mod) => {
+      if (cancelled) return;
+      const confetti = mod.default;
+      const end = Date.now() + 5000;
+      const fire = () => {
+        if (Date.now() > end || cancelled) return;
+        confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#ec4899'] });
+        confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors: ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#ec4899'] });
+        requestAnimationFrame(fire);
+      };
+      // Initial burst
+      confetti({ particleCount: 100, spread: 100, origin: { y: 0.6 }, colors: ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#ec4899'] });
+      fire();
+    });
+    const timer = setTimeout(onClose, 5000);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center" onClick={onClose}>
+      <video
+        autoPlay
+        playsInline
+        className="rounded-2xl shadow-2xl max-w-[90vw] max-h-[70vh] object-contain"
+        onEnded={onClose}
+      >
+        <source src="/tax-paid-celebration.mp4" type="video/mp4" />
+      </video>
     </div>
   );
 }
