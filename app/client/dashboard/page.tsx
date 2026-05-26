@@ -9,11 +9,11 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getClientDashboard, initiateFiling, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload } from '@/lib/api';
+import { getClientDashboard, initiateFiling, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, getActionItems } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload } from 'lucide-react';
+import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload, ArrowRight } from 'lucide-react';
 
 function getFYOptions() {
   const d = new Date();
@@ -37,6 +37,7 @@ export default function ClientDashboard() {
   const [onboardingComplete, setOnboardingComplete] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingSaving, setOnboardingSaving] = useState(false);
+  const [actionItems, setActionItems] = useState<any[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -65,7 +66,14 @@ export default function ClientDashboard() {
     } catch { setOnboardingComplete(true); }
   };
 
-  useEffect(() => { load(); checkOnboarding(); }, []);
+  const loadActionItems = async () => {
+    try {
+      const r = await getActionItems();
+      setActionItems(r?.items || []);
+    } catch { setActionItems([]); }
+  };
+
+  useEffect(() => { load(); checkOnboarding(); loadActionItems(); }, []);
 
   const [clientUser, setClientUser] = useState<any>(null);
   useEffect(() => { setClientUser(getUser()); }, []);
@@ -118,6 +126,52 @@ export default function ClientDashboard() {
             <Button size="sm" className="mt-2 bg-blue-600 hover:bg-blue-700" onClick={() => setShowOnboarding(true)}>Fill Onboarding Form</Button>
           </div>
         </div>
+      )}
+
+      {/* Action Items — What to do next */}
+      {!pendingVerification && actionItems.length > 0 && (
+        <Card className="rounded-xl p-5 border-indigo-100 bg-gradient-to-r from-indigo-50/60 to-white">
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardList className="h-5 w-5 text-indigo-600" />
+            <h2 className="font-bold text-slate-900">What to do next</h2>
+          </div>
+          <div className="space-y-2">
+            {actionItems.map((item: any, idx: number) => {
+              const priorityColors: Record<string, string> = {
+                HIGH: 'border-red-200 bg-red-50/50',
+                MEDIUM: 'border-amber-200 bg-amber-50/50',
+                LOW: 'border-slate-200 bg-slate-50/50',
+              };
+              const href = item.related_filing_id
+                ? `/client/filings/${item.related_filing_id}`
+                : item.type === 'COMPLETE_ONBOARDING'
+                ? '#'
+                : '/client/filings';
+              return (
+                <div
+                  key={idx}
+                  className={`rounded-lg border ${priorityColors[item.priority] || 'border-slate-200 bg-white'} p-3 flex items-center justify-between gap-3 cursor-pointer hover:shadow-sm transition-shadow`}
+                  onClick={() => {
+                    if (item.type === 'COMPLETE_ONBOARDING') { setShowOnboarding(true); return; }
+                    if (item.related_filing_id) router.push(`/client/filings/${item.related_filing_id}`);
+                  }}
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-bold">{idx + 1}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-slate-900">{item.title}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate">{item.description}</p>
+                      {item.financial_year && <p className="text-[10px] text-slate-400 mt-0.5">FY {item.financial_year}</p>}
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                </div>
+              );
+            })}
+          </div>
+        </Card>
       )}
 
       <div className="flex items-center justify-between flex-wrap gap-3">

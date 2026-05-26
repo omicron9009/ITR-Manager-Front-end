@@ -6,6 +6,25 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/metrics": {
+      "get": {
+        "summary": "Metrics",
+        "description": "Endpoint that serves Prometheus metrics.",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "tags": [
@@ -139,6 +158,53 @@
         ]
       }
     },
+    "/api/v1/auth/change-email": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Change Email",
+        "description": "Change the authenticated user's email. Requires password confirmation.",
+        "operationId": "change_email_api_v1_auth_change_email_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeEmailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/auth/regenerate-recovery-codes": {
       "post": {
         "tags": [
@@ -154,6 +220,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecoveryCodesResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/admin/generate-recovery-codes": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Admin Generate Recovery Codes",
+        "description": "Admin (Partner) only: Generate new recovery codes for a user by email.",
+        "operationId": "admin_generate_recovery_codes_api_v1_auth_admin_generate_recovery_codes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminGenerateRecoveryCodesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2131,7 +2244,7 @@
           "Computations"
         ],
         "summary": "Approve Computation",
-        "description": "Client approves the computation. Transitions filing to FILING.",
+        "description": "Client approves the computation and/or confirms tax payment.\n\nTwo scenarios:\n- Computation is UPLOADED: approve it + optionally confirm tax paid.\n- Computation is already APPROVED but is_tax_paid is False on the filing:\n  allow client to call again just to confirm tax payment.\n\nFiling does NOT auto-transition to FILING. Partner/Executive must manually\nadvance via the /transition endpoint once both conditions are met.",
         "operationId": "approve_computation_api_v1_computations_approve_post",
         "requestBody": {
           "content": {
@@ -4780,6 +4893,82 @@
         }
       }
     },
+    "/api/v1/action-items": {
+      "get": {
+        "tags": [
+          "Action Items"
+        ],
+        "summary": "List Action Items",
+        "description": "Get action items (what you need to do) for the current user.\n\nAction items are computed dynamically from the current state of filings,\ndocuments, computations, and client accounts. They are role-scoped:\n- Partner: sees all actionable items across all clients\n- Executive: sees items for assigned clients only\n- Client: sees their own pending actions",
+        "operationId": "list_action_items_api_v1_action_items_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ActionItemType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by action item type",
+              "title": "Type"
+            },
+            "description": "Filter by action item type"
+          },
+          {
+            "name": "filing_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by filing ID",
+              "title": "Filing Id"
+            },
+            "description": "Filter by filing ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionItemListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/my-tax-filings": {
       "get": {
         "summary": "Read Filings",
@@ -4815,6 +5004,157 @@
           "DEACTIVATED"
         ],
         "title": "AccountStatus"
+      },
+      "ActionItemListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActionItemResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "counts_by_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts By Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "counts_by_type"
+        ],
+        "title": "ActionItemListResponse"
+      },
+      "ActionItemPriority": {
+        "type": "string",
+        "enum": [
+          "HIGH",
+          "MEDIUM",
+          "LOW"
+        ],
+        "title": "ActionItemPriority"
+      },
+      "ActionItemResponse": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ActionItemType"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/ActionItemPriority"
+          },
+          "related_filing_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Filing Id"
+          },
+          "related_client_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Client Id"
+          },
+          "financial_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Financial Year"
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata",
+            "default": {
+
+            }
+          },
+          "action_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "description",
+          "priority"
+        ],
+        "title": "ActionItemResponse"
+      },
+      "ActionItemType": {
+        "type": "string",
+        "enum": [
+          "VERIFY_CLIENT",
+          "ASSIGN_EXECUTIVE",
+          "SEND_DOCUMENT_CHECKLIST",
+          "REVIEW_DOCUMENTS",
+          "MOVE_TO_COMPUTATION",
+          "UPLOAD_COMPUTATION",
+          "MOVE_TO_FILING",
+          "UPLOAD_COMPLETED_DOCS",
+          "MARK_PAYMENT_RECEIVED",
+          "COMPLETE_ONBOARDING",
+          "UPLOAD_DOCUMENTS",
+          "SUBMIT_DOCUMENTS",
+          "REVIEW_COMPUTATION",
+          "CONFIRM_TAX_PAID"
+        ],
+        "title": "ActionItemType"
+      },
+      "AdminGenerateRecoveryCodesRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "AdminGenerateRecoveryCodesRequest"
       },
       "AuditEventType": {
         "type": "string",
@@ -4993,6 +5333,44 @@
           "created_at"
         ],
         "title": "AuditLogResponse"
+      },
+      "ChangeEmailRequest": {
+        "properties": {
+          "new_email": {
+            "type": "string",
+            "format": "email",
+            "title": "New Email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_email",
+          "password"
+        ],
+        "title": "ChangeEmailRequest"
+      },
+      "ChangeEmailResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "email"
+        ],
+        "title": "ChangeEmailResponse"
       },
       "ClientActivationRequest": {
         "properties": {
@@ -6009,6 +6387,11 @@
             "type": "string",
             "format": "uuid",
             "title": "Computation Id"
+          },
+          "is_tax_paid": {
+            "type": "boolean",
+            "title": "Is Tax Paid",
+            "default": false
           }
         },
         "type": "object",
@@ -7980,6 +8363,23 @@
             ],
             "title": "Computation Approved At"
           },
+          "is_tax_paid": {
+            "type": "boolean",
+            "title": "Is Tax Paid",
+            "default": false
+          },
+          "tax_paid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Paid At"
+          },
           "filed_at": {
             "anyOf": [
               {
@@ -9762,7 +10162,7 @@
           },
           "recovery_code": {
             "type": "string",
-            "maxLength": 20,
+            "maxLength": 32,
             "minLength": 1,
             "title": "Recovery Code"
           },

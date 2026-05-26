@@ -260,7 +260,7 @@ export default function FilingDetailPage() {
                 className="bg-amber-600 hover:bg-amber-700 w-full"
               >
                 {acting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <IndianRupee className="h-4 w-4 mr-2" />}
-                I Confirm Tax Payment Has Been Made
+                I Confirm that Tax has been Paid 
               </Button>
             </div>
           )}

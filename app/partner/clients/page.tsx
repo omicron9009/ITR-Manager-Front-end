@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { listClients, listExecutives, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus } from '@/lib/api';
-import { Search, Users, Eye, IndianRupee, AlertTriangle } from 'lucide-react';
+import { listClients, listExecutives, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems } from '@/lib/api';
+import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot } from 'lucide-react';
 import { toast } from 'sonner';
 
 function getFYOptions() {
@@ -45,6 +45,7 @@ function ClientsListPage() {
   const [awaitingTaxRows, setAwaitingTaxRows] = useState<any[]>([]); // computation filings with tax not paid
   const [execs, setExecs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionItems, setActionItems] = useState<any[]>([]);
 
   const fyOptions = useMemo(() => getFYOptions(), []);
 
@@ -89,7 +90,7 @@ function ClientsListPage() {
       }
     } finally { setLoading(false); }
   };
-  useEffect(() => { load(); listExecutives().then((r) => setExecs(r?.items || r?.executives || r || [])).catch(() => {}); }, []);
+  useEffect(() => { load(); listExecutives().then((r) => setExecs(r?.items || r?.executives || r || [])).catch(() => {}); getActionItems().then((r) => setActionItems(r?.items || [])).catch(() => {}); }, []);
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus, filingStatus]);
 
   const onAssign = async (client_id: string, executive_id: string) => {
@@ -183,8 +184,27 @@ function ClientsListPage() {
     if (filingStatus) {
       result = result.filter((c) => (c.current_state || c.filing_state) === filingStatus);
     }
+    // Client-side search filter (name or email)
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter((c) => {
+        const name = (c.full_name || c.name || '').toLowerCase();
+        const email = (c.email || '').toLowerCase();
+        return name.includes(q) || email.includes(q);
+      });
+    }
     return result;
-  }, [expandedRows, financialYear, filingStatus, awaitingTaxRows, clients]);
+  }, [expandedRows, financialYear, filingStatus, awaitingTaxRows, clients, search]);
+
+  // Build action item lookup by client_id
+  const actionItemByClient = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const item of actionItems) {
+      const cid = item.related_client_id;
+      if (cid && !map.has(cid)) map.set(cid, item);
+    }
+    return map;
+  }, [actionItems]);
 
   return (
     <div className="space-y-5">
@@ -245,6 +265,7 @@ function ClientsListPage() {
                   <th className="text-left px-5 py-3 font-semibold">Account</th>
                   {routePrefix === '/partner' && <th className="text-left px-5 py-3 font-semibold">Executive(Article)</th>}
                   <th className="text-left px-5 py-3 font-semibold">Current State</th>
+                  <th className="text-left px-5 py-3 font-semibold">Action Required</th>
                   {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && <th className="text-left px-5 py-3 font-semibold">Tax Payment</th>}
                   <th className="text-left px-5 py-3 font-semibold">Updated</th>
                   <th className="text-right px-5 py-3 font-semibold">Actions</th>
@@ -273,6 +294,18 @@ function ClientsListPage() {
                       </td>
                     )}
                     <td className="px-5 py-3">{(c.current_state || c.filing_state) ? <StatusBadge status={c.current_state || c.filing_state} /> : <span className="text-xs text-slate-400">—</span>}</td>
+                    <td className="px-5 py-3">
+                      {(() => {
+                        const ai = actionItemByClient.get(c.id);
+                        if (!ai) return <span className="text-xs text-slate-400">—</span>;
+                        const colors = ai.priority === 'HIGH' ? 'bg-red-50 text-red-700 ring-red-200' : ai.priority === 'MEDIUM' ? 'bg-amber-50 text-amber-700 ring-amber-200' : 'bg-slate-50 text-slate-600 ring-slate-200';
+                        return (
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${colors}`}>
+                            <CircleDot className="h-3 w-3" /> {ai.title?.length > 25 ? ai.title.slice(0, 25) + '…' : ai.title}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && (
                       <td className="px-5 py-3">
                         {c.is_tax_paid === true ? (

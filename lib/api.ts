@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 
 function getBaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_API_URL || '__NEXT_PUBLIC_API_URL__';
-  // If the placeholder was never replaced at runtime, fall back to relative path
-  if (url.startsWith('__')) return '';
+  // If the placeholder was never replaced at runtime, fall back to localhost
+  if (url.startsWith('__')) return 'http://localhost:8000';
   return url;
 }
 
@@ -203,3 +203,7 @@ export const getReportDashboard = (fy?: string) =>
   api.get('/api/v1/reports/dashboard', { params: fy ? { fy } : {} }).then((r) => r.data);
 export const downloadReport = (fy?: string) =>
   api.get('/api/v1/reports/download', { params: fy ? { fy } : {}, responseType: 'blob' });
+
+// ---------- ACTION ITEMS ----------
+export const getActionItems = (params?: { type?: string; filing_id?: string }) =>
+  api.get('/api/v1/action-items', { params }).then((r) => r.data);
