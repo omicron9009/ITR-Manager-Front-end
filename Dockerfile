@@ -33,6 +33,7 @@ RUN adduser --system --uid 1001 nextjs
 # Copy standalone output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
 
 # Give nextjs ownership of the entire app directory (needed for sed -i at runtime)

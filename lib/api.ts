@@ -4,10 +4,17 @@ import { getToken, clearAuth } from './auth';
 import { toast } from 'sonner';
 
 function getBaseUrl(): string {
-  const url = process.env.NEXT_PUBLIC_API_URL || '__NEXT_PUBLIC_API_URL__';
+  let url = process.env.NEXT_PUBLIC_API_URL || '__NEXT_PUBLIC_API_URL__';
   // If the placeholder was never replaced at runtime, fall back to localhost
   if (url.startsWith('__')) return 'http://localhost:8000';
-  return url;
+  // Fix malformed URLs like "http:host" or "https:host" (missing //)
+  url = url.replace(/^(https?):(?!\/\/)/, '$1://');
+  // Ensure the URL starts with a protocol
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'http://' + url;
+  }
+  // Remove trailing slash
+  return url.replace(/\/$/, '');
 }
 
 const BASE = getBaseUrl();

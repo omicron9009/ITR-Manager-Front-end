@@ -224,7 +224,7 @@ export default function ClientDashboard() {
       </Dialog>
 
       {/* Onboarding Dialog */}
-      <Dialog open={showOnboarding} onOpenChange={(o) => { if (onboardingComplete) setShowOnboarding(o); }}>
+      <Dialog open={showOnboarding} onOpenChange={(o) => setShowOnboarding(o)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><ClipboardList className="h-5 w-5 text-indigo-600" /> Complete Your Onboarding</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
@@ -247,7 +247,7 @@ export default function ClientDashboard() {
             ))}
           </div>
           <DialogFooter className="mt-4">
-            {onboardingComplete && <Button variant="outline" onClick={() => setShowOnboarding(false)}>Close</Button>}
+            <Button variant="outline" onClick={() => setShowOnboarding(false)}>Close</Button>
             <Button onClick={handleOnboardingSubmit} disabled={onboardingSaving} className="bg-indigo-600 hover:bg-indigo-700">
               {onboardingSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Submit
             </Button>
