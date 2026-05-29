@@ -2756,7 +2756,7 @@
           "Documents"
         ],
         "summary": "Get Document Upload Url",
-        "description": "Get a pre-signed upload URL for a document placeholder.",
+        "description": "Get a pre-signed upload URL for a document placeholder.\n\nSupports two modes:\n1. document_id — upload to an existing placeholder (re-upload / replace)\n2. filing_id + document_type_id — create a NEW placeholder (additional file)",
         "operationId": "get_document_upload_url_api_v1_documents_upload_url_post",
         "requestBody": {
           "content": {
@@ -2915,6 +2915,55 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DocumentDownloadURLResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{document_id}": {
+      "delete": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Delete Document",
+        "description": "Delete a document placeholder. Only allowed for PENDING_UPLOAD or UPLOADED status.",
+        "operationId": "delete_document_api_v1_documents__document_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
                 }
               }
             }
@@ -8251,9 +8300,40 @@
       "DocumentUploadURLRequest": {
         "properties": {
           "document_id": {
-            "type": "string",
-            "format": "uuid",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Document Id"
+          },
+          "filing_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filing Id"
+          },
+          "document_type_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Type Id"
           },
           "filename": {
             "type": "string",
@@ -8266,7 +8346,6 @@
         },
         "type": "object",
         "required": [
-          "document_id",
           "filename",
           "content_type"
         ],
@@ -9275,6 +9354,34 @@
         ],
         "title": "FilingDirectoryResponse"
       },
+      "FilingDocumentGroupResponse": {
+        "properties": {
+          "document_type_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Document Type Id"
+          },
+          "document_type_name": {
+            "type": "string",
+            "title": "Document Type Name"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FilingDocumentResponse"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_type_id",
+          "document_type_name",
+          "files"
+        ],
+        "title": "FilingDocumentGroupResponse",
+        "description": "Documents grouped by type — each type may have multiple files."
+      },
       "FilingDocumentListResponse": {
         "properties": {
           "items": {
@@ -9283,6 +9390,14 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/FilingDocumentGroupResponse"
+            },
+            "type": "array",
+            "title": "Groups",
+            "default": []
           },
           "total": {
             "type": "integer",

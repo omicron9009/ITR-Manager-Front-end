@@ -9,10 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, approveFilingFee, rejectFilingFee } from '@/lib/api';
+import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, approveFilingFee, rejectFilingFee } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee, Plus, Trash2 } from 'lucide-react';
 
 export default function FilingDetailPage() {
   const params = useParams();
@@ -21,6 +21,7 @@ export default function FilingDetailPage() {
 
   const [filing, setFiling] = useState<any>(null);
   const [docs, setDocs] = useState<any[]>([]);
+  const [docGroups, setDocGroups] = useState<any[]>([]);
   const [docsMeta, setDocsMeta] = useState<any>({});
   const [computations, setComputations] = useState<any[]>([]);
   const [currentComp, setCurrentComp] = useState<any>(null);
@@ -44,6 +45,7 @@ export default function FilingDetailPage() {
 
       const d = await filingDocs(filingId);
       setDocs(d?.items || []);
+      setDocGroups(d?.groups || []);
       setDocsMeta({ all_approved: d?.all_approved, pending: d?.pending_count, uploaded: d?.uploaded_count, rejected: d?.rejected_count, approved: d?.approved_count, total: d?.total });
 
       const state = f?.status;
@@ -71,11 +73,34 @@ export default function FilingDetailPage() {
     try {
       const url = await docUploadUrl({ document_id: docId, filename: file.name, content_type: file.type });
       await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type } });
-      await docConfirmUpload({ document_id: docId, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
+      await docConfirmUpload({ document_id: url.document_id || docId, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
       toast.success('Document uploaded');
       load();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
     finally { setUploading(null); }
+  };
+
+  const onUploadAdditional = async (documentTypeId: string, file: File) => {
+    if (file.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf','doc','docx','xls','xlsx','csv','png','jpg','jpeg'].includes(ext)) { toast.error('Allowed types: PDF, Word, Excel, CSV, PNG, JPG'); return; }
+    setUploading(documentTypeId);
+    try {
+      const url = await docUploadUrl({ filing_id: filingId, document_type_id: documentTypeId, filename: file.name, content_type: file.type });
+      await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type } });
+      await docConfirmUpload({ document_id: url.document_id, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
+      toast.success('Additional document uploaded');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
+    finally { setUploading(null); }
+  };
+
+  const onDeleteDoc = async (docId: string) => {
+    try {
+      await deleteDoc(docId);
+      toast.success('Document removed');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to delete'); }
   };
 
   const onDownloadDoc = async (docId: string) => {
@@ -296,6 +321,22 @@ export default function FilingDetailPage() {
           <div className="text-center py-8 text-sm text-slate-400">
             {state === 'INITIATED' ? 'Document checklist will be assigned soon...' : 'No documents assigned yet.'}
           </div>
+        ) : docGroups.length > 0 ? (
+          <div className="flex flex-wrap gap-4">
+            {docGroups.map((group) => (
+              <DocumentTypeGroup
+                key={group.document_type_id}
+                group={group}
+                filingId={filingId}
+                filingState={state}
+                uploading={uploading}
+                onUpload={onUpload}
+                onUploadAdditional={onUploadAdditional}
+                onView={onDownloadDoc}
+                onDelete={onDeleteDoc}
+              />
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {docs.map((doc) => (
@@ -305,6 +346,7 @@ export default function FilingDetailPage() {
                 uploading={uploading === doc.id}
                 onUpload={(file) => onUpload(doc.id, file)}
                 onView={() => onDownloadDoc(doc.id)}
+                onDelete={() => onDeleteDoc(doc.id)}
               />
             ))}
           </div>
@@ -495,65 +537,58 @@ function CelebrationOverlay({ onClose }: { onClose: () => void }) {
 }
 
 /** Document placeholder - Windows file system style */
-function DocumentPlaceholder({ doc, uploading, onUpload, onView }: { doc: any; uploading: boolean; onUpload: (f: File) => void; onView: () => void }) {
+function DocumentPlaceholder({ doc, uploading, onUpload, onView, onDelete }: { doc: any; uploading: boolean; onUpload: (f: File) => void; onView: () => void; onDelete?: () => void }) {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const status = doc.status;
 
-  const statusConfig: Record<string, { bg: string; border: string; icon: any; iconColor: string }> = {
-    PENDING_UPLOAD: { bg: 'bg-slate-50', border: 'border-dashed border-slate-300 hover:border-indigo-400', icon: Upload, iconColor: 'text-slate-400' },
-    UPLOADED: { bg: 'bg-blue-50/50', border: 'border-blue-200', icon: Clock, iconColor: 'text-blue-500' },
-    APPROVED: { bg: 'bg-emerald-50/50', border: 'border-emerald-200', icon: CheckCircle2, iconColor: 'text-emerald-500' },
-    REJECTED: { bg: 'bg-rose-50/50', border: 'border-rose-200', icon: XCircle, iconColor: 'text-rose-500' },
+  const statusConfig: Record<string, { iconColor: string; icon: any }> = {
+    PENDING_UPLOAD: { icon: Upload, iconColor: 'text-slate-400' },
+    UPLOADED: { icon: Clock, iconColor: 'text-blue-500' },
+    APPROVED: { icon: CheckCircle2, iconColor: 'text-emerald-500' },
+    REJECTED: { icon: XCircle, iconColor: 'text-rose-500' },
   };
 
   const config = statusConfig[status] || statusConfig.PENDING_UPLOAD;
   const Icon = config.icon;
 
   return (
-    <div className={`rounded-lg border ${config.border} ${config.bg} p-4 transition-all`}>
-      <div className="flex items-start gap-3">
-        <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${config.bg} ${config.iconColor}`}>
-          {uploading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm text-slate-900 truncate">{doc.document_type_name || 'Document'}</p>
-          {doc.original_filename && <p className="text-xs text-slate-500 truncate mt-0.5">{doc.original_filename}</p>}
-          {pendingFile && (
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 border border-amber-200">
-              <Upload className="h-3 w-3" />
-              <span className="truncate">{pendingFile.name}</span>
-              <button className="text-rose-500 hover:text-rose-700 ml-auto flex-shrink-0" onClick={() => setPendingFile(null)}>✕</button>
-            </div>
-          )}
-          {!pendingFile && (
-            <div className="mt-1">
-              <StatusBadge status={status} size="sm" />
-            </div>
-          )}
-          {status === 'REJECTED' && doc.rejection_reason && (
-            <p className="text-xs text-rose-600 mt-1.5 bg-rose-50 rounded px-2 py-1">{doc.rejection_reason}</p>
-          )}
-        </div>
+    <div className="flex items-center gap-3 py-2">
+      <div className={`h-7 w-7 rounded-md flex items-center justify-center bg-slate-50 ${config.iconColor} flex-shrink-0`}>
+        {uploading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
       </div>
-
-      <div className="mt-3 flex items-center gap-2">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-medium text-sm text-slate-900 truncate">{doc.original_filename || doc.document_type_name || 'Document'}</p>
+          <StatusBadge status={status} size="sm" />
+        </div>
+        {pendingFile && (
+          <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-700 bg-amber-50 rounded px-2 py-0.5 border border-amber-200 w-fit">
+            <Upload className="h-3 w-3" />
+            <span className="truncate max-w-[150px]">{pendingFile.name}</span>
+            <button className="text-rose-500 hover:text-rose-700 ml-1 flex-shrink-0" onClick={() => setPendingFile(null)}>✕</button>
+          </div>
+        )}
+        {status === 'REJECTED' && doc.rejection_reason && (
+          <p className="text-xs text-rose-600 mt-0.5 truncate">{doc.rejection_reason}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
         {(status === 'PENDING_UPLOAD' || status === 'REJECTED') && !pendingFile && (
-          <label className="flex-1">
+          <label>
             <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
-            <span className="inline-flex items-center justify-center w-full gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer transition-colors">
-              <Upload className="h-3.5 w-3.5" /> {status === 'REJECTED' ? 'Re-upload' : 'Choose File'}
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer transition-colors">
+              <Upload className="h-3 w-3" /> {status === 'REJECTED' ? 'Re-upload' : 'Upload'}
             </span>
-            <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, Word, Excel, CSV, PNG, JPG</p>
           </label>
         )}
         {pendingFile && (
-          <Button size="sm" className="relative overflow-visible bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md text-xs" disabled={uploading} onClick={() => { onUpload(pendingFile); setPendingFile(null); }}>
-            <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded shadow-lg animate-bounce pointer-events-none">
-              Click to confirm your upload
+          <Button size="sm" className="relative overflow-visible bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md text-xs h-7" disabled={uploading} onClick={() => { onUpload(pendingFile); setPendingFile(null); }}>
+            <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] font-medium px-2 py-0.5 rounded shadow-lg animate-bounce pointer-events-none">
+              Click to confirm
               <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-900" />
             </span>
-            {uploading ? <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-            Confirm Upload
+            {uploading ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
+            Confirm
           </Button>
         )}
         {(status === 'UPLOADED' || status === 'APPROVED') && (
@@ -561,6 +596,58 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onView }: { doc: any; u
             <Eye className="h-3 w-3 mr-1" /> View
           </Button>
         )}
+        {onDelete && (status === 'PENDING_UPLOAD' || status === 'UPLOADED') && (
+          <Button size="sm" variant="outline" className="text-xs h-7 text-rose-600 border-rose-200 hover:bg-rose-50 px-1.5" onClick={onDelete}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Document type group - shows all files for a single document type with "Add Another" */
+function DocumentTypeGroup({ group, filingId, filingState, uploading, onUpload, onUploadAdditional, onView, onDelete }: {
+  group: any;
+  filingId: string;
+  filingState: string;
+  uploading: string | null;
+  onUpload: (docId: string, file: File) => void;
+  onUploadAdditional: (typeId: string, file: File) => void;
+  onView: (docId: string) => void;
+  onDelete: (docId: string) => void;
+}) {
+  const files = group.files || [];
+  const canUploadMore = ['INITIATED', 'DOCUMENT_UPLOAD', 'PROCESSING'].includes(filingState);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden w-96 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-indigo-500" />
+          <h4 className="text-sm font-semibold text-slate-800 truncate">{group.document_type_name}</h4>
+          <span className="text-xs text-slate-500 flex-shrink-0">({files.length})</span>
+        </div>
+        {canUploadMore && (
+          <label>
+            <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadAdditional(group.document_type_id, f); e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 cursor-pointer transition-colors">
+              <Plus className="h-3 w-3" /> Add
+            </span>
+          </label>
+        )}
+      </div>
+      <div className="divide-y divide-slate-100 px-4 py-1">
+        {files.map((doc: any) => (
+          <DocumentPlaceholder
+            key={doc.id}
+            doc={doc}
+            uploading={uploading === doc.id}
+            onUpload={(file) => onUpload(doc.id, file)}
+            onView={() => onView(doc.id)}
+            onDelete={files.length > 1 || doc.status === 'PENDING_UPLOAD' ? () => onDelete(doc.id) : undefined}
+          />
+        ))}
       </div>
     </div>
   );

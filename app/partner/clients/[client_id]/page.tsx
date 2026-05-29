@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerClients, setClientFee, updateFilingFee } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock, IndianRupee, Pencil } from 'lucide-react';
@@ -37,6 +37,7 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState<any>(null);
   const [filings, setFilings] = useState<any[]>([]);
   const [docs, setDocs] = useState<Record<string, any[]>>({});
+  const [docGroups, setDocGroups] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
 
   const [managers, setManagers] = useState<any[]>([]);
@@ -80,7 +81,11 @@ export default function ClientDetailPage() {
       } catch {}
       // load docs for each
       for (const fi of list) {
-        try { const d = await filingDocs(fi.id); setDocs((prev) => ({ ...prev, [fi.id]: d?.items || d?.documents || d || [] })); } catch {}
+        try {
+          const d = await filingDocs(fi.id);
+          setDocs((prev) => ({ ...prev, [fi.id]: d?.items || d?.documents || d || [] }));
+          setDocGroups((prev) => ({ ...prev, [fi.id]: d?.groups || [] }));
+        } catch {}
       }
     } finally { setLoading(false); }
   };
@@ -92,19 +97,21 @@ export default function ClientDetailPage() {
       listManagers().then(async (r) => {
         const mgrList = r?.items || r?.managers || r || [];
         setManagers(mgrList);
-        // Find which manager owns this client
+        // Find which manager owns this client and load that manager's team
         for (const m of mgrList) {
           try {
             const res = await getManagerClients(m.id, { page: 1, page_size: 100 });
             const items = res?.items || [];
             if (items.some((c: any) => c.id === client_id)) {
               setClientManagerId(m.id);
+              // Load executives from this manager's team only
+              const team = await getManagerTeam(m.id).catch(() => null);
+              if (team?.executives) setExecutives(team.executives);
               break;
             }
           } catch {}
         }
       }).catch(() => {});
-      listExecutives().then((r) => setExecutives(r?.items || r?.executives || r || [])).catch(() => {});
     } else if (isManager) {
       getMyTeam().then((r) => setExecutives(r?.executives || [])).catch(() => {});
     }
@@ -114,6 +121,10 @@ export default function ClientDetailPage() {
     try {
       await assignClientToManager(manager_id, client_id);
       setClientManagerId(manager_id);
+      // Refresh executives list to match new manager's team
+      const team = await getManagerTeam(manager_id).catch(() => null);
+      if (team?.executives) setExecutives(team.executives);
+      else setExecutives([]);
       toast.success('Manager assigned');
       load();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to assign manager'); }
@@ -243,7 +254,7 @@ export default function ClientDetailPage() {
           <Card className="rounded-xl overflow-hidden">
             <div className="max-h-[calc(100vh-140px)] overflow-y-auto divide-y divide-slate-100">
               {filings.map((f: any) => (
-                <FilingAccordionItem key={f.id} filing={f} docs={docs} load={load} viewDoc={viewDoc} />
+                <FilingAccordionItem key={f.id} filing={f} docs={docs} docGroups={docGroups} load={load} viewDoc={viewDoc} />
               ))}
             </div>
           </Card>
@@ -255,7 +266,7 @@ export default function ClientDetailPage() {
   );
 }
 
-function FilingAccordionItem({ filing: f, docs, load, viewDoc }: { filing: any; docs: Record<string, any[]>; load: () => void; viewDoc: (id: string, name?: string) => void }) {
+function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc }: { filing: any; docs: Record<string, any[]>; docGroups: Record<string, any[]>; load: () => void; viewDoc: (id: string, name?: string) => void }) {
   const storageKey = `filing-accordion-${f.id}`;
   const [open, setOpen] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -341,6 +352,45 @@ function FilingAccordionItem({ filing: f, docs, load, viewDoc }: { filing: any; 
                   </div>
                   {(docs[f.id] || []).length === 0 ? (
                     <p className="text-sm text-slate-500 py-4 text-center">No documents assigned yet. Send a checklist to the client.</p>
+                  ) : (docGroups[f.id] || []).length > 0 ? (
+                    <div className="space-y-3">
+                      {(docGroups[f.id]).map((group: any) => (
+                        <div key={group.document_type_id} className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100">
+                            <FileText className="h-3.5 w-3.5 text-indigo-500" />
+                            <span className="text-xs font-semibold text-slate-700">{group.document_type_name}</span>
+                            <span className="text-[10px] text-slate-400">({group.files.length} file{group.files.length !== 1 ? 's' : ''})</span>
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {group.files.map((d: any) => (
+                              <div key={d.id} className="flex items-center justify-between gap-3 p-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                                  <div className="min-w-0">
+                                    <div className="text-sm font-medium text-slate-800 truncate">{d.original_filename || group.document_type_name}</div>
+                                    {d.uploaded_at && <div className="text-[10px] text-slate-400">{new Date(d.uploaded_at).toLocaleDateString()}</div>}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <StatusBadge status={d.status} size="sm" />
+                                  {d.status !== 'PENDING_UPLOAD' && (
+                                    <Button size="sm" variant="outline" className="h-7 px-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50" onClick={() => viewDoc(d.id, d.original_filename)}>
+                                      <Eye className="h-3 w-3 mr-1" /> View
+                                    </Button>
+                                  )}
+                                  {d.status === 'UPLOADED' && (
+                                    <>
+                                      <Button size="sm" variant="outline" className="h-7 text-emerald-700 border-emerald-200" onClick={async () => { try { await approveDoc([d.id]); toast.success('Approved'); load(); } catch { toast.error('Failed'); } }}><Check className="h-3 w-3" /></Button>
+                                      <Button size="sm" variant="outline" className="h-7 text-rose-700 border-rose-200" onClick={() => { setRejectDocFor(d); setRejectDocReason(''); }}><X className="h-3 w-3" /></Button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   ) : (docs[f.id] || []).map((d: any) => (
                     <div key={d.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 bg-white">
                       <div className="flex items-center gap-3 min-w-0">

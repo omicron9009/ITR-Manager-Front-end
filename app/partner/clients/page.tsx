@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { listClients, listExecutives, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems, listManagers, assignClientToManager, getManagerClients } from '@/lib/api';
+import { listClients, listExecutives, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems, listManagers, assignClientToManager, getManagerClients, getManagerTeam } from '@/lib/api';
 import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot, ArrowUpDown, Clock, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,6 +46,7 @@ function ClientsListPage() {
   const [execs, setExecs] = useState<any[]>([]);
   const [mgrs, setMgrs] = useState<any[]>([]);
   const [clientManagerMap, setClientManagerMap] = useState<Map<string, string>>(new Map());
+  const [managerExecsMap, setManagerExecsMap] = useState<Map<string, any[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [actionItems, setActionItems] = useState<any[]>([]);
   const [showTimeInState, setShowTimeInState] = useState(false);
@@ -102,18 +103,26 @@ function ClientsListPage() {
     listManagers().then(async (r) => {
       const mgrList = r?.items || r?.managers || r || [];
       setMgrs(mgrList);
-      // Build client → manager map
+      // Build client → manager map AND manager → executives map
       const map = new Map<string, string>();
+      const execMap = new Map<string, any[]>();
       await Promise.all(mgrList.map(async (m: any) => {
         try {
-          const res = await getManagerClients(m.id, { page: 1, page_size: 100 });
-          const items = res?.items || [];
+          const [clientsRes, teamRes] = await Promise.all([
+            getManagerClients(m.id, { page: 1, page_size: 100 }),
+            getManagerTeam(m.id).catch(() => null),
+          ]);
+          const items = clientsRes?.items || [];
           for (const c of items) {
             map.set(c.id, m.id);
+          }
+          if (teamRes?.executives) {
+            execMap.set(m.id, teamRes.executives);
           }
         } catch {}
       }));
       setClientManagerMap(map);
+      setManagerExecsMap(execMap);
     }).catch(() => {});
     getActionItems().then((r) => setActionItems(r?.items || [])).catch(() => {});
   }, []);
@@ -128,6 +137,13 @@ function ClientsListPage() {
       await assignClientToManager(manager_id, client_id);
       toast.success('Manager assigned');
       setClientManagerMap((prev) => new Map(prev).set(client_id, manager_id));
+      // Ensure we have this manager's team cached for the executive dropdown
+      if (!managerExecsMap.has(manager_id)) {
+        const team = await getManagerTeam(manager_id).catch(() => null);
+        if (team?.executives) {
+          setManagerExecsMap((prev) => new Map(prev).set(manager_id, team.executives));
+        }
+      }
       load();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
   };
@@ -412,7 +428,12 @@ function ClientsListPage() {
                           <SelectTrigger className={`h-8 w-[160px] text-xs ${c.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
                             <SelectValue placeholder="Unassigned" />
                           </SelectTrigger>
-                          <SelectContent>{execs.filter((e) => e.is_active !== false).map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name || e.name}</SelectItem>)}</SelectContent>
+                          <SelectContent>{(() => {
+                            const mgrId = clientManagerMap.get(c.id);
+                            const mgrExecs = mgrId ? managerExecsMap.get(mgrId) : null;
+                            const list = mgrExecs || execs;
+                            return list.filter((e) => e.is_active !== false).map((e) => <SelectItem key={e.executive_id || e.id} value={e.executive_id || e.id}>{e.executive_name || e.full_name || e.name}</SelectItem>);
+                          })()}</SelectContent>
                         </Select>
                       </td>
                     )}

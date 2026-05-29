@@ -111,10 +111,11 @@ export const updateDocType = (id: string, data: any) => api.put(`/api/v1/documen
 export const assignDocs = (filing_id: string, document_type_ids: string[]) =>
   api.post(`/api/v1/documents/filings/${filing_id}/assign`, { document_type_ids }).then((r) => r.data);
 export const filingDocs = (filing_id: string) => api.get(`/api/v1/documents/filings/${filing_id}`).then((r) => r.data);
-export const docUploadUrl = (data: { document_id: string; filename: string; content_type: string }) =>
+export const docUploadUrl = (data: { document_id?: string; filing_id?: string; document_type_id?: string; filename: string; content_type: string }) =>
   api.post('/api/v1/documents/upload-url', data).then((r) => r.data);
 export const docConfirmUpload = (params: any) => api.post('/api/v1/documents/confirm-upload', null, { params }).then((r) => r.data);
 export const docDownloadUrl = (id: string) => api.get(`/api/v1/documents/${id}/download-url`).then((r) => r.data);
+export const deleteDoc = (document_id: string) => api.delete(`/api/v1/documents/${document_id}`).then((r) => r.data);
 export const approveDoc = (document_ids: string[]) => api.post('/api/v1/documents/approve', { document_ids }).then((r) => r.data);
 export const rejectDoc = (rejections: { document_id: string; reason: string }[]) =>
   api.post('/api/v1/documents/reject', { rejections }).then((r) => r.data);
