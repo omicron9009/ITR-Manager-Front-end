@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { getMyClients, getMyTeam, assignExecutive, getActionItems, getFilingsByStatus } from '@/lib/api';
+import { getMyClients, getMyTeam, listFilings, assignExecutive, getActionItems, getFilingsByStatus } from '@/lib/api';
 import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot, ArrowUpDown, ArrowUp, ArrowDown, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,6 +34,9 @@ function ManagerClientsPage() {
   const [actionItems, setActionItems] = useState<any[]>([]);
   const [awaitingTaxRows, setAwaitingTaxRows] = useState<any[]>([]);
   const [showTimeInState, setShowTimeInState] = useState(false);
+  const [timeThreshold, setTimeThreshold] = useState<number | null>(null);
+  const [filingTimestamps, setFilingTimestamps] = useState<Map<string, string>>(new Map());
+  const [loadingTimestamps, setLoadingTimestamps] = useState(false);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -128,10 +131,43 @@ function ManagerClientsPage() {
     return map;
   }, [actionItems]);
 
-  // Helper: compute hours since last_updated
-  const getHoursInState = (lastUpdated: string | null) => {
-    if (!lastUpdated) return null;
-    const diff = Date.now() - new Date(lastUpdated).getTime();
+  // Helper: get the timestamp when filing entered its current state
+  const getStateEnteredAt = (status: string, filing: any): string | null => {
+    switch (status) {
+      case 'INITIATED': return filing.initiated_at;
+      case 'DOCUMENT_UPLOAD': return filing.engagement_accepted_at || filing.initiated_at;
+      case 'PROCESSING': return filing.documents_submitted_at;
+      case 'COMPUTATION': return filing.documents_approved_at || filing.documents_submitted_at;
+      case 'FILING': return filing.computation_approved_at;
+      case 'PAYMENT': return filing.filed_at;
+      case 'COMPLETED': return filing.completed_at;
+      case 'HALTED': return filing.halted_at;
+      default: return filing.updated_at;
+    }
+  };
+
+  // Fetch filing timestamps when Time in State is activated
+  const loadFilingTimestamps = async () => {
+    setLoadingTimestamps(true);
+    try {
+      const res = await listFilings({ page: 1, page_size: 500 });
+      const filings = res?.items || res?.filings || [];
+      const map = new Map<string, string>();
+      for (const f of filings) {
+        const key = `${f.client_id}-${f.financial_year}`;
+        const enteredAt = getStateEnteredAt(f.status, f);
+        if (enteredAt) map.set(key, enteredAt);
+      }
+      setFilingTimestamps(map);
+    } catch {} finally { setLoadingTimestamps(false); }
+  };
+
+  // Helper: compute hours in state using accurate timestamps
+  const getHoursInState = (row: any) => {
+    const key = `${row.id}-${row.active_filing_year}`;
+    const enteredAt = filingTimestamps.get(key) || row.last_updated;
+    if (!enteredAt) return null;
+    const diff = Date.now() - new Date(enteredAt).getTime();
     return Math.max(0, Math.round(diff / (1000 * 60 * 60)));
   };
 
@@ -167,7 +203,7 @@ function ManagerClientsPage() {
         case 'executive': va = (a.assigned_executive_name || 'zzz').toLowerCase(); vb = (b.assigned_executive_name || 'zzz').toLowerCase(); break;
         case 'state': va = a.current_filing_state || ''; vb = b.current_filing_state || ''; break;
         case 'action': va = actionItemByClient.get(a.id)?.title || 'zzz'; vb = actionItemByClient.get(b.id)?.title || 'zzz'; break;
-        case 'time': va = getHoursInState(a.last_updated) ?? 99999; vb = getHoursInState(b.last_updated) ?? 99999; break;
+        case 'time': va = getHoursInState(a) ?? 99999; vb = getHoursInState(b) ?? 99999; break;
         default: return 0;
       }
       if (va < vb) return -1 * dir;
@@ -176,6 +212,15 @@ function ManagerClientsPage() {
     });
     return arr;
   }, [filtered, sortCol, sortDir, actionItemByClient]);
+
+  // Apply time threshold filter
+  const displayRows = useMemo(() => {
+    if (!timeThreshold || !showTimeInState) return sorted;
+    return sorted.filter((row) => {
+      const hours = getHoursInState(row);
+      return hours !== null && hours >= timeThreshold;
+    });
+  }, [sorted, timeThreshold, showTimeInState, filingTimestamps]);
 
   const SortHeader = ({ col, children, className = '' }: { col: string; children: React.ReactNode; className?: string }) => (
     <th className={`text-left px-5 py-3 font-semibold cursor-pointer select-none hover:text-indigo-700 transition-colors ${className}`} onClick={() => toggleSort(col)}>
@@ -220,9 +265,24 @@ function ManagerClientsPage() {
         ) : (
           <>
             <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100">
-              <Button size="sm" variant={showTimeInState ? 'default' : 'outline'} className="text-xs gap-1" onClick={() => { setShowTimeInState((v) => !v); if (!showTimeInState && sortCol !== 'time') { setSortCol('time'); setSortDir('desc'); } }}>
-                <Clock className="h-3.5 w-3.5" /> Time in State
+              <Button size="sm" variant={showTimeInState ? 'default' : 'outline'} className="text-xs gap-1" onClick={() => { const next = !showTimeInState; setShowTimeInState(next); if (next) { loadFilingTimestamps(); if (sortCol !== 'time') { setSortCol('time'); setSortDir('desc'); } } else { setTimeThreshold(null); } }}>
+                <Clock className="h-3.5 w-3.5" /> {loadingTimestamps ? 'Loading…' : 'Time in State'}
               </Button>
+              {showTimeInState && (
+                <Select value={timeThreshold !== null ? String(timeThreshold) : 'all'} onValueChange={(v) => setTimeThreshold(v === 'all' ? null : Number(v))}>
+                  <SelectTrigger className="h-7 w-[130px] text-xs">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="24">&gt; 24 hours</SelectItem>
+                    <SelectItem value="48">&gt; 48 hours</SelectItem>
+                    <SelectItem value="72">&gt; 3 days</SelectItem>
+                    <SelectItem value="168">&gt; 7 days</SelectItem>
+                    <SelectItem value="336">&gt; 14 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
               {sortCol && (
                 <Button size="sm" variant="ghost" className="text-xs text-slate-500" onClick={() => { setSortCol(null); setSortDir('asc'); }}>
                   Clear Sort
@@ -248,7 +308,7 @@ function ManagerClientsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((c: any) => (
+                {displayRows.map((c: any) => (
                   <tr key={c._rowKey || c.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                     <td className="px-5 py-3">
                       <div className="font-semibold text-slate-900">{c.full_name}</div>
@@ -291,7 +351,7 @@ function ManagerClientsPage() {
                     {showTimeInState && (
                       <td className="px-5 py-3">
                         {(() => {
-                          const hours = getHoursInState(c.last_updated);
+                          const hours = getHoursInState(c);
                           const bg = hours !== null && hours > 72 ? 'text-red-600 font-medium' : hours !== null && hours > 24 ? 'text-amber-600 font-medium' : 'text-slate-600';
                           return <span className={`text-xs ${bg}`}>{formatDuration(hours)}</span>;
                         })()}
