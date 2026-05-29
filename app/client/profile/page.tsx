@@ -8,10 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { me, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl, getOnboardingFiles, changePassword, changeEmail } from '@/lib/api';
+import { me, getClient, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl, getOnboardingFiles, changePassword, changeEmail } from '@/lib/api';
+import { getUser } from '@/lib/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Loader2, Upload, Eye, FileText, CheckCircle2, Lock, Mail } from 'lucide-react';
+import { Loader2, Upload, Eye, FileText, CheckCircle2, Lock, Mail, IndianRupee, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle } from 'lucide-react';
 
 export default function ClientProfilePage() {
   const [profile, setProfile] = useState<any>({});
@@ -31,8 +32,15 @@ export default function ClientProfilePage() {
   const [emailPassword, setEmailPassword] = useState('');
   const [changingEmail, setChangingEmail] = useState(false);
 
+  const [clientProfile, setClientProfile] = useState<any>(null);
+
   useEffect(() => {
-    me().then((p) => { setProfile(p); }).catch(() => {});
+    me().then((p) => {
+      setProfile(p);
+      // Also fetch full client profile (has income_heads + professional_fee)
+      const userId = p?.id || p?.user_id || getUser()?.user_id;
+      if (userId) getClient(userId).then((cp) => setClientProfile(cp)).catch(() => {});
+    }).catch(() => {});
     const loadForm = async () => {
       try {
         const r = await getOnboardingForm();
@@ -122,9 +130,31 @@ export default function ClientProfilePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div><div className="text-xs text-slate-500">Name</div><div className="font-medium text-slate-900">{profile.full_name || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Email</div><div className="font-medium text-slate-900">{profile.email || '—'}</div></div>
-          <div><div className="text-xs text-slate-500">Phone</div><div className="font-medium text-slate-900">{profile.phone || profile.mobile || values['phone'] || values['mobile'] || values['phone_number'] || '—'}</div></div>
+          <div><div className="text-xs text-slate-500">Phone</div><div className="font-medium text-slate-900">{profile.phone_number || profile.phone || profile.mobile || values['phone'] || values['mobile'] || values['phone_number'] || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Status</div><StatusBadge status={profile.account_status} /></div>
         </div>
+
+        {/* Income Heads */}
+        {clientProfile?.income_heads && (
+          <>
+            <hr className="my-5 border-slate-100" />
+            <h2 className="font-bold text-slate-900 mb-3">Income Sources</h2>
+            <IncomeHeadsDisplay incomeHeads={clientProfile.income_heads} />
+          </>
+        )}
+
+        {/* Professional Fee */}
+        {clientProfile?.professional_fee && (
+          <>
+            <hr className="my-5 border-slate-100" />
+            <div className="flex items-center gap-2">
+              <IndianRupee className="h-4 w-4 text-indigo-600" />
+              <span className="text-xs uppercase text-slate-500 font-semibold">Professional Fee</span>
+            </div>
+            <div className="text-lg font-bold text-slate-900 mt-1">₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')}</div>
+            <p className="text-xs text-slate-500 mt-0.5">Plus applicable taxes, if any</p>
+          </>
+        )}
 
         {/* All onboarding fields inline */}
         {fields.length > 0 && (
@@ -282,6 +312,37 @@ function FileField({ fieldKey, value, fileName, uploading, onUpload, onView }: {
         </label>
       ) : null}
       <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, Word, Excel, CSV, PNG, JPG</p>
+    </div>
+  );
+}
+
+const INCOME_HEAD_LABELS: Record<string, string> = {
+  salary: 'Salary / Pension',
+  esop: 'ESOP / RSU',
+  rental_income: 'Rental Income',
+  more_than_2_properties: 'More than 2 Properties',
+  capital_gain_shares: 'Capital Gain – Shares / MF',
+  capital_gain_land: 'Capital Gain – Land / Property',
+  business_profession: 'Business / Profession',
+  interest_dividend: 'Interest / Dividend',
+  foreign_assets: 'Foreign Assets / Income',
+  any_other: 'Any Other Income',
+};
+
+function IncomeHeadsDisplay({ incomeHeads }: { incomeHeads: Record<string, boolean> }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {Object.entries(INCOME_HEAD_LABELS).map(([key, label]) => {
+        const val = incomeHeads[key];
+        return (
+          <div key={key} className="flex items-center gap-2 rounded-md border border-slate-100 px-3 py-2">
+            <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold ${val ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+              {val ? '✓' : '✗'}
+            </span>
+            <span className="text-sm text-slate-700">{label}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

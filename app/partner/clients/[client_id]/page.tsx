@@ -9,12 +9,13 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerClients } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerClients, setClientFee, updateFilingFee } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock } from 'lucide-react';
+import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock, IndianRupee, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -153,6 +154,10 @@ export default function ClientDetailPage() {
             <div className="flex items-center gap-2 text-slate-600"><Mail className="h-4 w-4" /> {client.email}</div>
             {client.phone_number && <div className="flex items-center gap-2 text-slate-600"><Phone className="h-4 w-4" /> {client.phone_number}</div>}
           </div>
+          {/* Professional Fee (Partner only) */}
+          {isPartner && (
+            <ProfessionalFeeSection clientId={client_id} currentFee={client.professional_fee} onUpdated={load} />
+          )}
           <div className="mt-5 pt-5 border-t border-slate-200 space-y-4">
             {isPartner && (
               <div>
@@ -214,6 +219,14 @@ export default function ClientDetailPage() {
                 );
               })}
             </div>
+          </Card>
+        )}
+
+        {/* Income Heads Section */}
+        {client.income_heads && (
+          <Card className="rounded-xl p-6">
+            <h3 className="font-bold text-slate-900 mb-4">Income Sources</h3>
+            <IncomeHeadsDisplay incomeHeads={client.income_heads} />
           </Card>
         )}
       </div>
@@ -367,6 +380,7 @@ function FilingAccordionItem({ filing: f, docs, load, viewDoc }: { filing: any; 
               </TabsContent>
               <TabsContent value="actions" className="mt-3">
                 <StateActions filing={f} onChange={load} />
+                <FilingFeeUpdate filing={f} onUpdated={load} />
               </TabsContent>
             </Tabs>
           </div>
@@ -1060,5 +1074,149 @@ function OnboardingFileDisplay({ fileId, fileName }: { fileId: any; fileName?: s
       </div>
       <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={fileName} />
     </>
+  );
+}
+
+function ProfessionalFeeSection({ clientId, currentFee, onUpdated }: { clientId: string; currentFee?: string | number | null; onUpdated: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [fee, setFee] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [savedFee, setSavedFee] = useState<string | number | null>(null);
+
+  const displayFee = savedFee || currentFee;
+
+  const doSave = async () => {
+    if (!fee || Number(fee) <= 0) return;
+    setSaving(true);
+    try {
+      await setClientFee(clientId, Number(fee));
+      toast.success('Professional fee updated');
+      setSavedFee(Number(fee));
+      setEditing(false);
+      setFee('');
+      onUpdated();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to update fee'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="mt-4 pt-4 border-t border-slate-200">
+      <div className="flex items-center justify-between">
+        <div className="text-xs uppercase text-slate-400 font-semibold">Professional Fee</div>
+        {!editing && (
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-indigo-600" onClick={() => { setEditing(true); setFee(displayFee ? String(displayFee) : ''); }}>
+            <Pencil className="h-3 w-3 mr-1" /> {displayFee ? 'Edit' : 'Set'}
+          </Button>
+        )}
+      </div>
+      {editing ? (
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative flex-1">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+            <Input type="number" min="1" value={fee} onChange={(e) => setFee(e.target.value)} className="pl-6 h-8 text-sm" placeholder="5000" />
+          </div>
+          <Button size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-700" onClick={doSave} disabled={saving || !fee || Number(fee) <= 0}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditing(false)}><X className="h-3 w-3" /></Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 mt-1">
+          <IndianRupee className="h-4 w-4 text-slate-400" />
+          <span className="text-sm font-semibold text-slate-900">
+            {displayFee ? `₹${Number(displayFee).toLocaleString('en-IN')}` : <span className="text-amber-600 font-medium">Not set</span>}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => void }) {
+  const pathname = usePathname();
+  const isPartner = pathname.startsWith('/partner');
+  const [editing, setEditing] = useState(false);
+  const [fee, setFee] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  if (!isPartner) return null;
+
+  const doSave = async () => {
+    if (!fee || Number(fee) <= 0) return;
+    setSaving(true);
+    try {
+      await updateFilingFee(filing.id, Number(fee));
+      toast.success('Filing fee updated & engagement letter regenerated');
+      setEditing(false);
+      setFee('');
+      onUpdated();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="mt-4 pt-3 border-t border-slate-100">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <IndianRupee className="h-4 w-4 text-slate-400" />
+          <span className="text-xs font-semibold text-slate-500 uppercase">Filing Fee</span>
+        </div>
+        {!editing && (
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-indigo-600" onClick={() => { setEditing(true); setFee(filing.professional_fee ? String(filing.professional_fee) : ''); }}>
+            <Pencil className="h-3 w-3 mr-1" /> {filing.professional_fee ? 'Change' : 'Set'}
+          </Button>
+        )}
+      </div>
+      {!editing && filing.professional_fee && (
+        <div className="text-sm font-semibold text-slate-900 mt-1 ml-6">₹{Number(filing.professional_fee).toLocaleString('en-IN')}</div>
+      )}
+      {!editing && !filing.professional_fee && (
+        <div className="text-xs text-amber-600 mt-1 ml-6">Not set for this filing</div>
+      )}
+      {editing && (
+        <div className="flex items-center gap-2 mt-2">
+          <div className="relative flex-1">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+            <Input type="number" min="1" value={fee} onChange={(e) => setFee(e.target.value)} className="pl-6 h-8 text-sm" placeholder="5000" />
+          </div>
+          <Button size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-700" onClick={doSave} disabled={saving || !fee || Number(fee) <= 0}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditing(false)}><X className="h-3 w-3" /></Button>
+        </div>
+      )}
+      {editing && <p className="text-[10px] text-slate-400 mt-1 ml-6">Changing this will regenerate the engagement letter PDF.</p>}
+    </div>
+  );
+}
+
+const INCOME_HEAD_LABELS: Record<string, string> = {
+  salary: 'Salary / Pension',
+  esop: 'ESOP / RSU',
+  rental_income: 'Rental Income',
+  more_than_2_properties: 'More than 2 Properties',
+  capital_gain_shares: 'Capital Gain – Shares / MF',
+  capital_gain_land: 'Capital Gain – Land / Property',
+  business_profession: 'Business / Profession',
+  interest_dividend: 'Interest / Dividend',
+  foreign_assets: 'Foreign Assets / Income',
+  any_other: 'Any Other Income',
+};
+
+function IncomeHeadsDisplay({ incomeHeads }: { incomeHeads: Record<string, boolean> }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {Object.entries(INCOME_HEAD_LABELS).map(([key, label]) => {
+        const val = incomeHeads[key];
+        return (
+          <div key={key} className="flex items-center gap-2 rounded-md border border-slate-100 px-3 py-2">
+            <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold ${val ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+              {val ? '✓' : '✗'}
+            </span>
+            <span className="text-sm text-slate-700">{label}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }

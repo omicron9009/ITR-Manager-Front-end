@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 const STAGES = [
   { key: 'INITIATED', label: 'Initiated' },
-  { key: 'DOCUMENT_UPLOAD', label: 'Document Upload' },
+  { key: 'DOCUMENT_UPLOAD', label: 'Docs Upload' },
   { key: 'PROCESSING', label: 'Processing' },
   { key: 'COMPUTATION', label: 'Computation' },
   { key: 'FILING', label: 'Filing' },
@@ -16,7 +16,7 @@ export function FilingProgressBar({ currentState }: { currentState: string }) {
   const halted = currentState === 'HALTED';
   return (
     <div className="w-full overflow-x-auto">
-      <div className="min-w-[480px]">
+      <div className="min-w-[480px] px-4">
         <div className="flex items-center">
           {STAGES.map((s, i) => {
             const completed = !halted && i < idx;
@@ -33,7 +33,7 @@ export function FilingProgressBar({ currentState }: { currentState: string }) {
                   )}>
                     {completed ? <Check className="h-4 w-4" /> : i + 1}
                   </div>
-                  <span className={cn('absolute top-9 whitespace-nowrap text-[10px] font-medium leading-tight', current ? 'text-indigo-700' : completed ? 'text-slate-700' : 'text-slate-400')}>{s.label}</span>
+                  <span className={cn('absolute top-9 left-1/2 -translate-x-1/2 text-[10px] font-medium leading-tight text-center w-max max-w-[60px]', current ? 'text-indigo-700' : completed ? 'text-slate-700' : 'text-slate-400')}>{s.label}</span>
                 </div>
                 {i < STAGES.length - 1 && (
                   <div className={cn('flex-1 h-0.5 mx-1', completed ? 'bg-indigo-600' : 'bg-slate-200')} />
@@ -43,7 +43,7 @@ export function FilingProgressBar({ currentState }: { currentState: string }) {
           })}
         </div>
         {/* Spacer for labels */}
-        <div className="h-5" />
+        <div className="h-7" />
       </div>
       {halted && (
         <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-rose-50 text-rose-700 text-xs font-medium border border-rose-200">

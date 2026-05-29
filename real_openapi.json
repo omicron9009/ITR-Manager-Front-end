@@ -466,6 +466,68 @@
         ]
       }
     },
+    "/api/v1/clients/{client_id}/set-fee": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Set Client Fee",
+        "description": "Set or update the professional fee for a client. Partner only.",
+        "operationId": "set_client_fee_api_v1_clients__client_id__set_fee_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Client Id"
+            }
+          },
+          {
+            "name": "fee",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Professional fee in rupees",
+              "title": "Fee"
+            },
+            "description": "Professional fee in rupees"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Set Client Fee Api V1 Clients  Client Id  Set Fee Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clients": {
       "get": {
         "tags": [
@@ -1754,6 +1816,68 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/filings/{filing_id}/update-fee": {
+      "post": {
+        "tags": [
+          "Filings"
+        ],
+        "summary": "Update Filing Fee",
+        "description": "Update professional fee for a specific filing. Partner only. Regenerates engagement letter PDF.",
+        "operationId": "update_filing_fee_api_v1_filings__filing_id__update_fee_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          },
+          {
+            "name": "fee",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "New professional fee in rupees",
+              "title": "Fee"
+            },
+            "description": "New professional fee in rupees"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Update Filing Fee Api V1 Filings  Filing Id  Update Fee Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/filings": {
@@ -6235,6 +6359,26 @@
             "type": "string",
             "format": "uuid",
             "title": "Client Id"
+          },
+          "professional_fee": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "gt": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Professional Fee",
+            "description": "Professional fee in rupees (set by Partner)"
           }
         },
         "type": "object",
@@ -6902,6 +7046,27 @@
             ],
             "title": "Assigned Executive Name"
           },
+          "income_heads": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncomeHeadsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "professional_fee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Professional Fee"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -7056,6 +7221,56 @@
             "type": "boolean",
             "title": "Declaration Accepted",
             "description": "Must be true to indicate consent to the data protection declaration"
+          },
+          "salary": {
+            "type": "boolean",
+            "title": "Salary",
+            "default": false
+          },
+          "esop": {
+            "type": "boolean",
+            "title": "Esop",
+            "default": false
+          },
+          "rental_income": {
+            "type": "boolean",
+            "title": "Rental Income",
+            "default": false
+          },
+          "more_than_2_properties": {
+            "type": "boolean",
+            "title": "More Than 2 Properties",
+            "default": false
+          },
+          "capital_gain_shares": {
+            "type": "boolean",
+            "title": "Capital Gain Shares",
+            "default": false
+          },
+          "capital_gain_land": {
+            "type": "boolean",
+            "title": "Capital Gain Land",
+            "default": false
+          },
+          "business_profession": {
+            "type": "boolean",
+            "title": "Business Profession",
+            "default": false
+          },
+          "interest_dividend": {
+            "type": "boolean",
+            "title": "Interest Dividend",
+            "default": false
+          },
+          "foreign_assets": {
+            "type": "boolean",
+            "title": "Foreign Assets",
+            "default": false
+          },
+          "any_other": {
+            "type": "boolean",
+            "title": "Any Other",
+            "default": false
           }
         },
         "type": "object",
@@ -9225,11 +9440,17 @@
             "type": "string",
             "pattern": "^\\d{4}-\\d{4}$",
             "title": "Financial Year"
+          },
+          "engagement_accepted": {
+            "type": "boolean",
+            "title": "Engagement Accepted",
+            "description": "Must be true to accept the engagement letter"
           }
         },
         "type": "object",
         "required": [
-          "financial_year"
+          "financial_year",
+          "engagement_accepted"
         ],
         "title": "FilingInitiateRequest"
       },
@@ -9388,6 +9609,29 @@
               }
             ],
             "title": "Tax Paid At"
+          },
+          "professional_fee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Professional Fee"
+          },
+          "engagement_accepted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engagement Accepted At"
           },
           "filed_at": {
             "anyOf": [
@@ -9961,6 +10205,62 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IncomeHeadsResponse": {
+        "properties": {
+          "salary": {
+            "type": "boolean",
+            "title": "Salary",
+            "default": false
+          },
+          "esop": {
+            "type": "boolean",
+            "title": "Esop",
+            "default": false
+          },
+          "rental_income": {
+            "type": "boolean",
+            "title": "Rental Income",
+            "default": false
+          },
+          "more_than_2_properties": {
+            "type": "boolean",
+            "title": "More Than 2 Properties",
+            "default": false
+          },
+          "capital_gain_shares": {
+            "type": "boolean",
+            "title": "Capital Gain Shares",
+            "default": false
+          },
+          "capital_gain_land": {
+            "type": "boolean",
+            "title": "Capital Gain Land",
+            "default": false
+          },
+          "business_profession": {
+            "type": "boolean",
+            "title": "Business Profession",
+            "default": false
+          },
+          "interest_dividend": {
+            "type": "boolean",
+            "title": "Interest Dividend",
+            "default": false
+          },
+          "foreign_assets": {
+            "type": "boolean",
+            "title": "Foreign Assets",
+            "default": false
+          },
+          "any_other": {
+            "type": "boolean",
+            "title": "Any Other",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "IncomeHeadsResponse"
       },
       "LocationDetailResponse": {
         "properties": {

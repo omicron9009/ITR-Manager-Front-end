@@ -34,6 +34,7 @@ export default function FilingDetailPage() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerFileName, setViewerFileName] = useState<string | undefined>(undefined);
+  const [showQr, setShowQr] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -142,6 +143,17 @@ export default function FilingDetailPage() {
         <StatusBadge status={state} />
       </div>
 
+      {/* Professional Fee + Engagement Info */}
+      {filing.professional_fee && (
+        <Card className="rounded-xl p-4 flex items-center gap-3 border-indigo-100 bg-indigo-50/40">
+          <IndianRupee className="h-5 w-5 text-indigo-600" />
+          <div>
+            <div className="text-sm font-semibold text-indigo-900">Professional Fee: ₹{Number(filing.professional_fee).toLocaleString('en-IN')}</div>
+            {filing.engagement_accepted_at && <div className="text-xs text-indigo-600">Engagement accepted on {new Date(filing.engagement_accepted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+          </div>
+        </Card>
+      )}
+
       {/* Progress */}
       <Card className="rounded-xl p-5">
         {state === 'COMPLETED' ? (
@@ -156,6 +168,43 @@ export default function FilingDetailPage() {
           <FilingProgressBar currentState={state} />
         )}
       </Card>
+
+      {/* Payment QR - shown in PAYMENT state */}
+      {state === 'PAYMENT' && (
+        <Card className="rounded-xl p-5 border-amber-200 bg-amber-50/30">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+              <IndianRupee className="h-5 w-5 text-amber-700" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-amber-900">Professional Fee Payment Pending</div>
+              <div className="text-xs text-amber-700 mt-0.5">Please complete the payment to proceed.</div>
+            </div>
+            <Button size="sm" variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100" onClick={() => setShowQr(true)}>
+              Want to make payment? Click here
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* QR Code Fullscreen Overlay */}
+      {showQr && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowQr(false)}>
+          <div className="relative flex flex-col items-center gap-4 rounded-2xl bg-white/90 backdrop-blur-md p-6 shadow-2xl max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+            <button className="absolute top-3 right-3 h-8 w-8 rounded-full bg-slate-200/80 hover:bg-slate-300 flex items-center justify-center transition-colors" onClick={() => setShowQr(false)}>
+              <X className="h-5 w-5 text-slate-700" />
+            </button>
+            <img src="/qr.jpeg" alt="Payment QR Code" className="w-[80vmin] h-[80vmin] max-w-[500px] max-h-[500px] object-contain" />
+            {filing.professional_fee && (
+              <div className="text-center">
+                <div className="text-xl font-bold text-slate-900">₹{Number(filing.professional_fee).toLocaleString('en-IN')}</div>
+                <p className="text-xs text-slate-500 mt-1">Plus applicable taxes, if any</p>
+              </div>
+            )}
+            <p className="text-sm text-slate-600 text-center max-w-sm">Scan the QR code using any UPI app to make the payment.</p>
+          </div>
+        </div>
+      )}
 
       {/* Documents Section - File System View */}
       <Card className="rounded-xl p-5">

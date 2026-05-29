@@ -9,11 +9,11 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getClientDashboard, initiateFiling, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, getActionItems } from '@/lib/api';
+import { getClientDashboard, initiateFiling, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, getActionItems, getClient } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload, ArrowRight } from 'lucide-react';
+import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload, ArrowRight, FileText, IndianRupee } from 'lucide-react';
 
 function getFYOptions() {
   const d = new Date();
@@ -32,6 +32,8 @@ export default function ClientDashboard() {
   const [openInit, setOpenInit] = useState(false);
   const [fy, setFy] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [engagementAccepted, setEngagementAccepted] = useState(false);
+  const [clientProfile, setClientProfile] = useState<any>(null);
 
   const [onboardingFields, setOnboardingFields] = useState<any[]>([]);
   const [onboardingValues, setOnboardingValues] = useState<Record<string, any>>({});
@@ -77,18 +79,24 @@ export default function ClientDashboard() {
   useEffect(() => { load(); checkOnboarding(); loadActionItems(); }, []);
 
   const [clientUser, setClientUser] = useState<any>(null);
-  useEffect(() => { setClientUser(getUser()); }, []);
+  useEffect(() => {
+    const u = getUser();
+    setClientUser(u);
+    if (u?.user_id) {
+      getClient(u.user_id).then((r) => setClientProfile(r)).catch(() => {});
+    }
+  }, []);
 
   const accountStatus = dashData?.account_status || clientUser?.account_status || '';
   const pendingVerification = accountStatus === 'PENDING_VERIFICATION';
 
   const doInitiate = async () => {
-    if (!fy) return;
+    if (!fy || !engagementAccepted) return;
     setSubmitting(true);
     try {
-      await initiateFiling({ financial_year: fy });
+      await initiateFiling({ financial_year: fy, engagement_accepted: true });
       toast.success('Filing initiated');
-      setOpenInit(false); setFy(''); load();
+      setOpenInit(false); setFy(''); setEngagementAccepted(false); load();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
     finally { setSubmitting(false); }
   };
@@ -182,7 +190,7 @@ export default function ClientDashboard() {
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">Click a filing to view documents and details.</p>
         </div>
-        <Button onClick={() => { if (!onboardingComplete) { setShowOnboarding(true); return; } setOpenInit(true); }} disabled={pendingVerification} className="bg-indigo-600 hover:bg-indigo-700">
+        <Button onClick={() => { if (!onboardingComplete) { setShowOnboarding(true); return; } setEngagementAccepted(false); setOpenInit(true); }} disabled={pendingVerification} className="bg-indigo-600 hover:bg-indigo-700">
           <Plus className="h-4 w-4 mr-1" /> Initiate ITR Filing
         </Button>
       </div>
@@ -204,21 +212,60 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* Initiate Filing Dialog */}
-      <Dialog open={openInit} onOpenChange={setOpenInit}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Initiate new ITR filing</DialogTitle></DialogHeader>
-          <div>
-            <label className="text-sm font-medium">Financial Year</label>
-            <Select value={fy} onValueChange={setFy}>
-              <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select FY" /></SelectTrigger>
-              <SelectContent>{getFYOptions().map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-            </Select>
+      {/* Initiate Filing Dialog with Engagement Letter */}
+      <Dialog open={openInit} onOpenChange={(o) => { setOpenInit(o); if (!o) { setEngagementAccepted(false); setFy(''); } }}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-indigo-600" /> Initiate ITR Filing</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Financial Year</label>
+              <Select value={fy} onValueChange={setFy}>
+                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select FY" /></SelectTrigger>
+                <SelectContent>{getFYOptions().map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+
+            {fy && (
+              <div className="space-y-3 border-t border-slate-100 pt-4">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2"><FileText className="h-4 w-4 text-indigo-600" /> Engagement Letter</h3>
+                {clientProfile?.professional_fee && (
+                  <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 flex items-center gap-3">
+                    <IndianRupee className="h-5 w-5 text-indigo-600" />
+                    <div>
+                      <div className="text-sm font-semibold text-indigo-900">Professional Fee: ₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')}</div>
+                      <div className="text-xs text-indigo-600">Plus applicable taxes, if any</div>
+                    </div>
+                  </div>
+                )}
+                <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3 text-xs text-slate-600 leading-relaxed bg-slate-50">
+                  <p className="font-semibold text-slate-800 mb-2">Engagement Letter for Income Tax Return Filing Services</p>
+                  <p className="mb-2">This Engagement Letter sets out the terms and conditions governing the professional services to be provided by the Firm to the Client for Income Tax Return (&ldquo;ITR&rdquo;) filing and related tax compliance services.</p>
+                  <p className="font-semibold text-slate-700 mb-1">1. Scope of Services</p>
+                  <p className="mb-2">The Firm shall provide professional services including preparation and filing of Income Tax Return(s), computation of taxable income and tax liability, assistance in tax filing compliance, and related procedural matters.</p>
+                  <p className="font-semibold text-slate-700 mb-1">2. Client Responsibilities</p>
+                  <p className="mb-2">The Client shall provide complete, accurate, and timely information, records, and supporting documents. The Firm shall rely upon the information provided and shall not be responsible for consequences arising from incomplete or incorrect information.</p>
+                  <p className="font-semibold text-slate-700 mb-1">3. Confidentiality &amp; Data Protection</p>
+                  <p className="mb-2">The Firm shall maintain confidentiality of all information and documents shared by the Client. Client data shall be stored securely within the Firm&rsquo;s controlled internal infrastructure.</p>
+                  <p className="font-semibold text-slate-700 mb-1">4. Limitation of Responsibility</p>
+                  <p className="mb-2">The Firm shall not be responsible for errors, penalties, or consequences arising from incorrect information provided by the Client, or delays caused by technical issues or events beyond reasonable control.</p>
+                  <p className="font-semibold text-slate-700 mb-1">5. Professional Fees</p>
+                  <p className="mb-2">The professional fee for the above services shall be ₹{clientProfile?.professional_fee ? Number(clientProfile.professional_fee).toLocaleString('en-IN') : '___'} plus applicable taxes, if any.</p>
+                  <p className="font-semibold text-slate-700 mb-1">6. Payment Terms</p>
+                  <p className="mb-2">Fees shall be payable upon acceptance of this Engagement Letter and/or prior to filing of the return unless otherwise agreed.</p>
+                  <p className="font-semibold text-slate-700 mb-1">7. Acceptance &amp; Consent</p>
+                  <p>By proceeding, the Client confirms that the information provided is true and complete, consents to data processing for the agreed services, and agrees to the terms of this Engagement Letter.</p>
+                </div>
+                <label className="flex items-start gap-2 cursor-pointer pt-1">
+                  <input type="checkbox" checked={engagementAccepted} onChange={(e) => setEngagementAccepted(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                  <span className="text-xs text-slate-700 leading-snug">I have read and understood the Engagement Letter and agree to appoint the Firm for the above ITR filing services for FY {fy}.</span>
+                </label>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenInit(false)}>Cancel</Button>
-            <Button onClick={doInitiate} disabled={submitting || !fy} className="bg-indigo-600 hover:bg-indigo-700">
-              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm
+            <Button onClick={doInitiate} disabled={submitting || !fy || !engagementAccepted} className="bg-indigo-600 hover:bg-indigo-700">
+              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Accept &amp; Initiate
             </Button>
           </DialogFooter>
         </DialogContent>

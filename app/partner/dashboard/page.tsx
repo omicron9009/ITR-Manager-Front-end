@@ -6,9 +6,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, getFilingsByStatus, listManagers, listExecutives, assignClientToManager, assignExecutive } from '@/lib/api';
+import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, getFilingsByStatus, listManagers, listExecutives, assignClientToManager, assignExecutive, setClientFee } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
 import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader2, FileText, IndianRupee, AlertTriangle } from 'lucide-react';
@@ -37,6 +38,7 @@ export default function PartnerDashboardPage() {
   const [managers, setManagers] = useState<any[]>([]);
   const [executives, setExecutives] = useState<any[]>([]);
   const [justActivated, setJustActivated] = useState<any>(null); // client that was just activated, needs assignment
+  const [feeForClient, setFeeForClient] = useState<any>(null); // client pending fee input before activation
 
   const load = async () => {
     setLoading(true);
@@ -66,11 +68,18 @@ export default function PartnerDashboardPage() {
   };
 
   const onActivate = async (client: any) => {
+    // Step 1: Show fee input dialog first
+    setFeeForClient(client);
+  };
+
+  const onActivateWithFee = async (fee: number) => {
+    if (!feeForClient) return;
     setActing(true);
     try {
-      await activateClient(client.id);
+      await activateClient(feeForClient.id, fee);
       toast.success('Client activated! Now assign a manager.');
-      setJustActivated(client);
+      setJustActivated(feeForClient);
+      setFeeForClient(null);
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Activation failed'); }
     finally { setActing(false); }
   };
@@ -267,6 +276,14 @@ export default function PartnerDashboardPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Fee input before activation */}
+      <FeeInputDialog
+        client={feeForClient}
+        acting={acting}
+        onSubmit={onActivateWithFee}
+        onCancel={() => setFeeForClient(null)}
+      />
+
       {/* Assign Manager/Executive after activation */}
       <AssignAfterActivationDialog
         client={justActivated}
@@ -344,6 +361,60 @@ function AssignAfterActivationDialog({ client, managers, executives, acting, onA
             onClick={() => onAssign(selectedManager, selectedExecutive || undefined)}
           >
             {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Assign & Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FeeInputDialog({ client, acting, onSubmit, onCancel }: {
+  client: any;
+  acting: boolean;
+  onSubmit: (fee: number) => void;
+  onCancel: () => void;
+}) {
+  const [fee, setFee] = useState('');
+
+  if (!client) return null;
+
+  return (
+    <Dialog open={!!client} onOpenChange={(o) => { if (!o) onCancel(); }}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <IndianRupee className="h-5 w-5 text-indigo-600" /> Set Professional Fee
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="text-sm font-semibold text-slate-900">{client.full_name || client.name}</div>
+            <div className="text-xs text-slate-500">{client.email}</div>
+          </div>
+          <p className="text-sm text-slate-600">Enter the professional fee for this client. This will be included in their engagement letter.</p>
+          <div>
+            <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Fee (₹) <span className="text-rose-500">*</span></label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+              <Input
+                type="number"
+                min="1"
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
+                placeholder="5000"
+                className="pl-7"
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button
+            disabled={!fee || Number(fee) <= 0 || acting}
+            className="bg-indigo-600 hover:bg-indigo-700"
+            onClick={() => onSubmit(Number(fee))}
+          >
+            {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Activate Client
           </Button>
         </DialogFooter>
       </DialogContent>
