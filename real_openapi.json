@@ -376,7 +376,7 @@
           "Clients"
         ],
         "summary": "Activate Client Account",
-        "description": "Activate a client account (Partner or Executive).",
+        "description": "Activate a client account (Partner, Manager, or Executive).",
         "operationId": "activate_client_account_api_v1_clients_activate_post",
         "requestBody": {
           "content": {
@@ -424,7 +424,7 @@
           "Clients"
         ],
         "summary": "Reject Client Account",
-        "description": "Reject a client registration (Partner or Executive).",
+        "description": "Reject a client registration (Partner, Manager, or Executive).",
         "operationId": "reject_client_account_api_v1_clients_reject_post",
         "requestBody": {
           "content": {
@@ -472,7 +472,7 @@
           "Clients"
         ],
         "summary": "List Clients",
-        "description": "List clients with search and filtering.\n- Partner: sees all clients\n- Executive: sees only assigned clients\n- Client: not permitted",
+        "description": "List clients with search and filtering.\n- Partner: sees all clients\n- Manager: sees clients of their team's executives\n- Executive: sees only assigned clients\n- Client: not permitted",
         "operationId": "list_clients_api_v1_clients_get",
         "security": [
           {
@@ -690,7 +690,7 @@
           "Executives"
         ],
         "summary": "List Executives",
-        "description": "List all executives with workload info (Partner only).",
+        "description": "List executives with workload info (Manager sees their team, Partner sees all).",
         "operationId": "list_executives_api_v1_executives_get",
         "responses": {
           "200": {
@@ -715,7 +715,7 @@
           "Executives"
         ],
         "summary": "Create New Executive",
-        "description": "Create a new Executive account (Partner only).",
+        "description": "Create a new Executive account (Manager/Partner).\n\nIf created by a Manager, the executive is automatically assigned to that manager's team.",
         "operationId": "create_new_executive_api_v1_executives_post",
         "requestBody": {
           "content": {
@@ -762,7 +762,7 @@
           "Executives"
         ],
         "summary": "Assign Executive",
-        "description": "Assign an Executive to a Client (Partner only).",
+        "description": "Assign an Executive to a Client (Manager/Partner).\n\nThe executive must be under a manager. If Partner assigns directly,\nthe client is auto-linked to that executive's manager.",
         "operationId": "assign_executive_api_v1_executives_assign_post",
         "requestBody": {
           "content": {
@@ -909,7 +909,7 @@
           "Executives"
         ],
         "summary": "Get Executive Clients",
-        "description": "Get list of clients assigned to a specific executive.",
+        "description": "Get list of clients assigned to a specific executive (Manager/Partner).",
         "operationId": "get_executive_clients_api_v1_executives__executive_id__clients_get",
         "security": [
           {
@@ -939,6 +939,762 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/managers": {
+      "get": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "List Managers",
+        "description": "List all managers with team info (Partner only).",
+        "operationId": "list_managers_api_v1_managers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Create New Manager",
+        "description": "Create a new Manager account (Partner only).",
+        "operationId": "create_new_manager_api_v1_managers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagerCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/managers/me/team": {
+      "get": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Get My Team",
+        "description": "Manager views their own team.",
+        "operationId": "get_my_team_api_v1_managers_me_team_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerTeamResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/managers/{manager_id}/team": {
+      "get": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Get Manager Team",
+        "description": "Get a manager's team of executives.",
+        "operationId": "get_manager_team_api_v1_managers__manager_id__team_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerTeamResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/managers/{manager_id}/assign-executive": {
+      "post": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Assign Executive",
+        "description": "Assign an executive to a manager's team (Partner or the Manager themselves).",
+        "operationId": "assign_executive_api_v1_managers__manager_id__assign_executive_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagerAssignExecutiveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerExecutiveAssignmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/managers/{manager_id}/executives/{executive_id}": {
+      "delete": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Remove Executive From Team",
+        "description": "Remove an executive from a manager's team.",
+        "operationId": "remove_executive_from_team_api_v1_managers__manager_id__executives__executive_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          },
+          {
+            "name": "executive_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Executive Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/managers/{manager_id}/assign-client": {
+      "post": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Manager Assign Client To Executive",
+        "description": "Manager assigns one of their clients to one of their executives.",
+        "operationId": "manager_assign_client_to_executive_api_v1_managers__manager_id__assign_client_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutiveAssignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutiveAssignmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/managers/{manager_id}/clients": {
+      "post": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Assign Client To Mgr",
+        "description": "Assign a client to a manager (Partner only).",
+        "operationId": "assign_client_to_mgr_api_v1_managers__manager_id__clients_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagerAssignClientRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerClientAssignmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Get Manager Clients",
+        "description": "Get a manager's clients (Manager own / Partner any).",
+        "operationId": "get_manager_clients_api_v1_managers__manager_id__clients_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerClientListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/managers/{manager_id}/clients/{client_id}": {
+      "delete": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Remove Client From Manager",
+        "description": "Unassign a client from a manager (Partner only).",
+        "operationId": "remove_client_from_manager_api_v1_managers__manager_id__clients__client_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          },
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/managers/me/clients": {
+      "get": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Get My Clients",
+        "description": "Manager views their assigned clients.",
+        "operationId": "get_my_clients_api_v1_managers_me_clients_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerClientListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/managers/{manager_id}/tags": {
+      "post": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Assign Tag To Mgr",
+        "description": "Assign a location tag to a manager (Partner only).",
+        "operationId": "assign_tag_to_mgr_api_v1_managers__manager_id__tags_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagerAssignTagRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Assign Tag To Mgr Api V1 Managers  Manager Id  Tags Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Get Mgr Tags",
+        "description": "Get location tags assigned to a manager.",
+        "operationId": "get_mgr_tags_api_v1_managers__manager_id__tags_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+
+                  },
+                  "title": "Response Get Mgr Tags Api V1 Managers  Manager Id  Tags Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/managers/{manager_id}/tags/{tag_id}": {
+      "delete": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Remove Tag From Mgr",
+        "description": "Remove a location tag from a manager (Partner only).",
+        "operationId": "remove_tag_from_mgr_api_v1_managers__manager_id__tags__tag_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          },
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -1225,7 +1981,7 @@
           "Filings"
         ],
         "summary": "Halt Filing",
-        "description": "Halt a filing (Partner or Executive action).",
+        "description": "Halt a filing (Partner, Manager, or Executive action).",
         "operationId": "halt_filing_api_v1_filings__filing_id__halt_post",
         "security": [
           {
@@ -1334,7 +2090,7 @@
           "Filings"
         ],
         "summary": "Mark Payment Received",
-        "description": "Mark payment as received (Executive/Partner action). Transitions to COMPLETED.",
+        "description": "Mark payment as received (Manager/Executive/Partner action). Transitions to COMPLETED.",
         "operationId": "mark_payment_received_api_v1_filings__filing_id__mark_payment_post",
         "security": [
           {
@@ -1384,7 +2140,7 @@
           "Filings"
         ],
         "summary": "Move To Computation",
-        "description": "Manually advance filing from Document Upload phase to Computation (Executive/Partner action).",
+        "description": "Manually advance filing from Document Upload phase to Computation (Manager/Executive/Partner action).",
         "operationId": "move_to_computation_api_v1_filings__filing_id__move_to_computation_post",
         "security": [
           {
@@ -1561,7 +2317,7 @@
           "Documents"
         ],
         "summary": "Create Document Type",
-        "description": "Add a new document type to the master list (Partner only).",
+        "description": "Add a new document type to the master list (Manager/Partner).",
         "operationId": "create_document_type_api_v1_documents_types_post",
         "security": [
           {
@@ -1608,7 +2364,7 @@
           "Documents"
         ],
         "summary": "Update Document Type",
-        "description": "Update a document type (Partner only).",
+        "description": "Update a document type (Manager/Partner).",
         "operationId": "update_document_type_api_v1_documents_types__type_id__put",
         "security": [
           {
@@ -2244,7 +3000,7 @@
           "Computations"
         ],
         "summary": "Approve Computation",
-        "description": "Client approves the computation and/or confirms tax payment.\n\nTwo scenarios:\n- Computation is UPLOADED: approve it + optionally confirm tax paid.\n- Computation is already APPROVED but is_tax_paid is False on the filing:\n  allow client to call again just to confirm tax payment.\n\nFiling does NOT auto-transition to FILING. Partner/Executive must manually\nadvance via the /transition endpoint once both conditions are met.",
+        "description": "Client approves the computation and/or confirms tax payment.\n\nTwo scenarios:\n- Computation is UPLOADED: approve it + optionally confirm tax paid.\n- Computation is already APPROVED but is_tax_paid is False on the filing:\n  allow client to call again just to confirm tax payment.\n\nIf both computation is approved AND tax is paid, filing auto-transitions to FILING.",
         "operationId": "approve_computation_api_v1_computations_approve_post",
         "requestBody": {
           "content": {
@@ -2312,6 +3068,198 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Reject Computation Api V1 Computations Reject Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/computations/manager-approve": {
+      "post": {
+        "tags": [
+          "Computations"
+        ],
+        "summary": "Manager Approve Computation",
+        "description": "Manager approves computation (first level of internal approval).\nMoves computation from UPLOADED → MANAGER_APPROVED.\nAfter this, Partner must still approve before client sees it.",
+        "operationId": "manager_approve_computation_api_v1_computations_manager_approve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputationManagerApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Manager Approve Computation Api V1 Computations Manager Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/computations/manager-reject": {
+      "post": {
+        "tags": [
+          "Computations"
+        ],
+        "summary": "Manager Reject Computation",
+        "description": "Manager rejects computation back to executive for revision.\nMoves computation from UPLOADED → MANAGER_REJECTED.",
+        "operationId": "manager_reject_computation_api_v1_computations_manager_reject_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputationManagerRejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Manager Reject Computation Api V1 Computations Manager Reject Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/computations/partner-approve": {
+      "post": {
+        "tags": [
+          "Computations"
+        ],
+        "summary": "Partner Approve Computation",
+        "description": "Partner approves computation (final internal approval).\nCan approve from UPLOADED (bypassing manager) or from MANAGER_APPROVED.\nAfter this, computation becomes visible to client for their approval.",
+        "operationId": "partner_approve_computation_api_v1_computations_partner_approve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputationPartnerApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Partner Approve Computation Api V1 Computations Partner Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/computations/partner-reject": {
+      "post": {
+        "tags": [
+          "Computations"
+        ],
+        "summary": "Partner Reject Computation",
+        "description": "Partner rejects computation back for revision.\nCan reject from UPLOADED (bypassing manager) or MANAGER_APPROVED.\nNotifies both the manager and the executive who uploaded.",
+        "operationId": "partner_reject_computation_api_v1_computations_partner_reject_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputationPartnerRejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Partner Reject Computation Api V1 Computations Partner Reject Post"
                 }
               }
             }
@@ -2436,7 +3384,7 @@
           "Onboarding"
         ],
         "summary": "Create Form Field",
-        "description": "Add a new field to the onboarding form (Partner only).",
+        "description": "Add a new field to the onboarding form (Manager/Partner).",
         "operationId": "create_form_field_api_v1_onboarding_fields_post",
         "security": [
           {
@@ -2483,7 +3431,7 @@
           "Onboarding"
         ],
         "summary": "Update Form Field",
-        "description": "Update a form field (Partner only).",
+        "description": "Update a form field (Manager/Partner).",
         "operationId": "update_form_field_api_v1_onboarding_fields__field_id__put",
         "security": [
           {
@@ -2540,7 +3488,7 @@
           "Onboarding"
         ],
         "summary": "Deactivate Form Field",
-        "description": "Delete a form field (Partner only). Hard-deletes if unused, soft-deletes if referenced.",
+        "description": "Delete a form field (Manager/Partner). Hard-deletes if unused, soft-deletes if referenced.",
         "operationId": "deactivate_form_field_api_v1_onboarding_fields__field_id__delete",
         "security": [
           {
@@ -2890,7 +3838,7 @@
           "Dashboard"
         ],
         "summary": "Get Dashboard Summary",
-        "description": "Get dashboard summary with filing counters.\n- Partner: all filings\n- Executive: only assigned client filings",
+        "description": "Get dashboard summary with filing counters.\n- Partner: all filings\n- Manager: filings of their team's clients\n- Executive: only assigned client filings",
         "operationId": "get_dashboard_summary_api_v1_dashboard_summary_get",
         "responses": {
           "200": {
@@ -4348,7 +5296,7 @@
           "Tags"
         ],
         "summary": "Assign Tag",
-        "description": "Assign a tag to an executive. Partner only.",
+        "description": "Assign a tag to an executive. Manager/Partner.",
         "operationId": "assign_tag_api_v1_tags_assign_post",
         "requestBody": {
           "content": {
@@ -4395,7 +5343,7 @@
           "Tags"
         ],
         "summary": "Bulk Assign Tag Endpoint",
-        "description": "Assign a tag to multiple executives at once. Partner only.",
+        "description": "Assign a tag to multiple executives at once. Manager/Partner.",
         "operationId": "bulk_assign_tag_endpoint_api_v1_tags_bulk_assign_post",
         "requestBody": {
           "content": {
@@ -4443,7 +5391,7 @@
           "Tags"
         ],
         "summary": "Unassign Tag",
-        "description": "Remove a tag from an executive. Partner only.",
+        "description": "Remove a tag from an executive. Manager/Partner.",
         "operationId": "unassign_tag_api_v1_tags_assign__executive_id___tag_id__delete",
         "security": [
           {
@@ -4600,40 +5548,13 @@
         ]
       }
     },
-    "/api/v1/tags/summary/manager": {
-      "get": {
-        "tags": [
-          "Tags"
-        ],
-        "summary": "Manager Summary",
-        "description": "Per-manager summary: executive count, filing stats. Partner only.",
-        "operationId": "manager_summary_api_v1_tags_summary_manager_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ManagerSummaryResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
     "/api/v1/tags/summary/location": {
       "get": {
         "tags": [
           "Tags"
         ],
         "summary": "Location Summary",
-        "description": "Per-location summary: executive count, manager count, filing stats. Partner only.",
+        "description": "Per-location summary: executive count, filing stats. Partner only.",
         "operationId": "location_summary_api_v1_tags_summary_location_get",
         "responses": {
           "200": {
@@ -4654,89 +5575,13 @@
         ]
       }
     },
-    "/api/v1/tags/summary/hierarchy": {
-      "get": {
-        "tags": [
-          "Tags"
-        ],
-        "summary": "Hierarchy Summary",
-        "description": "Full hierarchy: Location → Managers → Executives → filing stats. Partner only.",
-        "operationId": "hierarchy_summary_api_v1_tags_summary_hierarchy_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HierarchyResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/tags/summary/manager/{tag_id}": {
-      "get": {
-        "tags": [
-          "Tags"
-        ],
-        "summary": "Manager Detail",
-        "description": "Detailed view for one manager: executives, filings, status breakdown. Partner only.",
-        "operationId": "manager_detail_api_v1_tags_summary_manager__tag_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "tag_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Tag Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ManagerDetailResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/tags/summary/location/{tag_id}": {
       "get": {
         "tags": [
           "Tags"
         ],
         "summary": "Location Detail",
-        "description": "Detailed view for one location: executives, managers, filings. Partner only.",
+        "description": "Detailed view for one location: executives, filings. Partner only.",
         "operationId": "location_detail_api_v1_tags_summary_location__tag_id__get",
         "security": [
           {
@@ -5131,9 +5976,13 @@
           "REVIEW_DOCUMENTS",
           "MOVE_TO_COMPUTATION",
           "UPLOAD_COMPUTATION",
+          "REVISE_COMPUTATION",
           "MOVE_TO_FILING",
           "UPLOAD_COMPLETED_DOCS",
           "MARK_PAYMENT_RECEIVED",
+          "MANAGER_APPROVE_COMPUTATION",
+          "PARTNER_APPROVE_COMPUTATION",
+          "ASSIGN_CLIENT_TO_EXECUTIVE",
           "COMPLETE_ONBOARDING",
           "UPLOAD_DOCUMENTS",
           "SUBMIT_DOCUMENTS",
@@ -5177,8 +6026,16 @@
           "DOCUMENT_DOWNLOADED",
           "COMPUTATION_UPLOADED",
           "COMPUTATION_APPROVED",
+          "COMPUTATION_MANAGER_APPROVED",
+          "COMPUTATION_PARTNER_APPROVED",
+          "COMPUTATION_MANAGER_REJECTED",
           "COMPUTATION_REJECTED",
           "COMPUTATION_SUPERSEDED",
+          "MANAGER_CREATED",
+          "MANAGER_EXECUTIVE_ASSIGNED",
+          "MANAGER_EXECUTIVE_UNASSIGNED",
+          "MANAGER_CLIENT_ASSIGNED",
+          "MANAGER_CLIENT_UNASSIGNED",
           "ITR_FILED",
           "PAYMENT_RECEIVED",
           "INVOICE_UPLOADED",
@@ -6290,6 +7147,7 @@
           "INVOICE",
           "ITR_JSON",
           "ITR_FORM",
+          "TAX_PAID_COMPUTATION",
           "FINANCIAL_STATEMENT"
         ],
         "title": "CompletedDocType"
@@ -6432,6 +7290,72 @@
         ],
         "title": "ComputationListResponse"
       },
+      "ComputationManagerApproveRequest": {
+        "properties": {
+          "computation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Computation Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "computation_id"
+        ],
+        "title": "ComputationManagerApproveRequest"
+      },
+      "ComputationManagerRejectRequest": {
+        "properties": {
+          "computation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Computation Id"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "computation_id",
+          "reason"
+        ],
+        "title": "ComputationManagerRejectRequest"
+      },
+      "ComputationPartnerApproveRequest": {
+        "properties": {
+          "computation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Computation Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "computation_id"
+        ],
+        "title": "ComputationPartnerApproveRequest"
+      },
+      "ComputationPartnerRejectRequest": {
+        "properties": {
+          "computation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Computation Id"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "computation_id",
+          "reason"
+        ],
+        "title": "ComputationPartnerRejectRequest"
+      },
       "ComputationRejectRequest": {
         "properties": {
           "computation_id": {
@@ -6506,6 +7430,89 @@
             "type": "string",
             "format": "date-time",
             "title": "Uploaded At"
+          },
+          "manager_approved_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Approved By"
+          },
+          "manager_approved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Approved At"
+          },
+          "manager_rejected_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Rejected By"
+          },
+          "manager_rejected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Rejected At"
+          },
+          "manager_rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Rejection Reason"
+          },
+          "partner_approved_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Approved By"
+          },
+          "partner_approved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Approved At"
           },
           "approved_by": {
             "anyOf": [
@@ -6583,8 +7590,12 @@
         "type": "string",
         "enum": [
           "UPLOADED",
+          "MANAGER_APPROVED",
+          "PARTNER_APPROVED",
+          "CLIENT_APPROVED",
           "APPROVED",
           "REJECTED",
+          "MANAGER_REJECTED",
           "SUPERSEDED"
         ],
         "title": "ComputationStatus"
@@ -7718,13 +8729,6 @@
             "type": "string",
             "title": "Executive Name"
           },
-          "manager_tags": {
-            "items": {
-              "$ref": "#/components/schemas/TagBrief"
-            },
-            "type": "array",
-            "title": "Manager Tags"
-          },
           "location_tags": {
             "items": {
               "$ref": "#/components/schemas/TagBrief"
@@ -7737,7 +8741,6 @@
         "required": [
           "executive_id",
           "executive_name",
-          "manager_tags",
           "location_tags"
         ],
         "title": "ExecutiveTagsView"
@@ -8959,106 +9962,6 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "HierarchyLocationItem": {
-        "properties": {
-          "tag_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Tag Id"
-          },
-          "location_name": {
-            "type": "string",
-            "title": "Location Name"
-          },
-          "managers": {
-            "items": {
-              "$ref": "#/components/schemas/HierarchyManagerItem"
-            },
-            "type": "array",
-            "title": "Managers",
-            "default": []
-          },
-          "total_executives": {
-            "type": "integer",
-            "title": "Total Executives",
-            "default": 0
-          },
-          "total_filings": {
-            "type": "integer",
-            "title": "Total Filings",
-            "default": 0
-          },
-          "completed_filings": {
-            "type": "integer",
-            "title": "Completed Filings",
-            "default": 0
-          }
-        },
-        "type": "object",
-        "required": [
-          "tag_id",
-          "location_name"
-        ],
-        "title": "HierarchyLocationItem"
-      },
-      "HierarchyManagerItem": {
-        "properties": {
-          "tag_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Tag Id"
-          },
-          "manager_name": {
-            "type": "string",
-            "title": "Manager Name"
-          },
-          "executives": {
-            "items": {
-              "$ref": "#/components/schemas/ExecutiveBrief"
-            },
-            "type": "array",
-            "title": "Executives",
-            "default": []
-          },
-          "total_filings": {
-            "type": "integer",
-            "title": "Total Filings",
-            "default": 0
-          },
-          "completed_filings": {
-            "type": "integer",
-            "title": "Completed Filings",
-            "default": 0
-          }
-        },
-        "type": "object",
-        "required": [
-          "tag_id",
-          "manager_name"
-        ],
-        "title": "HierarchyManagerItem"
-      },
-      "HierarchyResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/HierarchyLocationItem"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "total"
-        ],
-        "title": "HierarchyResponse"
-      },
       "LocationDetailResponse": {
         "properties": {
           "tag_id": {
@@ -9073,11 +9976,6 @@
           "executive_count": {
             "type": "integer",
             "title": "Executive Count",
-            "default": 0
-          },
-          "manager_count": {
-            "type": "integer",
-            "title": "Manager Count",
             "default": 0
           },
           "total_filings": {
@@ -9140,11 +10038,6 @@
             "title": "Executive Count",
             "default": 0
           },
-          "manager_count": {
-            "type": "integer",
-            "title": "Manager Count",
-            "default": 0
-          },
           "total_filings": {
             "type": "integer",
             "title": "Total Filings",
@@ -9176,12 +10069,12 @@
             ],
             "title": "Avg Days To Complete"
           },
-          "hierarchy": {
+          "executives": {
             "items": {
-              "$ref": "#/components/schemas/ManagerInLocation"
+              "$ref": "#/components/schemas/ExecutiveDistItem"
             },
             "type": "array",
-            "title": "Hierarchy",
+            "title": "Executives",
             "default": []
           }
         },
@@ -9258,11 +10151,6 @@
             "title": "Executive Count",
             "default": 0
           },
-          "manager_count": {
-            "type": "integer",
-            "title": "Manager Count",
-            "default": 0
-          },
           "total_filings": {
             "type": "integer",
             "title": "Total Filings",
@@ -9332,72 +10220,250 @@
         ],
         "title": "LoginRequest"
       },
-      "ManagerDetailResponse": {
+      "ManagerAssignClientRequest": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "client_id"
+        ],
+        "title": "ManagerAssignClientRequest"
+      },
+      "ManagerAssignExecutiveRequest": {
+        "properties": {
+          "executive_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Executive Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "executive_id"
+        ],
+        "title": "ManagerAssignExecutiveRequest"
+      },
+      "ManagerAssignTagRequest": {
         "properties": {
           "tag_id": {
             "type": "string",
             "format": "uuid",
             "title": "Tag Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id"
+        ],
+        "title": "ManagerAssignTagRequest"
+      },
+      "ManagerClientAssignmentResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "manager_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Manager Id"
           },
           "manager_name": {
             "type": "string",
             "title": "Manager Name"
           },
-          "executive_count": {
-            "type": "integer",
-            "title": "Executive Count",
-            "default": 0
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
           },
-          "total_filings": {
-            "type": "integer",
-            "title": "Total Filings",
-            "default": 0
+          "client_name": {
+            "type": "string",
+            "title": "Client Name"
           },
-          "active_filings": {
-            "type": "integer",
-            "title": "Active Filings",
-            "default": 0
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Assigned At"
           },
-          "completed_filings": {
-            "type": "integer",
-            "title": "Completed Filings",
-            "default": 0
-          },
-          "halted_filings": {
-            "type": "integer",
-            "title": "Halted Filings",
-            "default": 0
-          },
-          "executives": {
-            "items": {
-              "$ref": "#/components/schemas/ExecutiveBrief"
-            },
-            "type": "array",
-            "title": "Executives",
-            "default": []
-          },
-          "recent_filings": {
-            "items": {
-              "$ref": "#/components/schemas/FilingBriefItem"
-            },
-            "type": "array",
-            "title": "Recent Filings",
-            "default": []
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
           }
         },
         "type": "object",
         "required": [
-          "tag_id",
-          "manager_name"
+          "id",
+          "manager_id",
+          "manager_name",
+          "client_id",
+          "client_name",
+          "assigned_at",
+          "is_active"
         ],
-        "title": "ManagerDetailResponse"
+        "title": "ManagerClientAssignmentResponse"
+      },
+      "ManagerClientListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "account_status": {
+            "type": "string",
+            "title": "Account Status"
+          },
+          "assignment_status": {
+            "type": "string",
+            "title": "Assignment Status"
+          },
+          "assigned_executive_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Executive Name"
+          },
+          "assigned_executive_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Executive Id"
+          },
+          "active_filing_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Filing Year"
+          },
+          "current_filing_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Filing State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "full_name",
+          "email",
+          "account_status",
+          "assignment_status"
+        ],
+        "title": "ManagerClientListItem"
+      },
+      "ManagerClientListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagerClientListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ManagerClientListResponse"
+      },
+      "ManagerCreateRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "full_name",
+          "password"
+        ],
+        "title": "ManagerCreateRequest"
       },
       "ManagerDistItem": {
         "properties": {
-          "tag_id": {
+          "manager_id": {
             "type": "string",
             "format": "uuid",
-            "title": "Tag Id"
+            "title": "Manager Id"
           },
           "manager_name": {
             "type": "string",
@@ -9450,47 +10516,57 @@
         },
         "type": "object",
         "required": [
-          "tag_id",
+          "manager_id",
           "manager_name"
         ],
         "title": "ManagerDistItem"
       },
-      "ManagerInLocation": {
+      "ManagerExecutiveAssignmentResponse": {
         "properties": {
-          "tag_id": {
+          "id": {
             "type": "string",
             "format": "uuid",
-            "title": "Tag Id"
+            "title": "Id"
+          },
+          "manager_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Manager Id"
           },
           "manager_name": {
             "type": "string",
             "title": "Manager Name"
           },
-          "executives": {
-            "items": {
-              "$ref": "#/components/schemas/ExecutiveDistItem"
-            },
-            "type": "array",
-            "title": "Executives",
-            "default": []
+          "executive_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Executive Id"
           },
-          "total_filings": {
-            "type": "integer",
-            "title": "Total Filings",
-            "default": 0
+          "executive_name": {
+            "type": "string",
+            "title": "Executive Name"
           },
-          "completed_filings": {
-            "type": "integer",
-            "title": "Completed Filings",
-            "default": 0
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Assigned At"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
           }
         },
         "type": "object",
         "required": [
-          "tag_id",
-          "manager_name"
+          "id",
+          "manager_id",
+          "manager_name",
+          "executive_id",
+          "executive_name",
+          "assigned_at",
+          "is_active"
         ],
-        "title": "ManagerInLocation"
+        "title": "ManagerExecutiveAssignmentResponse"
       },
       "ManagerLeaderboardItem": {
         "properties": {
@@ -9498,10 +10574,10 @@
             "type": "integer",
             "title": "Rank"
           },
-          "tag_id": {
+          "manager_id": {
             "type": "string",
             "format": "uuid",
-            "title": "Tag Id"
+            "title": "Manager Id"
           },
           "manager_name": {
             "type": "string",
@@ -9537,68 +10613,16 @@
         "type": "object",
         "required": [
           "rank",
-          "tag_id",
+          "manager_id",
           "manager_name"
         ],
         "title": "ManagerLeaderboardItem"
       },
-      "ManagerSummaryItem": {
-        "properties": {
-          "tag_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Tag Id"
-          },
-          "manager_name": {
-            "type": "string",
-            "title": "Manager Name"
-          },
-          "executive_count": {
-            "type": "integer",
-            "title": "Executive Count",
-            "default": 0
-          },
-          "total_filings": {
-            "type": "integer",
-            "title": "Total Filings",
-            "default": 0
-          },
-          "active_filings": {
-            "type": "integer",
-            "title": "Active Filings",
-            "default": 0
-          },
-          "completed_filings": {
-            "type": "integer",
-            "title": "Completed Filings",
-            "default": 0
-          },
-          "halted_filings": {
-            "type": "integer",
-            "title": "Halted Filings",
-            "default": 0
-          },
-          "executives": {
-            "items": {
-              "$ref": "#/components/schemas/ExecutiveBrief"
-            },
-            "type": "array",
-            "title": "Executives",
-            "default": []
-          }
-        },
-        "type": "object",
-        "required": [
-          "tag_id",
-          "manager_name"
-        ],
-        "title": "ManagerSummaryItem"
-      },
-      "ManagerSummaryResponse": {
+      "ManagerListResponse": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ManagerSummaryItem"
+              "$ref": "#/components/schemas/ManagerResponse"
             },
             "type": "array",
             "title": "Items"
@@ -9613,7 +10637,128 @@
           "items",
           "total"
         ],
-        "title": "ManagerSummaryResponse"
+        "title": "ManagerListResponse"
+      },
+      "ManagerResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "account_status": {
+            "type": "string",
+            "title": "Account Status"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "team_executive_count": {
+            "type": "integer",
+            "title": "Team Executive Count",
+            "default": 0
+          },
+          "team_client_count": {
+            "type": "integer",
+            "title": "Team Client Count",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "account_status",
+          "is_active",
+          "created_at"
+        ],
+        "title": "ManagerResponse"
+      },
+      "ManagerTeamExecutiveItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "account_status": {
+            "type": "string",
+            "title": "Account Status"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "assigned_client_count": {
+            "type": "integer",
+            "title": "Assigned Client Count",
+            "default": 0
+          },
+          "active_filing_count": {
+            "type": "integer",
+            "title": "Active Filing Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "account_status",
+          "is_active"
+        ],
+        "title": "ManagerTeamExecutiveItem"
+      },
+      "ManagerTeamResponse": {
+        "properties": {
+          "manager_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Manager Id"
+          },
+          "manager_name": {
+            "type": "string",
+            "title": "Manager Name"
+          },
+          "executives": {
+            "items": {
+              "$ref": "#/components/schemas/ManagerTeamExecutiveItem"
+            },
+            "type": "array",
+            "title": "Executives"
+          }
+        },
+        "type": "object",
+        "required": [
+          "manager_id",
+          "manager_name",
+          "executives"
+        ],
+        "title": "ManagerTeamResponse"
       },
       "MasterDocTypeCreateRequest": {
         "properties": {
@@ -10226,7 +11371,7 @@
             ],
             "title": "Assigned Executive Name"
           },
-          "manager_tag": {
+          "manager_name": {
             "anyOf": [
               {
                 "type": "string"
@@ -10235,7 +11380,7 @@
                 "type": "null"
               }
             ],
-            "title": "Manager Tag"
+            "title": "Manager Name"
           },
           "location_tag": {
             "anyOf": [
@@ -10544,9 +11689,9 @@
       "TagType": {
         "type": "string",
         "enum": [
-          "MANAGER",
           "LOCATION"
         ],
+        "const": "LOCATION",
         "title": "TagType"
       },
       "TagUpdateRequest": {

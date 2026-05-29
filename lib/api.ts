@@ -194,14 +194,8 @@ export const getExecutiveTags = (executive_id: string) =>
   api.get(`/api/v1/tags/executives/${executive_id}`).then((r) => r.data);
 export const getMyTags = () =>
   api.get('/api/v1/tags/my-tags').then((r) => r.data);
-export const getManagerSummary = () =>
-  api.get('/api/v1/tags/summary/manager').then((r) => r.data);
 export const getLocationSummary = () =>
   api.get('/api/v1/tags/summary/location').then((r) => r.data);
-export const getHierarchySummary = () =>
-  api.get('/api/v1/tags/summary/hierarchy').then((r) => r.data);
-export const getManagerDetail = (tag_id: string) =>
-  api.get(`/api/v1/tags/summary/manager/${tag_id}`).then((r) => r.data);
 export const getLocationDetail = (tag_id: string) =>
   api.get(`/api/v1/tags/summary/location/${tag_id}`).then((r) => r.data);
 
@@ -214,3 +208,41 @@ export const downloadReport = (fy?: string) =>
 // ---------- ACTION ITEMS ----------
 export const getActionItems = (params?: { type?: string; filing_id?: string }) =>
   api.get('/api/v1/action-items', { params }).then((r) => r.data);
+
+// ---------- MANAGERS ----------
+export const listManagers = () => api.get('/api/v1/managers').then((r) => r.data);
+export const createManager = (data: { full_name: string; email: string; password: string }) =>
+  api.post('/api/v1/managers', data).then((r) => r.data);
+export const getMyTeam = () => api.get('/api/v1/managers/me/team').then((r) => r.data);
+export const getManagerTeam = (manager_id: string) =>
+  api.get(`/api/v1/managers/${manager_id}/team`).then((r) => r.data);
+export const assignExecutiveToManager = (manager_id: string, executive_id: string) =>
+  api.post(`/api/v1/managers/${manager_id}/assign-executive`, { executive_id }).then((r) => r.data);
+export const removeExecutiveFromManager = (manager_id: string, executive_id: string) =>
+  api.delete(`/api/v1/managers/${manager_id}/executives/${executive_id}`).then((r) => r.data);
+export const managerAssignClient = (manager_id: string, data: { client_id: string; executive_id: string }) =>
+  api.post(`/api/v1/managers/${manager_id}/assign-client`, data).then((r) => r.data);
+export const assignClientToManager = (manager_id: string, client_id: string) =>
+  api.post(`/api/v1/managers/${manager_id}/clients`, { client_id }).then((r) => r.data);
+export const removeClientFromManager = (manager_id: string, client_id: string) =>
+  api.delete(`/api/v1/managers/${manager_id}/clients/${client_id}`).then((r) => r.data);
+export const getMyClients = (params?: { page?: number; page_size?: number; search?: string }) =>
+  api.get('/api/v1/managers/me/clients', { params }).then((r) => r.data);
+export const getManagerClients = (manager_id: string, params?: { page?: number; page_size?: number; search?: string }) =>
+  api.get(`/api/v1/managers/${manager_id}/clients`, { params }).then((r) => r.data);
+export const assignTagToManager = (manager_id: string, tag_id: string) =>
+  api.post(`/api/v1/managers/${manager_id}/tags`, { tag_id }).then((r) => r.data);
+export const removeTagFromManager = (manager_id: string, tag_id: string) =>
+  api.delete(`/api/v1/managers/${manager_id}/tags/${tag_id}`).then((r) => r.data);
+export const getManagerTags = (manager_id: string) =>
+  api.get(`/api/v1/managers/${manager_id}/tags`).then((r) => r.data);
+
+// ---------- COMPUTATION MULTI-STEP APPROVAL ----------
+export const managerApproveComp = (computation_id: string) =>
+  api.post('/api/v1/computations/manager-approve', { computation_id }).then((r) => r.data);
+export const managerRejectComp = (computation_id: string, reason: string) =>
+  api.post('/api/v1/computations/manager-reject', { computation_id, reason }).then((r) => r.data);
+export const partnerApproveComp = (computation_id: string) =>
+  api.post('/api/v1/computations/partner-approve', { computation_id }).then((r) => r.data);
+export const partnerRejectComp = (computation_id: string, reason: string) =>
+  api.post('/api/v1/computations/partner-reject', { computation_id, reason }).then((r) => r.data);

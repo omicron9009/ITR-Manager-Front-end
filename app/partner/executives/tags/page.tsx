@@ -9,15 +9,15 @@ import {
   listExecutivesWithTags, assignTag, unassignTag, listExecutives
 } from '@/lib/api';
 import { toast } from 'sonner';
-import { Plus, Loader2, MapPin, UserCheck, Trash2, X, Check } from 'lucide-react';
+import { Plus, Loader2, MapPin, Trash2, X, Check } from 'lucide-react';
 
 export default function TagsManagementPage() {
   const [tags, setTags] = useState<any[]>([]);
   const [executives, setExecutives] = useState<any[]>([]);
   const [execsWithTags, setExecsWithTags] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'MANAGER' | 'LOCATION'>('MANAGER');
-  const [form, setForm] = useState({ name: '', description: '', tag_type: 'MANAGER' });
+  const [activeTab, setActiveTab] = useState<'LOCATION'>('LOCATION');
+  const [form, setForm] = useState({ name: '', description: '', tag_type: 'LOCATION' });
   const [submitting, setSubmitting] = useState(false);
   const [assignModal, setAssignModal] = useState<any>(null);
 
@@ -39,8 +39,8 @@ export default function TagsManagementPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await createTag({ ...form, tag_type: activeTab });
-      toast.success(`${activeTab === 'MANAGER' ? 'Manager' : 'Location'} tag created`);
+      await createTag({ ...form, tag_type: 'LOCATION' });
+      toast.success('Location tag created');
       setForm({ name: '', description: '', tag_type: activeTab });
       load();
     } catch (err: any) { toast.error(err?.response?.data?.detail || 'Failed to create tag'); }
@@ -72,13 +72,13 @@ export default function TagsManagementPage() {
       {/* Header row with title + inline create form */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Management</h1>
-          <p className="text-sm text-slate-500 mt-1">Create and assign Manager/Location tags to executives(articles)</p>
+          <h1 className="text-2xl font-bold text-slate-900">Location Tags</h1>
+          <p className="text-sm text-slate-500 mt-1">Create and assign Location tags to executives</p>
         </div>
         <form onSubmit={handleCreate} className="flex items-end gap-2 flex-wrap">
           <div>
             <Label className="text-xs text-slate-500">Name</Label>
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="mt-1 h-9 w-44" placeholder={activeTab === 'MANAGER' ? 'e.g. Rajesh Kumar' : 'e.g. Nagpur Office'} />
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="mt-1 h-9 w-44" placeholder="e.g. Nagpur Office" />
           </div>
           <div>
             <Label className="text-xs text-slate-500">Description</Label>
@@ -86,28 +86,12 @@ export default function TagsManagementPage() {
           </div>
           <Button type="submit" disabled={submitting} size="sm" className="h-9 bg-indigo-600 hover:bg-indigo-700">
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-            Create {activeTab === 'MANAGER' ? 'Manager' : 'Location'}
+            Create Location
           </Button>
         </form>
       </div>
 
-      {/* Tab Switcher */}
-      <div className="flex gap-2">
-        <Button
-          variant={activeTab === 'MANAGER' ? 'default' : 'outline'}
-          onClick={() => setActiveTab('MANAGER')}
-          className={activeTab === 'MANAGER' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
-        >
-          <UserCheck className="h-4 w-4 mr-2" /> Manager Tags
-        </Button>
-        <Button
-          variant={activeTab === 'LOCATION' ? 'default' : 'outline'}
-          onClick={() => setActiveTab('LOCATION')}
-          className={activeTab === 'LOCATION' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
-        >
-          <MapPin className="h-4 w-4 mr-2" /> Location Tags
-        </Button>
-      </div>
+
 
       {/* Tags List - full width */}
       <div className="space-y-3">
@@ -116,8 +100,8 @@ export default function TagsManagementPage() {
             <Card key={tag.id} className="rounded-xl p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${activeTab === 'MANAGER' ? 'bg-violet-100 text-violet-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                    {activeTab === 'MANAGER' ? <UserCheck className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
+                  <div className={`h-10 w-10 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-600`}>
+                    <MapPin className="h-5 w-5" />
                   </div>
                   <div>
                     <div className="font-semibold text-slate-900">{tag.name}</div>
@@ -151,7 +135,7 @@ export default function TagsManagementPage() {
           ))}
           {!loading && filteredTags.length === 0 && (
             <Card className="rounded-xl p-10 text-center text-sm text-slate-500">
-              No {activeTab === 'MANAGER' ? 'manager' : 'location'} tags yet. Create one above.
+              No location tags yet. Create one above.
             </Card>
           )}
         </div>

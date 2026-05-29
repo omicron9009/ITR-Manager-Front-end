@@ -29,9 +29,9 @@ export default function ExecutiveDashboard() {
   useEffect(() => {
     getSummary().then(setSummary).catch(() => {});
     getExecutiveAnalytics().then(setAnalytics).catch(() => {});
-    getFilingsByStatus('COMPUTATION', 1, 100).then((r) => {
+    getFilingsByStatus('PAYMENT', 1, 100).then((r) => {
       const items = r?.items || r?.filings || [];
-      setAwaitingTaxPayment(items.filter((f: any) => f.is_tax_paid === false));
+      setAwaitingTaxPayment(items);
     }).catch(() => {});
   }, []);
 

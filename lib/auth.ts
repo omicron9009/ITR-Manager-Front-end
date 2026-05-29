@@ -1,6 +1,6 @@
 import { jwtDecode } from 'jwt-decode';
 
-export type UserRole = 'PARTNER' | 'EXECUTIVE' | 'CLIENT' | 'DASHBOARD_USER';
+export type UserRole = 'PARTNER' | 'MANAGER' | 'EXECUTIVE' | 'CLIENT' | 'DASHBOARD_USER';
 
 export interface JwtPayload {
   sub?: string;
@@ -57,7 +57,7 @@ export const decodeRole = (token: string): UserRole | null => {
   try {
     const p = jwtDecode<JwtPayload>(token);
     const r = (p.role || (p as any).user_role || '').toString().toUpperCase();
-    if (r === 'PARTNER' || r === 'EXECUTIVE' || r === 'CLIENT' || r === 'DASHBOARD_USER') return r as UserRole;
+    if (r === 'PARTNER' || r === 'MANAGER' || r === 'EXECUTIVE' || r === 'CLIENT' || r === 'DASHBOARD_USER') return r as UserRole;
     return null;
   } catch {
     return null;
@@ -67,6 +67,7 @@ export const decodeRole = (token: string): UserRole | null => {
 export const roleToDashboard = (role: UserRole | null): string => {
   switch (role) {
     case 'PARTNER': return '/partner/dashboard';
+    case 'MANAGER': return '/manager/dashboard';
     case 'DASHBOARD_USER': return '/summary/dashboard';
     case 'EXECUTIVE': return '/executive/dashboard';
     case 'CLIENT': return '/client/dashboard';

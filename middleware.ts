@@ -4,6 +4,7 @@ import { jwtDecode } from 'jwt-decode';
 
 const PROTECTED: Record<string, string[]> = {
   '/partner': ['PARTNER'],
+  '/manager': ['MANAGER'],
   '/executive': ['EXECUTIVE'],
   '/client': ['CLIENT'],
   '/summary': ['DASHBOARD_USER'],
@@ -12,6 +13,7 @@ const PROTECTED: Record<string, string[]> = {
 function roleToHome(role: string): string {
   switch (role) {
     case 'PARTNER': return '/partner/dashboard';
+    case 'MANAGER': return '/manager/dashboard';
     case 'DASHBOARD_USER': return '/summary/dashboard';
     case 'EXECUTIVE': return '/executive/dashboard';
     case 'CLIENT': return '/client/dashboard';
@@ -50,5 +52,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/partner/:path*', '/executive/:path*', '/client/:path*', '/summary/:path*', '/auth/login', '/auth/register'],
+  matcher: ['/partner/:path*', '/manager/:path*', '/executive/:path*', '/client/:path*', '/summary/:path*', '/auth/login', '/auth/register'],
 };

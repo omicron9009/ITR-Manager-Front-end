@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { listClients, listExecutives, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems } from '@/lib/api';
+import { listClients, listExecutives, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems, listManagers, assignClientToManager, getManagerClients } from '@/lib/api';
 import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -44,6 +44,8 @@ function ClientsListPage() {
   const [filingRows, setFilingRows] = useState<any[]>([]); // from analytics: all client-FY-status combos
   const [awaitingTaxRows, setAwaitingTaxRows] = useState<any[]>([]); // computation filings with tax not paid
   const [execs, setExecs] = useState<any[]>([]);
+  const [mgrs, setMgrs] = useState<any[]>([]);
+  const [clientManagerMap, setClientManagerMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [actionItems, setActionItems] = useState<any[]>([]);
 
@@ -80,22 +82,52 @@ function ClientsListPage() {
       }
       setFilingRows(rows);
 
-      // Fetch COMPUTATION filings for tax payment filter
+      // Fetch PAYMENT filings for tax payment awaiting section
       if (filingStatus === 'AWAITING_TAX_PAYMENT' || initialStatus === 'AWAITING_TAX_PAYMENT') {
         try {
-          const compRes = await getFilingsByStatus('COMPUTATION', 1, 100);
-          const items = compRes?.items || compRes?.filings || [];
-          setAwaitingTaxRows(items.filter((f: any) => f.is_tax_paid === false));
+          const paymentRes = await getFilingsByStatus('PAYMENT', 1, 100);
+          const items = paymentRes?.items || paymentRes?.filings || [];
+          setAwaitingTaxRows(items);
         } catch { setAwaitingTaxRows([]); }
       }
     } finally { setLoading(false); }
   };
-  useEffect(() => { load(); listExecutives().then((r) => setExecs(r?.items || r?.executives || r || [])).catch(() => {}); getActionItems().then((r) => setActionItems(r?.items || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    load();
+    listExecutives().then((r) => setExecs(r?.items || r?.executives || r || [])).catch(() => {});
+    listManagers().then(async (r) => {
+      const mgrList = r?.items || r?.managers || r || [];
+      setMgrs(mgrList);
+      // Build client → manager map
+      const map = new Map<string, string>();
+      await Promise.all(mgrList.map(async (m: any) => {
+        try {
+          const res = await getManagerClients(m.id, { page: 1, page_size: 100 });
+          const items = res?.items || [];
+          for (const c of items) {
+            map.set(c.id, m.id);
+          }
+        } catch {}
+      }));
+      setClientManagerMap(map);
+    }).catch(() => {});
+    getActionItems().then((r) => setActionItems(r?.items || [])).catch(() => {});
+  }, []);
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus, filingStatus]);
 
   const onAssign = async (client_id: string, executive_id: string) => {
-    try { await assignExecutive(client_id, executive_id); toast.success('Executive(Article) assigned'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+    try { await assignExecutive(client_id, executive_id); toast.success('Executive assigned'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
   };
+
+  const onAssignManager = async (client_id: string, manager_id: string) => {
+    try {
+      await assignClientToManager(manager_id, client_id);
+      toast.success('Manager assigned');
+      setClientManagerMap((prev) => new Map(prev).set(client_id, manager_id));
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+  };
+
 
   // Build expanded rows combining clients list + analytics filing data
   const expandedRows = useMemo(() => {
@@ -128,6 +160,8 @@ function ClientsListPage() {
         email: clientInfo?.email || fr.client_email || '',
         phone_number: clientInfo?.phone_number || null,
         account_status: clientInfo?.account_status || 'ACTIVE',
+        assigned_manager_id: clientInfo?.assigned_manager_id || null,
+        assigned_manager_name: clientInfo?.assigned_manager_name || null,
         assigned_executive_id: clientInfo?.assigned_executive_id || null,
         assigned_executive_name: clientInfo?.assigned_executive_name || fr.assigned_executive || null,
         current_state: fr.filing_status,
@@ -166,6 +200,8 @@ function ClientsListPage() {
           email: clientInfo?.email || '',
           phone_number: clientInfo?.phone_number || null,
           account_status: clientInfo?.account_status || 'ACTIVE',
+          assigned_manager_id: clientInfo?.assigned_manager_id || null,
+          assigned_manager_name: clientInfo?.assigned_manager_name || null,
           assigned_executive_id: clientInfo?.assigned_executive_id || null,
           assigned_executive_name: clientInfo?.assigned_executive_name || f.assigned_executive_name || null,
           current_state: 'COMPUTATION',
@@ -263,7 +299,8 @@ function ClientsListPage() {
                   <th className="text-left px-5 py-3 font-semibold">Phone</th>
                   <th className="text-left px-5 py-3 font-semibold w-[160px]">Financial Year</th>
                   <th className="text-left px-5 py-3 font-semibold">Account</th>
-                  {routePrefix === '/partner' && <th className="text-left px-5 py-3 font-semibold">Executive(Article)</th>}
+                  {routePrefix === '/partner' && <th className="text-left px-5 py-3 font-semibold">Manager</th>}
+                  {routePrefix === '/partner' && <th className="text-left px-5 py-3 font-semibold">Executive</th>}
                   <th className="text-left px-5 py-3 font-semibold">Current State</th>
                   <th className="text-left px-5 py-3 font-semibold">Action Required</th>
                   {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && <th className="text-left px-5 py-3 font-semibold">Tax Payment</th>}
@@ -283,6 +320,16 @@ function ClientsListPage() {
                       {c._fy ? `FY ${c._fy}` : <span className="text-xs text-slate-400">—</span>}
                     </td>
                     <td className="px-5 py-3"><StatusBadge status={c.account_status} /></td>
+                    {routePrefix === '/partner' && (
+                      <td className="px-5 py-3">
+                        <Select value={clientManagerMap.get(c.id) || ''} onValueChange={(v) => onAssignManager(c.id, v)}>
+                          <SelectTrigger className={`h-8 w-[160px] text-xs ${clientManagerMap.get(c.id) ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                            <SelectValue placeholder="Unassigned" />
+                          </SelectTrigger>
+                          <SelectContent>{mgrs.filter((m) => m.is_active !== false).map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name || m.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </td>
+                    )}
                     {routePrefix === '/partner' && (
                       <td className="px-5 py-3">
                         <Select value={c.assigned_executive_id || ''} onValueChange={(v) => onAssign(c.id, v)}>

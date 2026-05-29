@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,13 +9,15 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerClients } from '@/lib/api';
+import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const FILING_STAGES = ['INITIATED', 'DOCUMENT_UPLOAD', 'PROCESSING', 'COMPUTATION', 'FILING', 'PAYMENT', 'COMPLETED'];
 function getFilingPercent(status: string): number {
@@ -28,10 +30,17 @@ function getFilingPercent(status: string): number {
 
 export default function ClientDetailPage() {
   const { client_id } = useParams<{ client_id: string }>();
+  const pathname = usePathname();
+  const isPartner = pathname.startsWith('/partner');
+  const isManager = pathname.startsWith('/manager');
   const [client, setClient] = useState<any>(null);
   const [filings, setFilings] = useState<any[]>([]);
   const [docs, setDocs] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
+
+  const [managers, setManagers] = useState<any[]>([]);
+  const [executives, setExecutives] = useState<any[]>([]);
+  const [clientManagerId, setClientManagerId] = useState<string | null>(null);
 
   const [onboardingFields, setOnboardingFields] = useState<any[]>([]);
   const [onboardingValues, setOnboardingValues] = useState<Record<string, any>>({});
@@ -76,6 +85,47 @@ export default function ClientDetailPage() {
   };
   useEffect(() => { load(); }, [client_id]);
 
+  // Load managers/executives for assignment dropdowns
+  useEffect(() => {
+    if (isPartner) {
+      listManagers().then(async (r) => {
+        const mgrList = r?.items || r?.managers || r || [];
+        setManagers(mgrList);
+        // Find which manager owns this client
+        for (const m of mgrList) {
+          try {
+            const res = await getManagerClients(m.id, { page: 1, page_size: 100 });
+            const items = res?.items || [];
+            if (items.some((c: any) => c.id === client_id)) {
+              setClientManagerId(m.id);
+              break;
+            }
+          } catch {}
+        }
+      }).catch(() => {});
+      listExecutives().then((r) => setExecutives(r?.items || r?.executives || r || [])).catch(() => {});
+    } else if (isManager) {
+      getMyTeam().then((r) => setExecutives(r?.executives || [])).catch(() => {});
+    }
+  }, [isPartner, isManager, client_id]);
+
+  const onAssignManager = async (manager_id: string) => {
+    try {
+      await assignClientToManager(manager_id, client_id);
+      setClientManagerId(manager_id);
+      toast.success('Manager assigned');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to assign manager'); }
+  };
+
+  const onAssignExecutive = async (executive_id: string) => {
+    try {
+      await assignExecutive(client_id, executive_id);
+      toast.success('Executive assigned');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to assign executive'); }
+  };
+
   const initials = (client?.full_name || 'C').split(' ').map((p: string) => p[0]).slice(0, 2).join('').toUpperCase();
 
   const doInitiate = async () => {
@@ -103,9 +153,39 @@ export default function ClientDetailPage() {
             <div className="flex items-center gap-2 text-slate-600"><Mail className="h-4 w-4" /> {client.email}</div>
             {client.phone_number && <div className="flex items-center gap-2 text-slate-600"><Phone className="h-4 w-4" /> {client.phone_number}</div>}
           </div>
-          <div className="mt-5 pt-5 border-t border-slate-200">
-            <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Executive(Article)</div>
-            <div className="text-sm font-medium text-slate-800">{client.assigned_executive_name || client.executive_name || 'Unassigned'}</div>
+          <div className="mt-5 pt-5 border-t border-slate-200 space-y-4">
+            {isPartner && (
+              <div>
+                <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Manager</div>
+                <Select value={clientManagerId || ''} onValueChange={(v) => onAssignManager(v)}>
+                  <SelectTrigger className={`h-9 w-full text-sm ${clientManagerId ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                    <SelectValue placeholder="Select Manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {managers.filter((m) => m.is_active !== false).map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.full_name || m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div>
+              <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Executive</div>
+              {(isPartner || isManager) ? (
+                <Select value={client.assigned_executive_id || ''} onValueChange={(v) => onAssignExecutive(v)}>
+                  <SelectTrigger className={`h-9 w-full text-sm ${client.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                    <SelectValue placeholder="Select Executive" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {executives.filter((e) => e.is_active !== false).map((e) => (
+                      <SelectItem key={e.executive_id || e.id} value={e.executive_id || e.id}>{e.executive_name || e.full_name || e.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-sm font-medium text-slate-800">{client.assigned_executive_name || client.executive_name || 'Unassigned'}</div>
+              )}
+            </div>
           </div>
           {client.pan_document_url && (
             <Button variant="outline" className="mt-5 w-full" onClick={() => window.open(client.pan_document_url, '_blank')}><FileText className="h-4 w-4 mr-2" /> View PAN Document</Button>
@@ -540,6 +620,10 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [approving, setApproving] = useState<string | null>(null);
+  const [rejectingComp, setRejectingComp] = useState<any>(null);
+  const [rejectCompReason, setRejectCompReason] = useState('');
+  const userRole = typeof window !== 'undefined' ? getUser()?.role?.toUpperCase() : '';
 
   const load = async () => {
     setLoading(true);
@@ -648,8 +732,46 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
                   <span className="font-semibold">Rejection reason:</span> {c.rejection_reason}
                 </div>
               )}
+              {c.status === 'MANAGER_REJECTED' && c.rejection_reason && (
+                <div className="mt-2 text-xs text-rose-700 bg-rose-100 rounded px-2 py-1.5">
+                  <span className="font-semibold">Manager rejected:</span> {c.rejection_reason}
+                </div>
+              )}
+              {c.status === 'MANAGER_APPROVED' && (
+                <div className="mt-1 text-[10px] text-violet-700">Manager approved{c.manager_approved_at ? ` on ${new Date(c.manager_approved_at).toLocaleDateString()}` : ''}</div>
+              )}
+              {c.status === 'PARTNER_APPROVED' && (
+                <div className="mt-1 text-[10px] text-indigo-700">Partner approved{c.partner_approved_at ? ` on ${new Date(c.partner_approved_at).toLocaleDateString()}` : ''}</div>
+              )}
               {c.status === 'APPROVED' && c.approved_at && (
                 <div className="mt-1 text-[10px] text-emerald-700">Approved on {new Date(c.approved_at).toLocaleDateString()}</div>
+              )}
+              {/* Multi-step approval buttons */}
+              {c.status === 'UPLOADED' && userRole === 'MANAGER' && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-xs h-7" disabled={approving === c.id} onClick={async () => {
+                    setApproving(c.id);
+                    try { await managerApproveComp(c.id); toast.success('Computation approved (Manager)'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setApproving(null); }
+                  }}>
+                    {approving === c.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />} Manager Approve
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-rose-700 border-rose-200 text-xs h-7" onClick={() => { setRejectingComp(c); setRejectCompReason(''); }}>
+                    <X className="h-3 w-3 mr-1" /> Reject
+                  </Button>
+                </div>
+              )}
+              {(c.status === 'UPLOADED' || c.status === 'MANAGER_APPROVED') && userRole === 'PARTNER' && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs h-7" disabled={approving === c.id} onClick={async () => {
+                    setApproving(c.id);
+                    try { await partnerApproveComp(c.id); toast.success('Computation approved (Partner)'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setApproving(null); }
+                  }}>
+                    {approving === c.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />} Partner Approve
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-rose-700 border-rose-200 text-xs h-7" onClick={() => { setRejectingComp(c); setRejectCompReason(''); }}>
+                    <X className="h-3 w-3 mr-1" /> Reject
+                  </Button>
+                </div>
               )}
             </div>
           ))}
@@ -695,6 +817,45 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
       )}
 
       <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={undefined} />
+
+      {/* Manager Reject Computation Dialog */}
+      <Dialog open={!!rejectingComp} onOpenChange={(o) => { if (!o) { setRejectingComp(null); setRejectCompReason(''); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="text-rose-700">Reject Computation</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs text-slate-500">Computation</div>
+              <div className="text-sm font-medium text-slate-900 mt-0.5">Version {rejectingComp?.version} — {rejectingComp?.original_filename || 'computation'}</div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-slate-700">Reason for rejection <span className="text-rose-500">*</span></Label>
+              <Textarea value={rejectCompReason} onChange={(e) => setRejectCompReason(e.target.value)} placeholder="Describe why this computation is being rejected…" rows={4} className="mt-1.5" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRejectingComp(null); setRejectCompReason(''); }}>Cancel</Button>
+            <Button
+              disabled={approving === rejectingComp?.id || !rejectCompReason.trim()}
+              className="bg-rose-600 hover:bg-rose-700"
+              onClick={async () => {
+                setApproving(rejectingComp?.id);
+                try {
+                  if (userRole === 'PARTNER') {
+                    await partnerRejectComp(rejectingComp.id, rejectCompReason.trim());
+                  } else {
+                    await managerRejectComp(rejectingComp.id, rejectCompReason.trim());
+                  }
+                  toast.success('Computation rejected');
+                  setRejectingComp(null); setRejectCompReason(''); load();
+                } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+                finally { setApproving(null); }
+              }}
+            >
+              {approving === rejectingComp?.id && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Reject Computation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -704,6 +865,7 @@ const COMPLETED_DOC_TYPES = [
   { key: 'INVOICE', label: 'Invoice', description: 'Service invoice for the client', required: true },
   { key: 'ITR_JSON', label: 'ITR JSON', description: 'ITR JSON file submitted to portal', required: true },
   { key: 'ITR_FORM', label: 'ITR Form', description: 'ITR form filed with the department', required: true },
+  { key: 'TAX_PAID_COMPUTATION', label: 'Tax Paid Computation', description: 'Computation document with tax payment proof', required: true },
   { key: 'FINANCIAL_STATEMENT', label: 'Financial Statement', description: 'Financial statement document (optional)', required: false },
 ];
 

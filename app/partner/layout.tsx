@@ -1,13 +1,14 @@
 "use client";
 
 import AppShell from '@/components/shared/AppShell';
-import { LayoutDashboard, Users, Shield, Layout, FileText, Bell, FileCheck, Mail, Tags, User, KeyRound, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Layout, FileText, Bell, FileCheck, Mail, Tags, User, KeyRound, ClipboardList, UserCog } from 'lucide-react';
 
 const NAV = [
   { href: '/partner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/partner/action-items', label: 'Action Items', icon: ClipboardList },
   { href: '/partner/clients', label: 'Clients', icon: Users },
   { href: '/partner/executives', label: 'Executives(Articles)', icon: Shield },
+  { href: '/partner/managers', label: 'Managers', icon: UserCog },
   { href: '/partner/executives/tags', label: 'Management', icon: Tags },
   { href: '/partner/document-types', label: 'Document Checklist', icon: FileCheck },
   { href: '/partner/form-builder', label: 'Form Builder', icon: Layout },

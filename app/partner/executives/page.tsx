@@ -4,22 +4,32 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { listExecutives, createExecutive, deactivateExec, reactivateExec, listExecutivesWithTags, listTags, assignTag } from '@/lib/api';
+import { listExecutives, createExecutive, deactivateExec, reactivateExec, listExecutivesWithTags, listTags, assignTag, listManagers, assignExecutiveToManager } from '@/lib/api';
 import { toast } from 'sonner';
-import { Shield, UserPlus, Loader2 } from 'lucide-react';
+import { Shield, UserPlus, Loader2, Users, Search } from 'lucide-react';
 
 export default function ExecutivesPage() {
   const [execs, setExecs] = useState<any[]>([]);
   const [execsWithTags, setExecsWithTags] = useState<any[]>([]);
   const [allTags, setAllTags] = useState<any[]>([]);
+  const [managers, setManagers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ full_name: '', email: '', password: '' });
   const [selectedManager, setSelectedManager] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
+  const [createManagerId, setCreateManagerId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const load = async () => { setLoading(true); try { const [r, t, tags] = await Promise.all([listExecutives(), listExecutivesWithTags(), listTags()]); setExecs(r?.items || r?.executives || r || []); setExecsWithTags(t?.items || t || []); setAllTags(tags?.items || tags || []); } finally { setLoading(false); } };
+  // Assign manager dialog
+  const [showAssignMgr, setShowAssignMgr] = useState(false);
+  const [assignExec, setAssignExec] = useState<any>(null);
+  const [assignMgrId, setAssignMgrId] = useState('');
+  const [assignMgrSearch, setAssignMgrSearch] = useState('');
+  const [assigningMgr, setAssigningMgr] = useState(false);
+
+  const load = async () => { setLoading(true); try { const [r, t, tags, mgrs] = await Promise.all([listExecutives(), listExecutivesWithTags(), listTags(), listManagers()]); setExecs(r?.items || r?.executives || r || []); setExecsWithTags(t?.items || t || []); setAllTags(tags?.items || tags || []); setManagers(mgrs?.items || mgrs?.managers || mgrs || []); } finally { setLoading(false); } };
   useEffect(() => { load(); }, []);
 
   const managerTags = allTags.filter((t: any) => t.tag_type === 'MANAGER' && t.is_active !== false);
@@ -36,15 +46,42 @@ export default function ExecutivesPage() {
         if (selectedManager) assignments.push(assignTag(execId, selectedManager));
         if (selectedLocation) assignments.push(assignTag(execId, selectedLocation));
         if (assignments.length > 0) await Promise.allSettled(assignments);
+        if (createManagerId) {
+          try { await assignExecutiveToManager(createManagerId, execId); } catch {}
+        }
       }
       toast.success('Executive(Article) created');
       setForm({ full_name: '', email: '', password: '' });
       setSelectedManager('');
       setSelectedLocation('');
+      setCreateManagerId('');
       load();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
     finally { setSubmitting(false); }
   };
+
+  const handleAssignManager = async () => {
+    if (!assignMgrId || !assignExec) return;
+    setAssigningMgr(true);
+    try {
+      await assignExecutiveToManager(assignMgrId, assignExec.id || assignExec.executive_id);
+      toast.success('Manager assigned successfully');
+      setShowAssignMgr(false);
+      setAssignMgrId('');
+      setAssignMgrSearch('');
+      load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Failed to assign manager');
+    } finally {
+      setAssigningMgr(false);
+    }
+  };
+
+  const filteredAssignManagers = managers.filter((m: any) => {
+    if (!assignMgrSearch) return true;
+    const q = assignMgrSearch.toLowerCase();
+    return (m.full_name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q);
+  });
 
   const toggle = async (ex: any) => {
     try { if (ex.is_active) { await deactivateExec(ex.id); toast.success('Deactivated'); } else { await reactivateExec(ex.id); toast.success('Reactivated'); } load(); } catch { toast.error('Failed'); }
@@ -72,6 +109,9 @@ export default function ExecutivesPage() {
               <div className="flex items-center gap-3">
                 <div className="text-right"><div className="text-xs text-slate-500">Clients</div><div className="font-bold text-slate-900">{e.assigned_client_count ?? 0}</div></div>
                 <StatusBadge status={e.account_status || (e.is_active ? 'ACTIVE' : 'DEACTIVATED')} />
+                <Button size="sm" variant="outline" onClick={() => { setAssignExec(e); setAssignMgrId(''); setAssignMgrSearch(''); setShowAssignMgr(true); }}>
+                  <Users className="h-3 w-3 mr-1" /> Assign Manager
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => toggle(e)}>{e.is_active ? 'Deactivate' : 'Reactivate'}</Button>
               </div>
             </div>
@@ -111,9 +151,53 @@ export default function ExecutivesPage() {
               </select>
             </div>
           )}
+          {managers.length > 0 && (
+            <div>
+              <Label>Assign to Manager</Label>
+              <select value={createManagerId} onChange={(e) => setCreateManagerId(e.target.value)} className="mt-1.5 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                <option value="">Select Manager</option>
+                {managers.map((m: any) => <option key={m.id || m.manager_id} value={m.id || m.manager_id}>{m.full_name} ({m.email})</option>)}
+              </select>
+            </div>
+          )}
           <Button type="submit" disabled={submitting} className="w-full bg-indigo-600 hover:bg-indigo-700">{submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />} Create & Assign</Button>
         </form>
       </Card>
+
+      {/* Assign Manager Dialog */}
+      <Dialog open={showAssignMgr} onOpenChange={setShowAssignMgr}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Assign Manager to {assignExec?.full_name || assignExec?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input placeholder="Search managers..." value={assignMgrSearch} onChange={(e) => setAssignMgrSearch(e.target.value)} className="pl-9" />
+            </div>
+            <div className="max-h-60 overflow-y-auto border rounded-lg divide-y">
+              {filteredAssignManagers.map((m: any) => {
+                const mid = m.id || m.manager_id;
+                const selected = assignMgrId === mid;
+                return (
+                  <div key={mid} className={`flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-slate-50 ${selected ? 'bg-indigo-50' : ''}`} onClick={() => setAssignMgrId(mid)}>
+                    <div>
+                      <div className="text-sm font-medium text-slate-900">{m.full_name}</div>
+                      <div className="text-xs text-slate-500">{m.email}</div>
+                    </div>
+                    {selected && <div className="h-5 w-5 rounded-full bg-indigo-600 flex items-center justify-center"><svg className="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg></div>}
+                  </div>
+                );
+              })}
+              {filteredAssignManagers.length === 0 && <div className="px-4 py-6 text-center text-sm text-slate-500">No managers found</div>}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAssignMgr(false)}>Cancel</Button>
+            <Button disabled={!assignMgrId || assigningMgr} className="bg-indigo-600 hover:bg-indigo-700" onClick={handleAssignManager}>
+              {assigningMgr && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

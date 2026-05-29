@@ -6,8 +6,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, getFilingsByStatus } from '@/lib/api';
+import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, getFilingsByStatus, listManagers, listExecutives, assignClientToManager, assignExecutive } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
 import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader2, FileText, IndianRupee, AlertTriangle } from 'lucide-react';
@@ -33,24 +34,29 @@ export default function PartnerDashboardPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [acting, setActing] = useState(false);
   const [awaitingTaxPayment, setAwaitingTaxPayment] = useState<any[]>([]);
+  const [managers, setManagers] = useState<any[]>([]);
+  const [executives, setExecutives] = useState<any[]>([]);
+  const [justActivated, setJustActivated] = useState<any>(null); // client that was just activated, needs assignment
 
   const load = async () => {
     setLoading(true);
     try {
-      const [s, p, a, compFilings] = await Promise.allSettled([getSummary(), getPendingVerification(), getPartnerAnalytics(), getFilingsByStatus('COMPUTATION', 1, 100)]);
+      const [s, p, a, paymentFilings] = await Promise.allSettled([getSummary(), getPendingVerification(), getPartnerAnalytics(), getFilingsByStatus('PAYMENT', 1, 100)]);
       if (s.status === 'fulfilled') setSummary(s.value || {});
       if (p.status === 'fulfilled') setPending(p.value?.items || []);
       if (a.status === 'fulfilled') setAnalytics(a.value);
-      // Filter computation filings where computation is approved but tax not paid
-      if (compFilings.status === 'fulfilled') {
-        const items = compFilings.value?.items || compFilings.value?.filings || [];
-        const awaitingTax = items.filter((f: any) => f.is_tax_paid === false);
-        setAwaitingTaxPayment(awaitingTax);
+      if (paymentFilings.status === 'fulfilled') {
+        const items = paymentFilings.value?.items || paymentFilings.value?.filings || [];
+        setAwaitingTaxPayment(items);
       }
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    listManagers().then((r) => setManagers(r?.items || r?.managers || r || [])).catch(() => {});
+    listExecutives().then((r) => setExecutives(r?.items || r?.executives || r || [])).catch(() => {});
+  }, []);
 
   const getCount = (key: string) => {
     if (key === 'AWAITING_TAX_PAYMENT') return awaitingTaxPayment.length;
@@ -59,9 +65,28 @@ export default function PartnerDashboardPage() {
     return found?.count ?? 0;
   };
 
-  const onActivate = async (id: string) => {
+  const onActivate = async (client: any) => {
     setActing(true);
-    try { await activateClient(id); toast.success('Client activated'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Activation failed'); }
+    try {
+      await activateClient(client.id);
+      toast.success('Client activated! Now assign a manager.');
+      setJustActivated(client);
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Activation failed'); }
+    finally { setActing(false); }
+  };
+
+  const onAssignAfterActivation = async (managerId: string, executiveId?: string) => {
+    if (!justActivated) return;
+    setActing(true);
+    try {
+      await assignClientToManager(managerId, justActivated.id);
+      if (executiveId) {
+        await assignExecutive(justActivated.id, executiveId);
+      }
+      toast.success('Manager assigned successfully');
+      setJustActivated(null);
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Assignment failed'); }
     finally { setActing(false); }
   };
   const onReject = async () => {
@@ -202,7 +227,7 @@ export default function PartnerDashboardPage() {
                     <td className="px-5 py-3 text-slate-500 text-xs">{c.registered_at ? new Date(c.registered_at).toLocaleDateString() : '—'}</td>
                     <td className="px-5 py-3">
                       <div className="flex gap-2 justify-end">
-                        <Button size="sm" onClick={() => onActivate(c.id)} disabled={acting} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activate</Button>
+                        <Button size="sm" onClick={() => onActivate(c)} disabled={acting} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activate</Button>
                         <Button size="sm" variant="outline" onClick={() => setRejectFor(c)} className="text-rose-600 border-rose-200 hover:bg-rose-50"><XCircle className="h-3.5 w-3.5 mr-1" /> Reject</Button>
                       </div>
                     </td>
@@ -241,6 +266,87 @@ export default function PartnerDashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Assign Manager/Executive after activation */}
+      <AssignAfterActivationDialog
+        client={justActivated}
+        managers={managers}
+        executives={executives}
+        acting={acting}
+        onAssign={onAssignAfterActivation}
+        onSkip={() => { setJustActivated(null); load(); }}
+      />
     </div>
+  );
+}
+
+function AssignAfterActivationDialog({ client, managers, executives, acting, onAssign, onSkip }: {
+  client: any;
+  managers: any[];
+  executives: any[];
+  acting: boolean;
+  onAssign: (managerId: string, executiveId?: string) => void;
+  onSkip: () => void;
+}) {
+  const [selectedManager, setSelectedManager] = useState('');
+  const [selectedExecutive, setSelectedExecutive] = useState('');
+
+  if (!client) return null;
+
+  return (
+    <Dialog open={!!client} onOpenChange={(o) => { if (!o) onSkip(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-emerald-700 flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5" /> Client Activated
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+            <div className="text-sm font-semibold text-slate-900">{client.full_name || client.name}</div>
+            <div className="text-xs text-slate-500">{client.email}</div>
+          </div>
+          <p className="text-sm text-slate-600">Assign a manager (and optionally an executive) to this client now.</p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Manager <span className="text-rose-500">*</span></label>
+              <Select value={selectedManager} onValueChange={setSelectedManager}>
+                <SelectTrigger className={`w-full ${selectedManager ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                  <SelectValue placeholder="Select Manager" />
+                </SelectTrigger>
+                <SelectContent>
+                  {managers.filter((m) => m.is_active !== false).map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.full_name || m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Executive <span className="text-slate-400">(optional)</span></label>
+              <Select value={selectedExecutive} onValueChange={setSelectedExecutive}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Executive (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {executives.filter((e) => e.is_active !== false).map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.full_name || e.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onSkip}>Skip for now</Button>
+          <Button
+            disabled={!selectedManager || acting}
+            className="bg-indigo-600 hover:bg-indigo-700"
+            onClick={() => onAssign(selectedManager, selectedExecutive || undefined)}
+          >
+            {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Assign & Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

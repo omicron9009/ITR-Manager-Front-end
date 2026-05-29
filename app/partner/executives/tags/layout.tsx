@@ -2,13 +2,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Tags, UserCheck, MapPin, Network } from 'lucide-react';
+import { Tags, MapPin } from 'lucide-react';
 
 const TABS = [
   { href: '/partner/executives/tags', label: 'Manage Tags', icon: Tags, exact: true },
-  { href: '/partner/executives/tags/manager-summary', label: 'Manager Summary', icon: UserCheck },
   { href: '/partner/executives/tags/location-summary', label: 'Location Summary', icon: MapPin },
-  { href: '/partner/executives/tags/hierarchy', label: 'Hierarchy', icon: Network },
 ];
 
 export default function TagsLayout({ children }: { children: React.ReactNode }) {

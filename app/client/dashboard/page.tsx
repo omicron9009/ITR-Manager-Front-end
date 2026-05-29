@@ -17,7 +17,8 @@ import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, 
 
 function getFYOptions() {
   const d = new Date();
-  const cur = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+  // Only show FYs that have ended (FY Y-(Y+1) ends on March 31 of Y+1)
+  const cur = d.getMonth() >= 3 ? d.getFullYear() - 1 : d.getFullYear() - 2;
   const arr: string[] = [];
   for (let y = cur; y >= 2000; y--) arr.push(`${y}-${y + 1}`);
   return arr;

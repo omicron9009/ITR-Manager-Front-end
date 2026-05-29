@@ -214,7 +214,7 @@ export default function FilingDetailPage() {
             <h2 className="font-bold text-slate-900">Tax Computation</h2>
           </div>
 
-          {currentComp && currentComp.status === 'UPLOADED' && (
+          {currentComp && currentComp.status === 'PARTNER_APPROVED' && (
             <div className="rounded-lg border-2 border-violet-200 bg-violet-50/50 p-4 mb-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -235,7 +235,7 @@ export default function FilingDetailPage() {
           )}
 
           {/* Tax Payment Confirmation - shown when computation is approved but tax not yet paid */}
-          {currentComp && currentComp.status === 'APPROVED' && !filing.is_tax_paid && state === 'COMPUTATION' && (
+          {currentComp && (currentComp.status === 'APPROVED' || currentComp.status === 'CLIENT_APPROVED') && !filing.is_tax_paid && state === 'COMPUTATION' && (
             <div className="rounded-lg border-2 border-amber-200 bg-amber-50/50 p-4 mb-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
@@ -282,10 +282,10 @@ export default function FilingDetailPage() {
             </div>
           )}
 
-          {computations.filter((c) => c.id !== currentComp?.id || c.status !== 'UPLOADED').length > 0 && (
+          {computations.filter((c) => ['PARTNER_APPROVED', 'APPROVED', 'CLIENT_APPROVED', 'REJECTED'].includes(c.status)).filter((c) => c.id !== currentComp?.id || c.status !== 'PARTNER_APPROVED').length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-slate-500 uppercase">History</p>
-              {computations.filter((c) => c.id !== currentComp?.id || c.status !== 'UPLOADED').sort((a, b) => b.version - a.version).map((c) => (
+              {computations.filter((c) => ['PARTNER_APPROVED', 'APPROVED', 'CLIENT_APPROVED', 'REJECTED'].includes(c.status)).filter((c) => c.id !== currentComp?.id || c.status !== 'PARTNER_APPROVED').sort((a, b) => b.version - a.version).map((c) => (
                 <div key={c.id} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-slate-500">v{c.version}</span>
@@ -317,7 +317,7 @@ export default function FilingDetailPage() {
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-emerald-600" />
                   <div>
-                    <div className="font-medium text-sm text-slate-900">{{ ITR_ACKNOWLEDGEMENT: 'ITR Acknowledgement', INVOICE: 'Invoice', ITR_JSON: 'ITR JSON', ITR_FORM: 'ITR Form', FINANCIAL_STATEMENT: 'Financial Statement' }[d.doc_type] || d.doc_type || d.original_filename || 'Document'}</div>
+                    <div className="font-medium text-sm text-slate-900">{{ ITR_ACKNOWLEDGEMENT: 'ITR Acknowledgement', INVOICE: 'Invoice', ITR_JSON: 'ITR JSON', ITR_FORM: 'ITR Form', TAX_PAID_COMPUTATION: 'Tax Paid Computation', FINANCIAL_STATEMENT: 'Financial Statement' }[d.doc_type] || d.doc_type || d.original_filename || 'Document'}</div>
                     <div className="text-xs text-slate-500">{d.original_filename || d.filename}</div>
                   </div>
                 </div>
