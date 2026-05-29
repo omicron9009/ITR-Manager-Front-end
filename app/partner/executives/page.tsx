@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { listExecutives, createExecutive, deactivateExec, reactivateExec, listExecutivesWithTags, listTags, assignTag, listManagers, assignExecutiveToManager } from '@/lib/api';
+import { listExecutives, createExecutive, deactivateExec, reactivateExec, listExecutivesWithTags, listTags, assignTag, listManagers, assignExecutiveToManager, getManagerTeam } from '@/lib/api';
 import { toast } from 'sonner';
 import { Shield, UserPlus, Loader2, Users, Search } from 'lucide-react';
 
@@ -22,6 +22,9 @@ export default function ExecutivesPage() {
   const [createManagerId, setCreateManagerId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Executive → Manager map
+  const [execManagerMap, setExecManagerMap] = useState<Map<string, { id: string; name: string }>>(new Map());
+
   // Assign manager dialog
   const [showAssignMgr, setShowAssignMgr] = useState(false);
   const [assignExec, setAssignExec] = useState<any>(null);
@@ -29,7 +32,29 @@ export default function ExecutivesPage() {
   const [assignMgrSearch, setAssignMgrSearch] = useState('');
   const [assigningMgr, setAssigningMgr] = useState(false);
 
-  const load = async () => { setLoading(true); try { const [r, t, tags, mgrs] = await Promise.all([listExecutives(), listExecutivesWithTags(), listTags(), listManagers()]); setExecs(r?.items || r?.executives || r || []); setExecsWithTags(t?.items || t || []); setAllTags(tags?.items || tags || []); setManagers(mgrs?.items || mgrs?.managers || mgrs || []); } finally { setLoading(false); } };
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [r, t, tags, mgrs] = await Promise.all([listExecutives(), listExecutivesWithTags(), listTags(), listManagers()]);
+      setExecs(r?.items || r?.executives || r || []);
+      setExecsWithTags(t?.items || t || []);
+      setAllTags(tags?.items || tags || []);
+      const mgrList = mgrs?.items || mgrs?.managers || mgrs || [];
+      setManagers(mgrList);
+      // Build executive → manager map
+      const map = new Map<string, { id: string; name: string }>();
+      await Promise.all(mgrList.map(async (m: any) => {
+        try {
+          const team = await getManagerTeam(m.id || m.manager_id);
+          const executives = team?.executives || team?.items || [];
+          for (const ex of executives) {
+            map.set(ex.id || ex.executive_id, { id: m.id || m.manager_id, name: m.full_name || m.name });
+          }
+        } catch {}
+      }));
+      setExecManagerMap(map);
+    } finally { setLoading(false); }
+  };
   useEffect(() => { load(); }, []);
 
   const managerTags = allTags.filter((t: any) => t.tag_type === 'MANAGER' && t.is_active !== false);
@@ -110,7 +135,7 @@ export default function ExecutivesPage() {
                 <div className="text-right"><div className="text-xs text-slate-500">Clients</div><div className="font-bold text-slate-900">{e.assigned_client_count ?? 0}</div></div>
                 <StatusBadge status={e.account_status || (e.is_active ? 'ACTIVE' : 'DEACTIVATED')} />
                 <Button size="sm" variant="outline" onClick={() => { setAssignExec(e); setAssignMgrId(''); setAssignMgrSearch(''); setShowAssignMgr(true); }}>
-                  <Users className="h-3 w-3 mr-1" /> Assign Manager
+                  <Users className="h-3 w-3 mr-1" /> {execManagerMap.get(e.id)?.name || 'Assign Manager'}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => toggle(e)}>{e.is_active ? 'Deactivate' : 'Reactivate'}</Button>
               </div>
