@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { listManagers, createManager, getManagerTeam, assignExecutiveToManager, removeExecutiveFromManager, listExecutives, assignClientToManager, removeClientFromManager, getManagerClients, listClients, listTags, assignTagToManager, removeTagFromManager, getManagerTags } from '@/lib/api';
 import { toast } from 'sonner';
-import { Users, UserPlus, Loader2, Shield, ChevronDown, ChevronUp, X, UserCheck, Clock, Search, MapPin } from 'lucide-react';
+import { Users, UserPlus, Loader2, Shield, ChevronDown, ChevronUp, X, UserCheck, Clock, Search, MapPin, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function PartnerManagersPage() {
   const [managers, setManagers] = useState<any[]>([]);
@@ -56,6 +56,8 @@ export default function PartnerManagersPage() {
 
   // Manager search
   const [managerSearch, setManagerSearch] = useState('');
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const load = async () => {
     setLoading(true);
@@ -86,6 +88,48 @@ export default function PartnerManagersPage() {
     const q = managerSearch.toLowerCase();
     return managers.filter((m) => (m.full_name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q));
   }, [managers, managerSearch]);
+
+  // Sorting logic
+  const toggleSort = (col: string) => {
+    if (sortCol === col) {
+      setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedManagers = useMemo(() => {
+    if (!sortCol) return filteredManagers;
+    const arr = [...filteredManagers];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    arr.sort((a, b) => {
+      let va: any, vb: any;
+      const aid = a.id || a.manager_id;
+      const bid = b.id || b.manager_id;
+      switch (sortCol) {
+        case 'manager': va = (a.full_name || '').toLowerCase(); vb = (b.full_name || '').toLowerCase(); break;
+        case 'email': va = (a.email || '').toLowerCase(); vb = (b.email || '').toLowerCase(); break;
+        case 'status': va = a.account_status || (a.is_active === false ? 'DEACTIVATED' : 'ACTIVE'); vb = b.account_status || (b.is_active === false ? 'DEACTIVATED' : 'ACTIVE'); break;
+        case 'executives': va = a.team_count ?? a.executive_count ?? (teamData[aid]?.executives?.length || 0); vb = b.team_count ?? b.executive_count ?? (teamData[bid]?.executives?.length || 0); break;
+        case 'clients': va = a.client_count ?? (clientData[aid]?.length || 0); vb = b.client_count ?? (clientData[bid]?.length || 0); break;
+        default: return 0;
+      }
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+    return arr;
+  }, [filteredManagers, sortCol, sortDir, teamData, clientData]);
+
+  const SortHeader = ({ col, children, className = '' }: { col: string; children: React.ReactNode; className?: string }) => (
+    <th className={`text-left px-5 py-3 font-semibold cursor-pointer select-none hover:text-indigo-700 transition-colors ${className}`} onClick={() => toggleSort(col)}>
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {sortCol === col ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+      </span>
+    </th>
+  );
 
   const openCreate = async () => {
     setForm({ full_name: '', email: '', password: '' });
@@ -337,19 +381,26 @@ export default function PartnerManagersPage() {
         </Card>
       ) : (
         <Card className="rounded-xl overflow-hidden p-0">
+          <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100">
+            {sortCol && (
+              <Button size="sm" variant="ghost" className="text-xs text-slate-500" onClick={() => { setSortCol(null); setSortDir('asc'); }}>
+                Clear Sort
+              </Button>
+            )}
+          </div>
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
               <tr>
                 <th className="text-left px-5 py-3 font-semibold w-8"></th>
-                <th className="text-left px-5 py-3 font-semibold">Manager</th>
-                <th className="text-left px-5 py-3 font-semibold">Email</th>
-                <th className="text-left px-5 py-3 font-semibold">Status</th>
-                <th className="text-left px-5 py-3 font-semibold">Executives</th>
-                <th className="text-left px-5 py-3 font-semibold">Clients</th>
+                <SortHeader col="manager">Manager</SortHeader>
+                <SortHeader col="email">Email</SortHeader>
+                <SortHeader col="status">Status</SortHeader>
+                <SortHeader col="executives">Executives</SortHeader>
+                <SortHeader col="clients">Clients</SortHeader>
               </tr>
             </thead>
             <tbody>
-              {filteredManagers.map((mgr: any) => {
+              {sortedManagers.map((mgr: any) => {
                 const id = mgr.id || mgr.manager_id;
                 const isExpanded = expandedManager === id;
                 const team = teamData[id];
