@@ -1,6 +1,6 @@
 // @ts-nocheck
 'use client';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { listClients, listExecutives, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems, listManagers, assignClientToManager, getManagerClients } from '@/lib/api';
-import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot } from 'lucide-react';
+import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot, ArrowUpDown, Clock, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 function getFYOptions() {
@@ -48,6 +48,10 @@ function ClientsListPage() {
   const [clientManagerMap, setClientManagerMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [actionItems, setActionItems] = useState<any[]>([]);
+  const [showTimeInState, setShowTimeInState] = useState(false);
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const fyOptions = useMemo(() => getFYOptions(), []);
 
@@ -242,6 +246,66 @@ function ClientsListPage() {
     return map;
   }, [actionItems]);
 
+  // Helper: compute hours since last_updated
+  const getHoursInState = (lastUpdated: string | null) => {
+    if (!lastUpdated) return null;
+    const diff = Date.now() - new Date(lastUpdated).getTime();
+    return Math.max(0, Math.round(diff / (1000 * 60 * 60)));
+  };
+
+  const formatDuration = (hours: number | null) => {
+    if (hours === null) return '—';
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    const rem = hours % 24;
+    return rem > 0 ? `${days}d ${rem}h` : `${days}d`;
+  };
+
+  // Sorting logic
+  const toggleSort = (col: string) => {
+    if (sortCol === col) {
+      setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  };
+
+  const sorted = useMemo(() => {
+    if (!sortCol) return filtered;
+    const arr = [...filtered];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    arr.sort((a, b) => {
+      let va: any, vb: any;
+      switch (sortCol) {
+        case 'client': va = (a.full_name || a.name || '').toLowerCase(); vb = (b.full_name || b.name || '').toLowerCase(); break;
+        case 'phone': va = a.phone_number || ''; vb = b.phone_number || ''; break;
+        case 'fy': va = a._fy || ''; vb = b._fy || ''; break;
+        case 'account': va = a.account_status || ''; vb = b.account_status || ''; break;
+        case 'manager': va = (mgrs.find((m) => m.id === clientManagerMap.get(a.id))?.full_name || mgrs.find((m) => m.id === clientManagerMap.get(a.id))?.name || 'zzz').toLowerCase(); vb = (mgrs.find((m) => m.id === clientManagerMap.get(b.id))?.full_name || mgrs.find((m) => m.id === clientManagerMap.get(b.id))?.name || 'zzz').toLowerCase(); break;
+        case 'executive': va = (a.assigned_executive_name || 'zzz').toLowerCase(); vb = (b.assigned_executive_name || 'zzz').toLowerCase(); break;
+        case 'state': va = a.current_state || a.filing_state || ''; vb = b.current_state || b.filing_state || ''; break;
+        case 'action': va = actionItemByClient.get(a.id)?.title || 'zzz'; vb = actionItemByClient.get(b.id)?.title || 'zzz'; break;
+        case 'time': va = getHoursInState(a.last_updated) ?? 99999; vb = getHoursInState(b.last_updated) ?? 99999; break;
+        case 'updated': va = a.last_updated || ''; vb = b.last_updated || ''; break;
+        default: return 0;
+      }
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+    return arr;
+  }, [filtered, sortCol, sortDir, mgrs, clientManagerMap, actionItemByClient]);
+
+  const SortHeader = ({ col, children, className = '' }: { col: string; children: React.ReactNode; className?: string }) => (
+    <th className={`text-left px-5 py-3 font-semibold cursor-pointer select-none hover:text-indigo-700 transition-colors ${className}`} onClick={() => toggleSort(col)}>
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {sortCol === col ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+      </span>
+    </th>
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -291,26 +355,38 @@ function ClientsListPage() {
         ) : filtered.length === 0 ? (
           <EmptyState icon={Users} title="No clients yet" subtitle="Clients will appear here once they register." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                <tr>
-                  <th className="text-left px-5 py-3 font-semibold">Client</th>
-                  <th className="text-left px-5 py-3 font-semibold">Phone</th>
-                  <th className="text-left px-5 py-3 font-semibold w-[160px]">Financial Year</th>
-                  <th className="text-left px-5 py-3 font-semibold">Account</th>
-                  {routePrefix === '/partner' && <th className="text-left px-5 py-3 font-semibold">Manager</th>}
-                  {routePrefix === '/partner' && <th className="text-left px-5 py-3 font-semibold">Executive</th>}
-                  <th className="text-left px-5 py-3 font-semibold">Current State</th>
-                  <th className="text-left px-5 py-3 font-semibold">Action Required</th>
-                  {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && <th className="text-left px-5 py-3 font-semibold">Tax Payment</th>}
-                  <th className="text-left px-5 py-3 font-semibold">Updated</th>
-                  <th className="text-right px-5 py-3 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c: any) => (
-                  <tr key={c._rowKey} className="border-t border-slate-100 hover:bg-slate-50/60">
+          <>
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100">
+              <Button size="sm" variant={showTimeInState ? 'default' : 'outline'} className="text-xs gap-1" onClick={() => { setShowTimeInState((v) => !v); if (!showTimeInState && sortCol !== 'time') { setSortCol('time'); setSortDir('desc'); } }}>
+                <Clock className="h-3.5 w-3.5" /> Time in State
+              </Button>
+              {sortCol && (
+                <Button size="sm" variant="ghost" className="text-xs text-slate-500" onClick={() => { setSortCol(null); setSortDir('asc'); }}>
+                  Clear Sort
+                </Button>
+              )}
+            </div>
+            <div ref={scrollRef} className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-500 text-xs uppercase sticky top-0 z-10">
+                  <tr>
+                    <SortHeader col="client">Client</SortHeader>
+                    <SortHeader col="phone">Phone</SortHeader>
+                    <SortHeader col="fy" className="w-[160px]">Financial Year</SortHeader>
+                    <SortHeader col="account">Account</SortHeader>
+                    {routePrefix === '/partner' && <SortHeader col="manager">Manager</SortHeader>}
+                    {routePrefix === '/partner' && <SortHeader col="executive">Executive</SortHeader>}
+                    <SortHeader col="state">Current State</SortHeader>
+                    <SortHeader col="action">Action Required</SortHeader>
+                    {showTimeInState && <SortHeader col="time">Time in State</SortHeader>}
+                    {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && <th className="text-left px-5 py-3 font-semibold">Tax Payment</th>}
+                    <SortHeader col="updated">Updated</SortHeader>
+                    <th className="text-right px-5 py-3 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((c: any) => (
+                    <tr key={c._rowKey} className="border-t border-slate-100 hover:bg-slate-50/60">
                     <td className="px-5 py-3">
                       <div className="font-semibold text-slate-900">{c.full_name || c.name}</div>
                       <div className="text-xs text-slate-500">{c.email}</div>
@@ -353,6 +429,15 @@ function ClientsListPage() {
                         );
                       })()}
                     </td>
+                    {showTimeInState && (
+                      <td className="px-5 py-3">
+                        {(() => {
+                          const hours = getHoursInState(c.last_updated);
+                          const bg = hours !== null && hours > 72 ? 'text-red-600 font-medium' : hours !== null && hours > 24 ? 'text-amber-600 font-medium' : 'text-slate-600';
+                          return <span className={`text-xs ${bg}`}>{formatDuration(hours)}</span>;
+                        })()}
+                      </td>
+                    )}
                     {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && (
                       <td className="px-5 py-3">
                         {c.is_tax_paid === true ? (
@@ -375,6 +460,7 @@ function ClientsListPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
     </div>

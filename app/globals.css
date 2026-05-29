@@ -47,6 +47,25 @@
   .animate-spin-slow {
     animation: spin 4s linear infinite;
   }
+  .sticky-scrollbar {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - 280px);
+  }
+  .sticky-scrollbar::-webkit-scrollbar {
+    height: 10px;
+  }
+  .sticky-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 5px;
+  }
+  .sticky-scrollbar::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 5px;
+  }
+  .sticky-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
 }
 
 /* Glowing row for #1 rank - amber (executive) */

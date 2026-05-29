@@ -212,6 +212,9 @@ export default function ClientDashboard() {
           <div className="inline-flex h-14 w-14 rounded-full bg-indigo-50 text-indigo-600 items-center justify-center mb-3"><FolderOpen className="h-7 w-7" /></div>
           <h3 className="font-bold text-slate-900">No filings yet</h3>
           <p className="text-sm text-slate-500 mt-1">Start by initiating your first ITR filing.</p>
+          <Button onClick={() => { if (!onboardingComplete) { setShowOnboarding(true); return; } setEngagementAccepted(false); setOpenInit(true); }} disabled={pendingVerification} className="mt-4 bg-indigo-600 hover:bg-indigo-700">
+            <Plus className="h-4 w-4 mr-2" /> Initiate Filing
+          </Button>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
