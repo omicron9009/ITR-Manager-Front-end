@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs } from '@/lib/api';
+import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, approveFilingFee, rejectFilingFee } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee } from 'lucide-react';
@@ -150,6 +150,62 @@ export default function FilingDetailPage() {
           <div>
             <div className="text-sm font-semibold text-indigo-900">Professional Fee: ₹{Number(filing.professional_fee).toLocaleString('en-IN')}</div>
             {filing.engagement_accepted_at && <div className="text-xs text-indigo-600">Engagement accepted on {new Date(filing.engagement_accepted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+          </div>
+        </Card>
+      )}
+
+      {/* Proposed Fee Change Banner */}
+      {filing.proposed_fee && (
+        <Card className="rounded-xl p-4 border-amber-200 bg-amber-50/60">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+              <IndianRupee className="h-5 w-5 text-amber-700" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-amber-900">Fee Change Proposed</div>
+              <div className="text-xs text-amber-700 mt-0.5">
+                Your CA has proposed a revised fee of <span className="font-bold">₹{Number(filing.proposed_fee).toLocaleString('en-IN')}</span>
+                {filing.professional_fee && <> (current: ₹{Number(filing.professional_fee).toLocaleString('en-IN')})</>}
+              </div>
+              {filing.fee_proposed_at && <div className="text-[10px] text-amber-600 mt-0.5">Proposed on {new Date(filing.fee_proposed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              disabled={acting}
+              onClick={async () => {
+                setActing(true);
+                try {
+                  await approveFilingFee(filingId);
+                  toast.success('Fee change approved. Engagement letter updated.');
+                  load();
+                } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to approve'); }
+                finally { setActing(false); }
+              }}
+            >
+              {acting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 border-rose-300 text-rose-700 hover:bg-rose-50"
+              disabled={acting}
+              onClick={async () => {
+                setActing(true);
+                try {
+                  await rejectFilingFee(filingId);
+                  toast.success('Fee change rejected.');
+                  load();
+                } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to reject'); }
+                finally { setActing(false); }
+              }}
+            >
+              <XCircle className="h-4 w-4 mr-1" />
+              Reject
+            </Button>
           </div>
         </Card>
       )}

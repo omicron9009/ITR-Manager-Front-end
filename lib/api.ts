@@ -77,6 +77,8 @@ export const activateClient = (client_id: string, professional_fee?: number) => 
 export const rejectClient = (client_id: string, reason: string) => api.post('/api/v1/clients/reject', { client_id, reason }).then((r) => r.data);
 export const setClientFee = (client_id: string, fee: number) => api.post(`/api/v1/clients/${client_id}/set-fee`, null, { params: { fee } }).then((r) => r.data);
 export const updateFilingFee = (filing_id: string, fee: number) => api.post(`/api/v1/filings/${filing_id}/update-fee`, null, { params: { fee } }).then((r) => r.data);
+export const approveFilingFee = (filing_id: string) => api.post(`/api/v1/filings/${filing_id}/approve-fee`).then((r) => r.data);
+export const rejectFilingFee = (filing_id: string) => api.post(`/api/v1/filings/${filing_id}/reject-fee`).then((r) => r.data);
 
 // ---------- DASHBOARD ----------
 export const getSummary = () => api.get('/api/v1/dashboard/summary').then((r) => r.data);

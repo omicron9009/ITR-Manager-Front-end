@@ -1146,13 +1146,22 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
     setSaving(true);
     try {
       await updateFilingFee(filing.id, Number(fee));
-      toast.success('Filing fee updated & engagement letter regenerated');
+      toast.success('Fee change proposed — awaiting client approval');
       setEditing(false);
       setFee('');
       onUpdated();
-    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      if (e?.response?.status === 409) {
+        toast.error('A fee change is already pending client approval');
+      } else {
+        toast.error(typeof detail === 'string' ? detail : 'Failed');
+      }
+    }
     finally { setSaving(false); }
   };
+
+  const hasPending = !!filing.proposed_fee;
 
   return (
     <div className="mt-4 pt-3 border-t border-slate-100">
@@ -1161,7 +1170,7 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
           <IndianRupee className="h-4 w-4 text-slate-400" />
           <span className="text-xs font-semibold text-slate-500 uppercase">Filing Fee</span>
         </div>
-        {!editing && (
+        {!editing && !hasPending && (
           <Button size="sm" variant="ghost" className="h-6 px-2 text-indigo-600" onClick={() => { setEditing(true); setFee(filing.professional_fee ? String(filing.professional_fee) : ''); }}>
             <Pencil className="h-3 w-3 mr-1" /> {filing.professional_fee ? 'Change' : 'Set'}
           </Button>
@@ -1170,8 +1179,16 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
       {!editing && filing.professional_fee && (
         <div className="text-sm font-semibold text-slate-900 mt-1 ml-6">₹{Number(filing.professional_fee).toLocaleString('en-IN')}</div>
       )}
-      {!editing && !filing.professional_fee && (
+      {!editing && !filing.professional_fee && !hasPending && (
         <div className="text-xs text-amber-600 mt-1 ml-6">Not set for this filing</div>
+      )}
+      {/* Pending fee proposal indicator */}
+      {hasPending && !editing && (
+        <div className="mt-2 ml-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+          <div className="text-xs font-semibold text-amber-800">Proposed: ₹{Number(filing.proposed_fee).toLocaleString('en-IN')}</div>
+          <div className="text-[10px] text-amber-600 mt-0.5">Awaiting client approval</div>
+          {filing.fee_proposed_at && <div className="text-[10px] text-amber-500">Proposed {new Date(filing.fee_proposed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+        </div>
       )}
       {editing && (
         <div className="flex items-center gap-2 mt-2">
@@ -1185,7 +1202,7 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
           <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditing(false)}><X className="h-3 w-3" /></Button>
         </div>
       )}
-      {editing && <p className="text-[10px] text-slate-400 mt-1 ml-6">Changing this will regenerate the engagement letter PDF.</p>}
+      {editing && <p className="text-[10px] text-slate-400 mt-1 ml-6">Fee change requires client approval before taking effect.</p>}
     </div>
   );
 }

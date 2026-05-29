@@ -1824,7 +1824,7 @@
           "Filings"
         ],
         "summary": "Update Filing Fee",
-        "description": "Update professional fee for a specific filing. Partner only. Regenerates engagement letter PDF.",
+        "description": "Propose a fee change for a filing. Partner only. Client must approve before it takes effect.",
         "operationId": "update_filing_fee_api_v1_filings__filing_id__update_fee_post",
         "security": [
           {
@@ -1849,10 +1849,10 @@
             "schema": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "New professional fee in rupees",
+              "description": "Proposed professional fee in rupees",
               "title": "Fee"
             },
-            "description": "New professional fee in rupees"
+            "description": "Proposed professional fee in rupees"
           }
         ],
         "responses": {
@@ -1863,6 +1863,106 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Update Filing Fee Api V1 Filings  Filing Id  Update Fee Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/filings/{filing_id}/approve-fee": {
+      "post": {
+        "tags": [
+          "Filings"
+        ],
+        "summary": "Approve Fee Change",
+        "description": "Client approves a proposed fee change. Updates fee and regenerates engagement letter.",
+        "operationId": "approve_fee_change_api_v1_filings__filing_id__approve_fee_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Approve Fee Change Api V1 Filings  Filing Id  Approve Fee Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/filings/{filing_id}/reject-fee": {
+      "post": {
+        "tags": [
+          "Filings"
+        ],
+        "summary": "Reject Fee Change",
+        "description": "Client rejects a proposed fee change. Fee stays unchanged.",
+        "operationId": "reject_fee_change_api_v1_filings__filing_id__reject_fee_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Reject Fee Change Api V1 Filings  Filing Id  Reject Fee Post"
                 }
               }
             }
@@ -9620,6 +9720,29 @@
               }
             ],
             "title": "Professional Fee"
+          },
+          "proposed_fee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Fee"
+          },
+          "fee_proposed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fee Proposed At"
           },
           "engagement_accepted_at": {
             "anyOf": [

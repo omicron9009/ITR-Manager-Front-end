@@ -9,7 +9,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getClientDashboard, initiateFiling, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, getActionItems, getClient } from '@/lib/api';
+import { getClientDashboard, initiateFiling, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, getActionItems, getClient, me } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -49,6 +49,11 @@ export default function ClientDashboard() {
       setDashData(r);
       const items = (r?.active_filings || []).map((f: any) => ({ ...f, id: f.filing_id || f.id }));
       setFilings(items);
+      // Fallback: if clientProfile fee isn't loaded yet, grab from latest filing
+      if (!clientProfile?.professional_fee) {
+        const feeFromFiling = items.find((f: any) => f.professional_fee)?.professional_fee;
+        if (feeFromFiling) setClientProfile((prev: any) => prev ? { ...prev, professional_fee: prev.professional_fee || feeFromFiling } : { professional_fee: feeFromFiling });
+      }
     } catch {
       setFilings([]);
     } finally { setLoading(false); }
@@ -82,9 +87,13 @@ export default function ClientDashboard() {
   useEffect(() => {
     const u = getUser();
     setClientUser(u);
-    if (u?.user_id) {
-      getClient(u.user_id).then((r) => setClientProfile(r)).catch(() => {});
-    }
+    me().then((p) => {
+      const userId = p?.id || p?.user_id || u?.user_id;
+      if (userId) getClient(userId).then((r) => setClientProfile(r)).catch(() => {});
+    }).catch(() => {
+      // Fallback to localStorage user_id
+      if (u?.user_id) getClient(u.user_id).then((r) => setClientProfile(r)).catch(() => {});
+    });
   }, []);
 
   const accountStatus = dashData?.account_status || clientUser?.account_status || '';
@@ -228,15 +237,21 @@ export default function ClientDashboard() {
             {fy && (
               <div className="space-y-3 border-t border-slate-100 pt-4">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2"><FileText className="h-4 w-4 text-indigo-600" /> Engagement Letter</h3>
-                {clientProfile?.professional_fee && (
-                  <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 flex items-center gap-3">
-                    <IndianRupee className="h-5 w-5 text-indigo-600" />
+
+                {/* Highlighted Professional Fee Box */}
+                <div className="rounded-xl border-2 border-indigo-300 bg-gradient-to-r from-indigo-50 to-indigo-100 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-indigo-200 flex items-center justify-center">
+                      <IndianRupee className="h-5 w-5 text-indigo-700" />
+                    </div>
                     <div>
-                      <div className="text-sm font-semibold text-indigo-900">Professional Fee: ₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')}</div>
+                      <div className="text-[10px] uppercase font-bold text-indigo-500 tracking-wide">Professional Fee for FY {fy}</div>
+                      <div className="text-lg font-bold text-indigo-900">₹{clientProfile?.professional_fee ? Number(clientProfile.professional_fee).toLocaleString('en-IN') : '—'}</div>
                       <div className="text-xs text-indigo-600">Plus applicable taxes, if any</div>
                     </div>
                   </div>
-                )}
+                </div>
+
                 <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3 text-xs text-slate-600 leading-relaxed bg-slate-50">
                   <p className="font-semibold text-slate-800 mb-2">Engagement Letter for Income Tax Return Filing Services</p>
                   <p className="mb-2">This Engagement Letter sets out the terms and conditions governing the professional services to be provided by the Firm to the Client for Income Tax Return (&ldquo;ITR&rdquo;) filing and related tax compliance services.</p>
@@ -249,16 +264,23 @@ export default function ClientDashboard() {
                   <p className="font-semibold text-slate-700 mb-1">4. Limitation of Responsibility</p>
                   <p className="mb-2">The Firm shall not be responsible for errors, penalties, or consequences arising from incorrect information provided by the Client, or delays caused by technical issues or events beyond reasonable control.</p>
                   <p className="font-semibold text-slate-700 mb-1">5. Professional Fees</p>
-                  <p className="mb-2">The professional fee for the above services shall be ₹{clientProfile?.professional_fee ? Number(clientProfile.professional_fee).toLocaleString('en-IN') : '___'} plus applicable taxes, if any.</p>
+                  <p className="mb-2 font-semibold text-indigo-800 bg-indigo-50 rounded px-2 py-1 border border-indigo-200">The professional fee for the above services shall be ₹{clientProfile?.professional_fee ? Number(clientProfile.professional_fee).toLocaleString('en-IN') : '___'} plus applicable taxes, if any.</p>
                   <p className="font-semibold text-slate-700 mb-1">6. Payment Terms</p>
                   <p className="mb-2">Fees shall be payable upon acceptance of this Engagement Letter and/or prior to filing of the return unless otherwise agreed.</p>
                   <p className="font-semibold text-slate-700 mb-1">7. Acceptance &amp; Consent</p>
                   <p>By proceeding, the Client confirms that the information provided is true and complete, consents to data processing for the agreed services, and agrees to the terms of this Engagement Letter.</p>
                 </div>
-                <label className="flex items-start gap-2 cursor-pointer pt-1">
-                  <input type="checkbox" checked={engagementAccepted} onChange={(e) => setEngagementAccepted(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                  <span className="text-xs text-slate-700 leading-snug">I have read and understood the Engagement Letter and agree to appoint the Firm for the above ITR filing services for FY {fy}.</span>
-                </label>
+
+                {/* Clear agreement checkbox with highlighted box */}
+                <div className={`rounded-lg border-2 p-3 transition-colors ${engagementAccepted ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" checked={engagementAccepted} onChange={(e) => setEngagementAccepted(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    <div>
+                      <span className="text-xs font-semibold text-slate-800 leading-snug block">I have read and understood the Engagement Letter and agree to appoint the Firm for ITR filing services for FY {fy}.</span>
+                      {engagementAccepted && <span className="text-[10px] text-emerald-700 font-medium mt-1 block">✓ Agreement accepted — you will be charged ₹{clientProfile?.professional_fee ? Number(clientProfile.professional_fee).toLocaleString('en-IN') : '—'} for this filing.</span>}
+                    </div>
+                  </label>
+                </div>
               </div>
             )}
           </div>
