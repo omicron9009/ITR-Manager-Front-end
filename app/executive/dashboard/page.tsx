@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getSummary, getExecutiveAnalytics, getFilingsByStatus } from '@/lib/api';
+import { getSummary, getExecutiveAnalytics, listFilings } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { TrendingUp, Users, ArrowRight, IndianRupee, AlertTriangle } from 'lucide-react';
 
@@ -29,9 +29,9 @@ export default function ExecutiveDashboard() {
   useEffect(() => {
     getSummary().then(setSummary).catch(() => {});
     getExecutiveAnalytics().then(setAnalytics).catch(() => {});
-    getFilingsByStatus('PAYMENT', 1, 100).then((r) => {
+    listFilings({ status: 'COMPUTATION', page_size: 100 }).then((r) => {
       const items = r?.items || r?.filings || [];
-      setAwaitingTaxPayment(items);
+      setAwaitingTaxPayment(items.filter((f: any) => f.is_tax_paid === false));
     }).catch(() => {});
   }, []);
 

@@ -11975,6 +11975,17 @@
             "type": "string",
             "title": "Email"
           },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
           "registered_at": {
             "type": "string",
             "format": "date-time",

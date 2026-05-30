@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, getFilingsByStatus, listManagers, listExecutives, assignClientToManager, assignExecutive, setClientFee } from '@/lib/api';
+import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, listFilings, listManagers, listExecutives, assignClientToManager, assignExecutive, setClientFee } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
 import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader2, FileText, IndianRupee, AlertTriangle } from 'lucide-react';
@@ -43,13 +43,13 @@ export default function PartnerDashboardPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const [s, p, a, paymentFilings] = await Promise.allSettled([getSummary(), getPendingVerification(), getPartnerAnalytics(), getFilingsByStatus('PAYMENT', 1, 100)]);
+      const [s, p, a, paymentFilings] = await Promise.allSettled([getSummary(), getPendingVerification(), getPartnerAnalytics(), listFilings({ status: 'COMPUTATION', page_size: 100 })]);
       if (s.status === 'fulfilled') setSummary(s.value || {});
       if (p.status === 'fulfilled') setPending(p.value?.items || []);
       if (a.status === 'fulfilled') setAnalytics(a.value);
       if (paymentFilings.status === 'fulfilled') {
         const items = paymentFilings.value?.items || paymentFilings.value?.filings || [];
-        setAwaitingTaxPayment(items);
+        setAwaitingTaxPayment(items.filter((f: any) => f.is_tax_paid === false));
       }
     } finally { setLoading(false); }
   };
@@ -224,6 +224,7 @@ export default function PartnerDashboardPage() {
                 <tr>
                   <th className="text-left px-5 py-3 font-semibold">Client Name</th>
                   <th className="text-left px-5 py-3 font-semibold">Email</th>
+                  <th className="text-left px-5 py-3 font-semibold">Phone</th>
                   <th className="text-left px-5 py-3 font-semibold">Registered</th>
                   <th className="text-right px-5 py-3 font-semibold">Actions</th>
                 </tr>
@@ -233,6 +234,7 @@ export default function PartnerDashboardPage() {
                   <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                     <td className="px-5 py-3 font-medium text-slate-900">{c.full_name || c.name}</td>
                     <td className="px-5 py-3 text-slate-600">{c.email}</td>
+                    <td className="px-5 py-3 text-slate-600">{c.phone_number || '—'}</td>
                     <td className="px-5 py-3 text-slate-500 text-xs">{c.registered_at ? new Date(c.registered_at).toLocaleDateString() : '—'}</td>
                     <td className="px-5 py-3">
                       <div className="flex gap-2 justify-end">

@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, approveFilingFee, rejectFilingFee } from '@/lib/api';
+import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, approveFilingFee, rejectFilingFee, getClient } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee, Plus, Trash2 } from 'lucide-react';
@@ -36,6 +36,7 @@ export default function FilingDetailPage() {
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerFileName, setViewerFileName] = useState<string | undefined>(undefined);
   const [showQr, setShowQr] = useState(false);
+  const [clientProfile, setClientProfile] = useState<any>(null);
 
   const load = async () => {
     setLoading(true);
@@ -57,6 +58,9 @@ export default function FilingDetailPage() {
       if (['FILING', 'PAYMENT', 'COMPLETED'].includes(state)) {
         const cd = await completedDocs(filingId);
         setCompleted(cd || []);
+      }
+      if (state === 'PAYMENT' && f?.client_id) {
+        getClient(f.client_id).then(setClientProfile).catch(() => {});
       }
     } catch (e: any) {
       toast.error('Failed to load filing');
@@ -260,9 +264,12 @@ export default function FilingDetailPage() {
             <div className="flex-1">
               <div className="text-sm font-semibold text-amber-900">Professional Fee Payment Pending</div>
               <div className="text-xs text-amber-700 mt-0.5">Please complete the payment to proceed.</div>
+              {(clientProfile?.professional_fee || filing.professional_fee) && (
+                <div className="text-lg font-bold text-amber-900 mt-1">₹{Number(clientProfile?.professional_fee || filing.professional_fee).toLocaleString('en-IN')}</div>
+              )}
             </div>
             <Button size="sm" variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100" onClick={() => setShowQr(true)}>
-              Want to make payment? Click here
+            Click here to show QR !
             </Button>
           </div>
         </Card>
@@ -393,6 +400,57 @@ export default function FilingDetailPage() {
                   <div className="text-xs text-amber-700 mt-0.5">Computation has been approved. Please confirm that the tax payment has been made to proceed with filing.</div>
                 </div>
               </div>
+
+              {/* View Computation PDF */}
+              <div className="flex items-center justify-between rounded-lg border border-violet-200 bg-violet-50/50 p-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-violet-600" />
+                  <div>
+                    <div className="text-sm font-medium text-slate-900">{currentComp.original_filename || 'Computation.pdf'}</div>
+                    <div className="text-xs text-slate-500">Version {currentComp.version}</div>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => onDownloadComp(currentComp.id)}>
+                  <Eye className="h-3.5 w-3.5 mr-1" /> View PDF
+                </Button>
+              </div>
+
+              {/* Steps to Pay Income Tax */}
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 mb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-indigo-900">Steps to Pay Your Income Tax</h3>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-indigo-700 border-indigo-300 hover:bg-indigo-100"
+                    onClick={() => {
+                      setViewerUrl('/Income Tax Payment Flow V2.pdf');
+                      setViewerFileName('Income Tax Payment Flow V2.pdf');
+                      setViewerOpen(true);
+                    }}
+                  >
+                    <Eye className="h-3.5 w-3.5 mr-1" /> View Payment Guide
+                  </Button>
+                </div>
+                <ol className="list-decimal list-inside text-xs text-indigo-800 space-y-1.5">
+                  <li>Visit the Income Tax e-Filing Portal using the link below.</li>
+                  <li>Log in with your PAN and password.</li>
+                  <li>Navigate to <span className="font-medium">e-Pay Tax</span> under the &quot;e-File&quot; menu.</li>
+                  <li>Select the appropriate Assessment Year and type of payment (Self Assessment Tax).</li>
+                  <li>Enter the tax amount as per the computation sheet and choose your payment method.</li>
+                  <li>Complete the payment and save the challan receipt.</li>
+                </ol>
+                <a
+                  href="https://eportal.incometax.gov.in/iec/foservices/#/login"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors"
+                >
+                  <IndianRupee className="h-3.5 w-3.5" />
+                  Pay Tax on Income Tax Portal
+                </a>
+              </div>
+
               <Button
                 size="sm"
                 onClick={async () => {

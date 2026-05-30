@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getSummary, getMyTeam, getFilingsByStatus, getMyClients } from '@/lib/api';
+import { getSummary, getMyTeam, listFilings, getMyClients } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Users, ArrowRight, Shield, TrendingUp, IndianRupee, AlertTriangle } from 'lucide-react';
 
@@ -37,9 +37,9 @@ export default function ManagerDashboard() {
       setMyClientIds(ids);
     }).catch(() => {});
 
-    getFilingsByStatus('PAYMENT', 1, 100).then((r) => {
+    listFilings({ status: 'COMPUTATION', page_size: 100 }).then((r) => {
       const items = r?.items || r?.filings || [];
-      setAwaitingTaxPayment(items);
+      setAwaitingTaxPayment(items.filter((f: any) => f.is_tax_paid === false));
     }).catch(() => {});
   }, []);
 
