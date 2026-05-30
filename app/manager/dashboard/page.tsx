@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { getSummary, getMyTeam, listFilings, getMyClients } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Users, ArrowRight, Shield, TrendingUp, IndianRupee, AlertTriangle } from 'lucide-react';
@@ -74,19 +75,52 @@ export default function ManagerDashboard() {
 
       {/* Status Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {CARDS.map((c) => (
-          <Card key={c.key} className={`rounded-xl border-l-4 ${c.color} p-4 cursor-pointer hover:shadow-md transition-all`} onClick={() => {
-            router.push(`/manager/clients?status=${c.key}`);
-          }}>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className={`text-3xl font-bold ${c.text}`}>{getCount(c.key)}</div>
-                <div className="text-xs font-medium text-slate-600 mt-1">{c.label}</div>
+        {CARDS.map((c) => {
+          const cardContent = (
+            <Card className={`rounded-xl border-l-4 ${c.color} p-4 cursor-pointer hover:shadow-md transition-all`} onClick={() => {
+              router.push(`/manager/clients?status=${c.key}`);
+            }}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className={`text-3xl font-bold ${c.text}`}>{getCount(c.key)}</div>
+                  <div className="text-xs font-medium text-slate-600 mt-1">{c.label}</div>
+                </div>
+                {c.key === 'AWAITING_TAX_PAYMENT' ? <IndianRupee className="h-4 w-4 text-amber-600" /> : <ArrowRight className="h-4 w-4 text-slate-300" />}
               </div>
-              {c.key === 'AWAITING_TAX_PAYMENT' ? <IndianRupee className="h-4 w-4 text-amber-600" /> : <ArrowRight className="h-4 w-4 text-slate-300" />}
-            </div>
-          </Card>
-        ))}
+              {c.key === 'COMPUTATION' && (summary?.computation_sub_counters || []).length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {(summary.computation_sub_counters || []).filter((s: any) => s.count > 0).slice(0, 3).map((s: any) => (
+                    <span key={s.raw_status} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 text-violet-700">
+                      {s.sub_status}: {s.count}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Card>
+          );
+
+          if (c.key === 'COMPUTATION' && (summary?.computation_sub_counters || []).length > 0) {
+            return (
+              <HoverCard key={c.key} openDelay={200} closeDelay={100}>
+                <HoverCardTrigger asChild>{cardContent}</HoverCardTrigger>
+                <HoverCardContent className="w-72 p-3">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-slate-900">Computation Breakdown</h4>
+                    <div className="space-y-1.5">
+                      {(summary.computation_sub_counters || []).map((s: any) => (
+                        <div key={s.raw_status} className="flex items-center justify-between text-xs">
+                          <span className="text-slate-600">{s.sub_status}</span>
+                          <span className="font-semibold text-slate-900 bg-violet-50 px-2 py-0.5 rounded">{s.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+            );
+          }
+          return <div key={c.key}>{cardContent}</div>;
+        })}
       </div>
 
       {/* Awaiting Tax Payment Queue */}

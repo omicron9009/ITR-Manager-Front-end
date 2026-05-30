@@ -79,7 +79,12 @@ export default function FilingDetailPage() {
       await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type } });
       await docConfirmUpload({ document_id: url.document_id || docId, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
       toast.success('Document uploaded');
-      load();
+      // Update the specific doc in-place instead of reloading the whole page
+      setDocs((prev) => prev.map((d) => d.id === docId ? { ...d, status: 'UPLOADED', original_filename: file.name } : d));
+      setDocGroups((prev) => prev.map((g) => ({
+        ...g,
+        files: (g.files || []).map((d: any) => d.id === docId ? { ...d, status: 'UPLOADED', original_filename: file.name } : d),
+      })));
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
     finally { setUploading(null); }
   };
@@ -94,7 +99,10 @@ export default function FilingDetailPage() {
       await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type } });
       await docConfirmUpload({ document_id: url.document_id, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
       toast.success('Additional document uploaded');
-      load();
+      // Add the new doc in-place instead of full page reload
+      const newDoc = { id: url.document_id, document_type_id: documentTypeId, status: 'UPLOADED', original_filename: file.name };
+      setDocs((prev) => [...prev, newDoc]);
+      setDocGroups((prev) => prev.map((g) => g.document_type_id === documentTypeId ? { ...g, files: [...(g.files || []), newDoc] } : g));
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
     finally { setUploading(null); }
   };
@@ -103,7 +111,12 @@ export default function FilingDetailPage() {
     try {
       await deleteDoc(docId);
       toast.success('Document removed');
-      load();
+      // Remove doc in-place instead of full reload
+      setDocs((prev) => prev.filter((d) => d.id !== docId));
+      setDocGroups((prev) => prev.map((g) => ({
+        ...g,
+        files: (g.files || []).filter((d: any) => d.id !== docId),
+      })));
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to delete'); }
   };
 

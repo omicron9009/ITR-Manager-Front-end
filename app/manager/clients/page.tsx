@@ -28,6 +28,8 @@ function ManagerClientsPage() {
   const initialStatus = params.get('status') || '';
   const [search, setSearch] = useState('');
   const [filingStatus, setFilingStatus] = useState(initialStatus);
+  const [computationSubFilter, setComputationSubFilter] = useState('');
+  const [computationFilings, setComputationFilings] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [teamExecs, setTeamExecs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +55,14 @@ function ManagerClientsPage() {
           setAwaitingTaxRows(items);
         } catch { setAwaitingTaxRows([]); }
       }
+
+      // Fetch computation filings with sub-status for drill-down
+      if (filingStatus === 'COMPUTATION' || initialStatus === 'COMPUTATION') {
+        try {
+          const compRes = await getFilingsByStatus('COMPUTATION', 1, 200);
+          setComputationFilings(compRes?.items || []);
+        } catch { setComputationFilings([]); }
+      }
     } catch {
       toast.error('Failed to load clients');
     } finally {
@@ -77,6 +87,27 @@ function ManagerClientsPage() {
       toast.error(e?.response?.data?.detail || 'Failed to assign');
     }
   };
+
+  // Build computation sub-status lookup: key = client_id-fy -> sub_status
+  const computationSubStatusMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of computationFilings) {
+      if (f.computation_sub_status) {
+        const key = `${f.client_id}-${f.financial_year}`;
+        map.set(key, f.computation_sub_status);
+      }
+    }
+    return map;
+  }, [computationFilings]);
+
+  // Get unique computation sub-statuses for filter dropdown
+  const computationSubStatuses = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of computationFilings) {
+      if (f.computation_sub_status) set.add(f.computation_sub_status);
+    }
+    return Array.from(set);
+  }, [computationFilings]);
 
   // Build filtered rows
   const filtered = useMemo(() => {
@@ -110,6 +141,13 @@ function ManagerClientsPage() {
     if (filingStatus) {
       result = result.filter((c) => (c.current_filing_state) === filingStatus);
     }
+    // Filter by computation sub-status when viewing COMPUTATION filings
+    if (filingStatus === 'COMPUTATION' && computationSubFilter) {
+      result = result.filter((c) => {
+        const key = `${c.id}-${c.active_filing_year}`;
+        return computationSubStatusMap.get(key) === computationSubFilter;
+      });
+    }
     if (search) {
       const q = search.toLowerCase();
       result = result.filter((c) => {
@@ -119,7 +157,7 @@ function ManagerClientsPage() {
       });
     }
     return result;
-  }, [clients, filingStatus, awaitingTaxRows, search]);
+  }, [clients, filingStatus, awaitingTaxRows, search, computationSubFilter, computationSubStatusMap]);
 
   // Build action item lookup by client_id
   const actionItemByClient = useMemo(() => {
@@ -202,6 +240,7 @@ function ManagerClientsPage() {
         case 'account': va = a.account_status || ''; vb = b.account_status || ''; break;
         case 'executive': va = (a.assigned_executive_name || 'zzz').toLowerCase(); vb = (b.assigned_executive_name || 'zzz').toLowerCase(); break;
         case 'state': va = a.current_filing_state || ''; vb = b.current_filing_state || ''; break;
+        case 'comp_sub': va = (computationSubStatusMap.get(`${a.id}-${a.active_filing_year}`) || 'zzz').toLowerCase(); vb = (computationSubStatusMap.get(`${b.id}-${b.active_filing_year}`) || 'zzz').toLowerCase(); break;
         case 'action': va = actionItemByClient.get(a.id)?.title || 'zzz'; vb = actionItemByClient.get(b.id)?.title || 'zzz'; break;
         case 'time': va = getHoursInState(a) ?? 99999; vb = getHoursInState(b) ?? 99999; break;
         default: return 0;
@@ -246,7 +285,7 @@ function ManagerClientsPage() {
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email…" className="pl-9" />
           </div>
-          <Select value={filingStatus || 'all'} onValueChange={(v) => setFilingStatus(v === 'all' ? '' : v)}>
+          <Select value={filingStatus || 'all'} onValueChange={(v) => { setFilingStatus(v === 'all' ? '' : v); setComputationSubFilter(''); }}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filing State" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Filing States</SelectItem>
@@ -254,6 +293,15 @@ function ManagerClientsPage() {
               {FILING_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
+          {filingStatus === 'COMPUTATION' && computationSubStatuses.length > 0 && (
+            <Select value={computationSubFilter || 'all'} onValueChange={(v) => setComputationSubFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-[220px] border-violet-200 bg-violet-50/50"><SelectValue placeholder="Sub-Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sub-States</SelectItem>
+                {computationSubStatuses.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </Card>
 
@@ -299,6 +347,7 @@ function ManagerClientsPage() {
                   <SortHeader col="account">Account</SortHeader>
                   <SortHeader col="executive">Executive</SortHeader>
                   <SortHeader col="state">Current State</SortHeader>
+                  {filingStatus === 'COMPUTATION' && <SortHeader col="comp_sub">Sub-Status</SortHeader>}
                   <SortHeader col="action">Action Required</SortHeader>
                   {showTimeInState && <SortHeader col="time">Time in State</SortHeader>}
                   {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && (
@@ -336,6 +385,19 @@ function ManagerClientsPage() {
                     <td className="px-5 py-3">
                       {c.current_filing_state ? <StatusBadge status={c.current_filing_state} /> : <span className="text-xs text-slate-400">—</span>}
                     </td>
+                    {filingStatus === 'COMPUTATION' && (
+                      <td className="px-5 py-3">
+                        {(() => {
+                          const subStatus = computationSubStatusMap.get(`${c.id}-${c.active_filing_year}`);
+                          if (!subStatus) return <span className="text-xs text-slate-400">—</span>;
+                          return (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-violet-100 text-violet-700 ring-1 ring-inset ring-violet-200">
+                              {subStatus}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                    )}
                     <td className="px-5 py-3">
                       {(() => {
                         const ai = actionItemByClient.get(c.id);

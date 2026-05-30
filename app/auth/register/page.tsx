@@ -57,6 +57,12 @@ export default function RegisterPage() {
   /* Final submit */
   const onFinalSubmit = async () => {
     setErr('');
+    // Validate at least one income head is selected
+    const anySelected = Object.values(incomeHeads).some(Boolean);
+    if (!anySelected) {
+      setErr('Please select at least one income source to continue.');
+      return;
+    }
     setSubmitting(true);
     try {
       const vals = getValues();

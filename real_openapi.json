@@ -7964,6 +7964,29 @@
         ],
         "title": "ComputationStatus"
       },
+      "ComputationSubStateCounter": {
+        "properties": {
+          "sub_status": {
+            "type": "string",
+            "title": "Sub Status"
+          },
+          "raw_status": {
+            "type": "string",
+            "title": "Raw Status"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sub_status",
+          "raw_status",
+          "count"
+        ],
+        "title": "ComputationSubStateCounter"
+      },
       "ComputationUploadRequest": {
         "properties": {
           "filing_id": {
@@ -8031,6 +8054,14 @@
             },
             "type": "array",
             "title": "Counters"
+          },
+          "computation_sub_counters": {
+            "items": {
+              "$ref": "#/components/schemas/ComputationSubStateCounter"
+            },
+            "type": "array",
+            "title": "Computation Sub Counters",
+            "default": []
           },
           "total_clients": {
             "type": "integer",
@@ -9590,6 +9621,17 @@
               }
             ],
             "title": "Assigned Executive Name"
+          },
+          "computation_sub_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computation Sub Status"
           },
           "last_updated": {
             "type": "string",

@@ -7,11 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getClientDashboard, initiateFiling, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, getActionItems, getClient, me } from '@/lib/api';
+import { getClientDashboard, initiateFiling, getOnboardingForm, getActionItems, getClient, me } from '@/lib/api';
 import { getUser } from '@/lib/auth';
-import axios from 'axios';
 import { toast } from 'sonner';
 import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload, ArrowRight, FileText, IndianRupee } from 'lucide-react';
 
@@ -35,11 +33,8 @@ export default function ClientDashboard() {
   const [engagementAccepted, setEngagementAccepted] = useState(false);
   const [clientProfile, setClientProfile] = useState<any>(null);
 
-  const [onboardingFields, setOnboardingFields] = useState<any[]>([]);
-  const [onboardingValues, setOnboardingValues] = useState<Record<string, any>>({});
   const [onboardingComplete, setOnboardingComplete] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingSaving, setOnboardingSaving] = useState(false);
   const [actionItems, setActionItems] = useState<any[]>([]);
 
   const load = async () => {
@@ -63,13 +58,11 @@ export default function ClientDashboard() {
     try {
       const r = await getOnboardingForm();
       const fields = r?.fields || [];
-      setOnboardingFields(fields);
       if (fields.length > 0 && !r?.submitted) {
         setOnboardingComplete(false);
         setShowOnboarding(true);
       } else {
         setOnboardingComplete(true);
-        if (r?.submitted_data) setOnboardingValues(r.submitted_data);
       }
     } catch { setOnboardingComplete(true); }
   };
@@ -110,18 +103,7 @@ export default function ClientDashboard() {
     finally { setSubmitting(false); }
   };
 
-  const handleOnboardingSubmit = async () => {
-    const missing = onboardingFields.filter((f) => f.is_required && !onboardingValues[f.field_key]?.toString().trim());
-    if (missing.length > 0) { toast.error(`Please fill: ${missing.map((f) => f.field_label).join(', ')}`); return; }
-    setOnboardingSaving(true);
-    try {
-      await submitOnboardingForm(onboardingValues);
-      toast.success('Onboarding form submitted!');
-      setOnboardingComplete(true);
-      setShowOnboarding(false);
-    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
-    finally { setOnboardingSaving(false); }
-  };
+
 
   return (
     <div className="space-y-6">
@@ -170,7 +152,7 @@ export default function ClientDashboard() {
                   key={idx}
                   className={`rounded-lg border ${priorityColors[item.priority] || 'border-slate-200 bg-white'} p-3 flex items-center justify-between gap-3 cursor-pointer hover:shadow-sm transition-shadow`}
                   onClick={() => {
-                    if (item.type === 'COMPLETE_ONBOARDING') { setShowOnboarding(true); return; }
+                    if (item.type === 'COMPLETE_ONBOARDING') { router.push('/client/onboarding'); return; }
                     if (item.related_filing_id) router.push(`/client/filings/${item.related_filing_id}`);
                   }}
                 >
@@ -298,31 +280,18 @@ export default function ClientDashboard() {
 
       {/* Onboarding Dialog */}
       <Dialog open={showOnboarding} onOpenChange={(o) => setShowOnboarding(o)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><ClipboardList className="h-5 w-5 text-indigo-600" /> Complete Your Onboarding</DialogTitle></DialogHeader>
-          <div className="space-y-4 mt-2">
-            {onboardingFields.map((f) => (
-              <div key={f.id}>
-                <Label>{f.field_label}{f.is_required && <span className="text-rose-500 ml-1">*</span>}</Label>
-                {f.field_type === 'TEXT' && <Input value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" />}
-                {f.field_type === 'NUMBER' && <Input type="number" value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" />}
-                {f.field_type === 'DATE' && <Input type="date" value={onboardingValues[f.field_key] || ''} onChange={(e) => setOnboardingValues({ ...onboardingValues, [f.field_key]: e.target.value })} className="mt-1.5" />}
-                {f.field_type === 'DROPDOWN' && (
-                  <Select value={onboardingValues[f.field_key] || ''} onValueChange={(v) => setOnboardingValues({ ...onboardingValues, [f.field_key]: v })}>
-                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select..." /></SelectTrigger>
-                    <SelectContent>{(f.field_options || []).map((opt: string) => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent>
-                  </Select>
-                )}
-                {f.field_type === 'FILE' && (
-                  <OnboardingFileInput fieldKey={f.field_key} value={onboardingValues[f.field_key]} onUploaded={(fileId, name) => setOnboardingValues({ ...onboardingValues, [f.field_key]: fileId, [`${f.field_key}__filename`]: name })} />
-                )}
-              </div>
-            ))}
+          <div className="py-4 text-center space-y-3">
+            <div className="inline-flex h-14 w-14 rounded-full bg-indigo-50 text-indigo-600 items-center justify-center mx-auto">
+              <ClipboardList className="h-7 w-7" />
+            </div>
+            <p className="text-sm text-slate-600">Please fill in the onboarding form to complete your profile before initiating a filing.</p>
           </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowOnboarding(false)}>Close</Button>
-            <Button onClick={handleOnboardingSubmit} disabled={onboardingSaving} className="bg-indigo-600 hover:bg-indigo-700">
-              {onboardingSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Submit
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setShowOnboarding(false)}>Later</Button>
+            <Button onClick={() => { setShowOnboarding(false); router.push('/client/onboarding'); }} className="bg-indigo-600 hover:bg-indigo-700">
+              Fill Onboarding Form <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -398,62 +367,4 @@ function FilingCard({ filing, onClick }: { filing: any; onClick: () => void }) {
   );
 }
 
-/** Inline file upload for onboarding dialog */
-function OnboardingFileInput({ fieldKey, value, onUploaded }: { fieldKey: string; value: any; onUploaded: (fileId: string, name: string) => void }) {
-  const [uploading, setUploading] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const hasFile = !!value && typeof value === 'string' && value.length > 0;
 
-  const doUpload = async (file: File) => {
-    if (file.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!ext || !['pdf','doc','docx','xls','xlsx','csv','png','jpg','jpeg'].includes(ext)) { toast.error('Allowed types: PDF, Word, Excel, CSV, PNG, JPG'); return; }
-    setUploading(true);
-    try {
-      const r = await onboardingUploadUrl({ field_key: fieldKey, filename: file.name, content_type: file.type });
-      await axios.put(r.upload_url, file, { headers: { 'Content-Type': file.type } });
-      const confirm = await confirmOnboardingUpload({ field_key: fieldKey, object_key: r.object_key, filename: file.name, content_type: file.type, file_size: file.size });
-      const fileId = confirm?.file_id || confirm?.id || r.object_key;
-      setFileName(file.name);
-      setPendingFile(null);
-      onUploaded(fileId, file.name);
-      toast.success(`${file.name} uploaded`);
-    } catch (err: any) { toast.error(err?.response?.data?.detail || 'Upload failed'); }
-    finally { setUploading(false); }
-  };
-
-  return (
-    <div className="mt-1.5 flex items-center gap-2">
-      {pendingFile ? (
-        <div className="flex items-center gap-2 flex-1 rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2">
-          <Upload className="h-4 w-4 text-amber-600 flex-shrink-0" />
-          <span className="text-sm text-slate-700 truncate flex-1">{pendingFile.name}</span>
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-rose-500 hover:bg-rose-50" onClick={() => setPendingFile(null)}>✕</Button>
-        </div>
-      ) : hasFile || fileName ? (
-        <div className="flex items-center gap-2 flex-1 rounded-md border border-emerald-200 bg-emerald-50/50 px-3 py-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          <span className="text-sm text-slate-700 truncate">{fileName || 'Uploaded file'}</span>
-        </div>
-      ) : (
-        <div className="flex-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-400">No file uploaded</div>
-      )}
-      {pendingFile ? (
-        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs px-3 py-2" disabled={uploading} onClick={() => doUpload(pendingFile)}>
-          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
-          Confirm
-        </Button>
-      ) : (
-        <label className="cursor-pointer">
-          <input type="file" className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} />
-          <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
-            <Upload className="h-3.5 w-3.5" />
-            {hasFile || fileName ? 'Replace' : 'Choose File'}
-          </span>
-        </label>
-      )}
-      <p className="text-xs text-slate-400 mt-1">Allowed file types: PDF, Word, Excel, CSV, PNG, JPG</p>
-    </div>
-  );
-}
