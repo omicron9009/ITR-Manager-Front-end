@@ -336,12 +336,22 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc }: { fi
               <div className="mt-3"><FilingProgressBar currentState={status} /></div>
             )}
             <Tabs defaultValue="docs" className="mt-5">
-              <TabsList>
-                <TabsTrigger value="docs">Documents</TabsTrigger>
-                <TabsTrigger value="computations">Computations</TabsTrigger>
-                <TabsTrigger value="filed-docs">Filed Docs</TabsTrigger>
-                <TabsTrigger value="actions">Actions</TabsTrigger>
-              </TabsList>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <TabsList>
+                  <TabsTrigger value="docs">Documents</TabsTrigger>
+                  <TabsTrigger value="computations">Computations</TabsTrigger>
+                  <TabsTrigger value="filed-docs">Filed Docs</TabsTrigger>
+                </TabsList>
+                {status === 'PAYMENT' && (
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    onClick={async () => { try { await markPayment(f.id); toast.success('Payment received — filing completed!'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } }}
+                  >
+                    Mark Payment Received
+                  </Button>
+                )}
+              </div>
               <TabsContent value="docs" className="mt-3">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between mb-2">
@@ -426,13 +436,15 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc }: { fi
                 <ComputationPanel filingId={f.id} filingStatus={status} filing={f} />
               </TabsContent>
               <TabsContent value="filed-docs" className="mt-3">
-                <FiledDocsPanel filingId={f.id} filingStatus={status} />
-              </TabsContent>
-              <TabsContent value="actions" className="mt-3">
-                <StateActions filing={f} onChange={load} />
-                <FilingFeeUpdate filing={f} onUpdated={load} />
+                <FiledDocsPanel filingId={f.id} filingStatus={status} onMoveToPayment={status === 'FILING' ? async () => { try { await transitionFiling(f.id, { to_status: 'PAYMENT' }); toast.success('Moved to Payment'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } } : undefined} />
               </TabsContent>
             </Tabs>
+
+            {/* State actions + Fee — always visible below tabs */}
+            <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+              <StateActions filing={f} onChange={load} />
+              <FilingFeeUpdate filing={f} onUpdated={load} />
+            </div>
           </div>
         )}
       </div>
@@ -542,7 +554,6 @@ function StateActions({ filing, onChange }: { filing: any; onChange: () => void 
       tooltip: !canMoveToFiling ? 'Client must confirm tax payment before transitioning to Filing' : undefined,
     });
   }
-  if (state === 'FILING') items.push({ label: 'Move to Payment', target: 'PAYMENT' });
   if (state === 'PAYMENT') items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
 
   return (
@@ -842,43 +853,7 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
         </div>
       )}
 
-      {/* Computation stage transition actions */}
-      {filingStatus === 'COMPUTATION' && (
-        <div className="space-y-3 pt-3 border-t border-slate-200">
-          {/* Tax Payment Status */}
-          <div className={`rounded-lg p-3 flex items-center gap-3 ${filing?.is_tax_paid ? 'border border-emerald-200 bg-emerald-50' : 'border border-amber-200 bg-amber-50'}`}>
-            {filing?.is_tax_paid ? (
-              <>
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                <div>
-                  <div className="text-sm font-medium text-emerald-800">Tax Payment Confirmed by Client</div>
-                  {filing?.tax_paid_at && <div className="text-xs text-emerald-600">Confirmed on {new Date(filing.tax_paid_at).toLocaleDateString('en-IN')}</div>}
-                </div>
-              </>
-            ) : (
-              <>
-                <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                <div>
-                  <div className="text-sm font-medium text-amber-800">Awaiting Tax Payment Confirmation</div>
-                  <div className="text-xs text-amber-600">Client must confirm tax payment before filing can proceed.</div>
-                </div>
-              </>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={async () => {
-              try { await transitionFiling(filingId, { to_status: 'PROCESSING' }); toast.success('Sent back to Processing'); window.location.reload(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
-            }}>
-              Send back to Processing
-            </Button>
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" disabled={!filing?.is_tax_paid} onClick={async () => {
-              try { await transitionFiling(filingId, { to_status: 'FILING' }); toast.success('Moved to Filing'); window.location.reload(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
-            }}>
-              {filing?.is_tax_paid ? 'Move to Filing' : 'Move to Filing (Tax Pending)'}
-            </Button>
-          </div>
-        </div>
-      )}
+
 
       <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={undefined} />
 
@@ -933,7 +908,7 @@ const COMPLETED_DOC_TYPES = [
   { key: 'FINANCIAL_STATEMENT', label: 'Financial Statement', description: 'Financial statement document (optional)', required: false },
 ];
 
-function FiledDocsPanel({ filingId, filingStatus }: { filingId: string; filingStatus: string }) {
+function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId: string; filingStatus: string; onMoveToPayment?: () => Promise<void> }) {
   const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1079,6 +1054,15 @@ function FiledDocsPanel({ filingId, filingStatus }: { filingId: string; filingSt
           {docs.length >= COMPLETED_DOC_TYPES.filter(d => d.required).length && COMPLETED_DOC_TYPES.filter(d => d.required).every(dt => docs.some((d: any) => d.doc_type === dt.key)) && (
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 text-center">
               ✅ All required filed documents uploaded. You can now mark payment and complete the filing.
+            </div>
+          )}
+
+          {/* Move to Payment button at the end of filed docs */}
+          {onMoveToPayment && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <Button onClick={onMoveToPayment} className="w-full bg-indigo-600 hover:bg-indigo-700">
+                Move to Payment
+              </Button>
             </div>
           )}
         </div>

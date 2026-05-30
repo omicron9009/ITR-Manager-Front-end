@@ -8,10 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getClientDashboard, initiateFiling, getOnboardingForm, getActionItems, getClient, me } from '@/lib/api';
+import { getClientDashboard, initiateFiling, getOnboardingForm, getActionItems, getClient, me, getMyFeedbackStats } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload, ArrowRight, FileText, IndianRupee } from 'lucide-react';
+import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload, ArrowRight, FileText, IndianRupee, Star } from 'lucide-react';
 
 function getFYOptions() {
   const d = new Date();
@@ -36,6 +36,7 @@ export default function ClientDashboard() {
   const [onboardingComplete, setOnboardingComplete] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [actionItems, setActionItems] = useState<any[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<any>(null);
 
   const load = async () => {
     setLoading(true);
@@ -74,7 +75,14 @@ export default function ClientDashboard() {
     } catch { setActionItems([]); }
   };
 
-  useEffect(() => { load(); checkOnboarding(); loadActionItems(); }, []);
+  const loadFeedbackStats = async () => {
+    try {
+      const r = await getMyFeedbackStats();
+      setFeedbackStats(r);
+    } catch { /* endpoint may not exist yet — silently ignore */ }
+  };
+
+  useEffect(() => { load(); checkOnboarding(); loadActionItems(); loadFeedbackStats(); }, []);
 
   const [clientUser, setClientUser] = useState<any>(null);
   useEffect(() => {
@@ -170,6 +178,29 @@ export default function ClientDashboard() {
                 </div>
               );
             })}
+          </div>
+        </Card>
+      )}
+
+      {/* Average Feedback Rating */}
+      {feedbackStats && feedbackStats.average_rating != null && (
+        <Card className="rounded-xl p-4 border-l-4 border-l-amber-400 bg-gradient-to-r from-amber-50/60 to-white">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+              <Star className="h-5 w-5 text-amber-600 fill-amber-600" />
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Your Average Satisfaction Rating</div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xl font-bold text-slate-900">{Number(feedbackStats.average_rating).toFixed(1)}</span>
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star key={s} className={`h-4 w-4 ${s <= Math.round(feedbackStats.average_rating) ? 'text-amber-500 fill-amber-500' : 'text-slate-200'}`} />
+                  ))}
+                </div>
+                <span className="text-xs text-slate-400">({feedbackStats.total || feedbackStats.total_feedbacks || 0} rating{(feedbackStats.total || feedbackStats.total_feedbacks || 0) !== 1 ? 's' : ''})</span>
+              </div>
+            </div>
           </div>
         </Card>
       )}

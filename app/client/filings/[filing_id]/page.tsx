@@ -9,10 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, approveFilingFee, rejectFilingFee, getClient } from '@/lib/api';
+import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, approveFilingFee, rejectFilingFee, getClient, submitFeedback, getFilingFeedback } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee, Plus, Trash2, Star } from 'lucide-react';
 
 export default function FilingDetailPage() {
   const params = useParams();
@@ -37,6 +37,15 @@ export default function FilingDetailPage() {
   const [viewerFileName, setViewerFileName] = useState<string | undefined>(undefined);
   const [showQr, setShowQr] = useState(false);
   const [clientProfile, setClientProfile] = useState<any>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState<boolean | null>(null); // null = loading, true/false
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackHover, setFeedbackHover] = useState(0);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+
+  // Helper: persist feedback status in localStorage
+  const feedbackKey = `feedback_given_${filingId}`;
+  const markFeedbackDone = () => { setFeedbackGiven(true); try { localStorage.setItem(feedbackKey, '1'); } catch {} };
+  const isFeedbackDoneLocally = () => { try { return localStorage.getItem(feedbackKey) === '1'; } catch { return false; } };
 
   const load = async () => {
     setLoading(true);
@@ -61,6 +70,19 @@ export default function FilingDetailPage() {
       }
       if (state === 'PAYMENT' && f?.client_id) {
         getClient(f.client_id).then(setClientProfile).catch(() => {});
+      }
+      // Check feedback for filings past FILING state (PAYMENT or COMPLETED)
+      if (state === 'PAYMENT' || state === 'COMPLETED') {
+        if (isFeedbackDoneLocally()) {
+          setFeedbackGiven(true);
+        } else {
+          getFilingFeedback(filingId).then(() => markFeedbackDone()).catch((err) => {
+            if (err?.response?.status === 404) setFeedbackGiven(false);
+            else setFeedbackGiven(true); // on error, don't block
+          });
+        }
+      } else {
+        setFeedbackGiven(true); // not past FILING, no gate needed
       }
     } catch (e: any) {
       toast.error('Failed to load filing');
@@ -172,6 +194,79 @@ export default function FilingDetailPage() {
   if (!filing) return <div className="text-center py-16 text-slate-500">Filing not found.</div>;
 
   const state = filing.status;
+
+  const onSubmitFeedback = async () => {
+    if (feedbackRating < 1 || feedbackRating > 5) { toast.error('Please select a rating'); return; }
+    setFeedbackSubmitting(true);
+    try {
+      await submitFeedback(filingId, feedbackRating);
+      toast.success('Thank you for your feedback!');
+      markFeedbackDone();
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      if (e?.response?.status === 409) {
+        // Already submitted
+        markFeedbackDone();
+      } else {
+        toast.error(detail || 'Failed to submit feedback');
+      }
+    } finally { setFeedbackSubmitting(false); }
+  };
+
+  // Feedback gate: block page until feedback is given for filings past FILING state
+  if ((state === 'PAYMENT' || state === 'COMPLETED') && feedbackGiven === false) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="rounded-2xl p-8 max-w-md w-full text-center space-y-5 shadow-lg border-indigo-100">
+          <div className="inline-flex h-16 w-16 rounded-full bg-indigo-50 items-center justify-center mx-auto">
+            <Star className="h-8 w-8 text-indigo-600" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Rate Your Experience</h2>
+          {filing?.financial_year && (
+            <p className="text-sm font-semibold text-indigo-600">FY {filing.financial_year}</p>
+          )}
+          <p className="text-sm text-slate-500">Please provide your feedback for this filing to continue.</p>
+
+          {/* Star rating */}
+          <div className="flex justify-center gap-2 py-2">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                className="focus:outline-none transition-transform hover:scale-110"
+                onMouseEnter={() => setFeedbackHover(star)}
+                onMouseLeave={() => setFeedbackHover(0)}
+                onClick={() => setFeedbackRating(star)}
+              >
+                <Star
+                  className={`h-10 w-10 transition-colors ${
+                    star <= (feedbackHover || feedbackRating)
+                      ? 'text-amber-400 fill-amber-400'
+                      : 'text-slate-300'
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+          {feedbackRating > 0 && (
+            <p className="text-sm font-medium text-slate-700">
+              {['', 'Poor', 'Below Average', 'Average', 'Good', 'Excellent'][feedbackRating]}
+            </p>
+          )}
+
+          <Button
+            onClick={onSubmitFeedback}
+            disabled={feedbackSubmitting || feedbackRating === 0}
+            className="bg-indigo-600 hover:bg-indigo-700 w-full"
+          >
+            {feedbackSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Submit Feedback to Continue
+          </Button>
+          <p className="text-xs text-slate-400">You must submit feedback before viewing this filing.</p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -523,13 +618,26 @@ export default function FilingDetailPage() {
       )}
 
       {/* Completed Documents (filed) */}
-      {completed.length > 0 && (
+      {(completed.length > 0 || (currentComp && ['FILING', 'PAYMENT', 'COMPLETED'].includes(state))) && (
         <Card className="rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
             <h2 className="font-bold text-slate-900">Filed Documents</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Approved Computation */}
+            {currentComp && ['FILING', 'PAYMENT', 'COMPLETED'].includes(state) && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calculator className="h-4 w-4 text-emerald-600" />
+                  <div>
+                    <div className="font-medium text-sm text-slate-900">Tax Paid Computation</div>
+                    <div className="text-xs text-slate-500">{currentComp.original_filename || 'computation'}</div>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => onDownloadComp(currentComp.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
+              </div>
+            )}
             {completed.map((d: any) => (
               <div key={d.id} className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">

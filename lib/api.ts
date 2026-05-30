@@ -251,3 +251,13 @@ export const partnerApproveComp = (computation_id: string) =>
   api.post('/api/v1/computations/partner-approve', { computation_id }).then((r) => r.data);
 export const partnerRejectComp = (computation_id: string, reason: string) =>
   api.post('/api/v1/computations/partner-reject', { computation_id, reason }).then((r) => r.data);
+
+// ---------- FEEDBACK ----------
+export const submitFeedback = (filing_id: string, rating: number) =>
+  api.post('/api/v1/feedback', { filing_id, rating }).then((r) => r.data);
+export const getFilingFeedback = (filing_id: string) =>
+  api.get(`/api/v1/feedback/filing/${filing_id}`).then((r) => r.data);
+export const getFeedbackSummary = () =>
+  api.get('/api/v1/feedback/summary').then((r) => r.data);
+export const getMyFeedbackStats = () =>
+  api.get('/api/v1/feedback/my-stats').then((r) => r.data);

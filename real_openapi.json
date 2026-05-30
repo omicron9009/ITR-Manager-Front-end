@@ -6087,6 +6087,129 @@
         }
       }
     },
+    "/api/v1/feedback": {
+      "post": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "Submit Feedback",
+        "description": "Client submits a star rating (1–5) for a completed filing.",
+        "operationId": "submit_feedback_api_v1_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/feedback/filing/{filing_id}": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "Get Filing Feedback",
+        "description": "Client checks if they have submitted feedback for a filing.",
+        "operationId": "get_filing_feedback_api_v1_feedback_filing__filing_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feedback/summary": {
+      "get": {
+        "tags": [
+          "Feedback"
+        ],
+        "summary": "Get Feedback Summary",
+        "description": "Partner views all feedback with average and breakdown.",
+        "operationId": "get_feedback_summary_api_v1_feedback_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSummaryResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/my-tax-filings": {
       "get": {
         "summary": "Read Filings",
@@ -9302,6 +9425,127 @@
           "financial_year"
         ],
         "title": "FYSummary"
+      },
+      "FeedbackResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "client_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Name"
+          },
+          "financial_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Financial Year"
+          },
+          "rating": {
+            "type": "integer",
+            "title": "Rating"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filing_id",
+          "client_id",
+          "rating",
+          "created_at"
+        ],
+        "title": "FeedbackResponse"
+      },
+      "FeedbackSubmitRequest": {
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "rating": {
+            "type": "integer",
+            "maximum": 5,
+            "minimum": 1,
+            "title": "Rating",
+            "description": "Star rating from 1 (worst) to 5 (best)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filing_id",
+          "rating"
+        ],
+        "title": "FeedbackSubmitRequest"
+      },
+      "FeedbackSummaryResponse": {
+        "properties": {
+          "total_feedbacks": {
+            "type": "integer",
+            "title": "Total Feedbacks"
+          },
+          "average_rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Rating"
+          },
+          "rating_breakdown": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Rating Breakdown"
+          },
+          "feedbacks": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackResponse"
+            },
+            "type": "array",
+            "title": "Feedbacks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_feedbacks",
+          "rating_breakdown",
+          "feedbacks"
+        ],
+        "title": "FeedbackSummaryResponse"
       },
       "FilingBriefItem": {
         "properties": {
