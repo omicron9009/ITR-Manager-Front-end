@@ -65,7 +65,7 @@ function ClientMockup() {
       <div className="p-6 bg-white text-left">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="font-bold text-slate-900">Welcome back, Rajesh &#128075;</h3>
+            <h3 className="font-bold text-slate-900">Welcome back, Tax Payer &#128075;</h3>
             <p className="text-xs text-slate-500">Here are your filings.</p>
           </div>
           <span className="px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-semibold">1 action needed</span>
