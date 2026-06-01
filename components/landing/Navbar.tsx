@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FileCheck2 } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -18,11 +18,8 @@ export default function Navbar() {
       scrolled ? 'bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm' : 'bg-transparent'
     )}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm')}>
-            <FileCheck2 className="h-5 w-5" />
-          </span>
-          <span className={cn('font-bold text-lg tracking-tight', scrolled ? 'text-slate-900' : 'text-white')}>ITR Manager</span>
+        <Link href="/" className="flex items-center">
+          <Image src={scrolled ? '/darklogo1.png' : '/logo1.png'} alt="ITR Manager" width={150} height={50} className="h-14 object-contain" />
         </Link>
         <nav className="hidden md:flex items-center gap-8">
           {[['Why us', '#features'], ['How it Works', '#how'], ['Benefits', '#benefits'], ['Login', '/auth/login']].map(([label, href]) => (

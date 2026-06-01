@@ -1,17 +1,14 @@
 'use client';
 import Link from 'next/link';
-import { FileCheck2 } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 
 export default function AuthHeader({ activePage }: { activePage: 'login' | 'register' }) {
   return (
     <header className="bg-gradient-to-r from-indigo-600 to-violet-600 shadow-md">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 backdrop-blur text-white">
-            <FileCheck2 className="h-5 w-5" />
-          </span>
-          <span className="font-bold text-lg text-white">ITR Manager</span>
+        <Link href="/" className="flex items-center">
+          <Image src="/logo1.png" alt="ITR Manager" width={180} height={60} className="h-12 w-auto object-contain" />
         </Link>
         <div className="flex items-center gap-3">
           {activePage === 'login' ? (

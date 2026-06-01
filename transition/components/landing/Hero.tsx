@@ -1,3 +1,4 @@
+//@ts-nocheck 
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Bell, FolderOpen, FileCheck2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ export default function Hero() {
       <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl" />
       <div className="relative max-w-7xl mx-auto px-6 text-center">
         <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur px-4 py-1.5 text-xs font-medium text-white/90 border border-white/15">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> File your ITR online &middot; FY 2024-25 open now
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> File your ITR online &middot; FY 2025-26 (AY 2026-27) open now
         </div>
         <h1 className="mt-6 text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.05]">
           File your <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 to-cyan-200">Income Tax Return</span> <br className="hidden md:block" />
@@ -21,7 +22,7 @@ export default function Hero() {
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
           <Link href="/auth/register">
             <Button size="lg" className="bg-white hover:bg-slate-100 text-indigo-700 font-semibold px-8 rounded-lg shadow-lg">
-              Start Filing &mdash; It&rsquo;s Free <ArrowRight className="ml-2 h-4 w-4" />
+              Start Filing <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
           <Link href="/auth/login">

@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, FileCheck2, ShieldCheck, Bell, FolderOpen, Download, ShieldAlert } from 'lucide-react';
+import { Loader2, ShieldCheck, Bell, FolderOpen, Download, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -158,12 +159,11 @@ export default function LoginPage() {
           {/* Right: Login form */}
           <div className="w-full max-w-md mx-auto lg:mx-0">
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-              <div className="flex items-center gap-2 mb-6 lg:hidden">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md"><FileCheck2 className="h-5 w-5" /></span>
-                <span className="font-bold text-xl text-slate-900">ITR Manager</span>
+              <div className="flex items-center mb-6 lg:hidden">
+                <Image src="/darklogo1.png" alt="ITR Manager" width={180} height={60} className="h-12 w-auto object-contain" />
               </div>
               <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
-              <p className="mt-1 text-sm text-slate-500">Sign in to your ITR Manager account.</p>
+              <p className="mt-1 text-sm text-slate-500">Sign in to your AIकर account.</p>
               <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
                 {err && <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg px-3 py-2">{err}</div>}
                 <div>
@@ -187,7 +187,7 @@ export default function LoginPage() {
                 New client? <Link href="/auth/register" className="font-semibold text-indigo-600 hover:underline">Register here</Link>
               </p>
             </div>
-            <p className="mt-4 text-center text-xs text-slate-400">By signing in, you agree to ITR Manager&rsquo;s terms.</p>
+            <p className="mt-4 text-center text-xs text-slate-400">By signing in, you agree to AIकर&rsquo;s terms.</p>
           </div>
         </div>
       </main>

@@ -1,4 +1,5 @@
-import { FileCheck2, Phone, Mail, MapPin } from 'lucide-react';
+import { Phone, Mail, MapPin } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Footer() {
   return (
@@ -6,8 +7,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10">
         <div>
           <div className="flex items-center gap-2 text-white">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white"><FileCheck2 className="h-5 w-5" /></span>
-            <span className="font-bold text-lg">ITR Manager</span>
+            <Image src="/logo1.png" alt="ITR Manager" width={160} height={50} className="h-10 w-auto object-contain" />
           </div>
           <p className="mt-3 text-sm leading-relaxed">The end-to-end ITR filing management platform for modern CA practices in India.</p>
           <div className="mt-3 space-y-1 text-sm">
@@ -42,9 +42,9 @@ export default function Footer() {
           </ul>
         </div>
       </div>
-      <div className="max-w-7xl mx-auto px-6 mt-10 pt-6 border-t border-slate-800 text-xs text-slate-500 flex flex-col md:flex-row justify-between gap-2">
-        <span>© {new Date().getFullYear()} ITR Manager. All rights reserved.</span>
-        <span className="font-medium text-indigo-400">A Pgjco Product</span>
+      <div className="max-w-7xl mx-auto px-6 mt-10 pt-6 border-t border-slate-800 text-xs text-slate-500 flex flex-col md:flex-row justify-end gap-2">
+        <span>© {new Date().getFullYear()} AIकर. All rights reserved.</span>
+        <Image src="/built by White.png" alt="A Pgjco Product" width={640} height={160} className="h-12 object-contain" />
       </div>
       <div className="max-w-7xl mx-auto px-6 mt-4 text-xs text-slate-600 flex flex-col md:flex-row items-center md:items-start gap-1 md:gap-4">
         <span className="font-semibold text-slate-400">Developer Info</span>

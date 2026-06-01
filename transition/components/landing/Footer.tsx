@@ -1,4 +1,4 @@
-import { FileCheck2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Footer() {
   return (
@@ -6,8 +6,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10">
         <div>
           <div className="flex items-center gap-2 text-white">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white"><FileCheck2 className="h-5 w-5" /></span>
-            <span className="font-bold text-lg">ITR Manager</span>
+            <Image src="/logo1.png" alt="ITR Manager" width={160} height={50} className="h-10 w-auto object-contain" />
           </div>
           <p className="mt-3 text-sm leading-relaxed">File your Income Tax Return online — the easy way. Connected directly to your Chartered Accountant.</p>
         </div>

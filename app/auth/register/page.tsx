@@ -2,10 +2,11 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, FileCheck2, CheckCircle2, ShieldCheck, Bell, FolderOpen, ArrowLeft, ArrowRight, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, ShieldCheck, Bell, FolderOpen, ArrowLeft, ArrowRight, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -130,9 +131,8 @@ export default function RegisterPage() {
           {/* Right: Form */}
           <div className="w-full max-w-md mx-auto lg:mx-0">
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-              <div className="flex items-center gap-2 mb-6 lg:hidden">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md"><FileCheck2 className="h-5 w-5" /></span>
-                <span className="font-bold text-xl text-slate-900">ITR Manager</span>
+              <div className="flex items-center mb-6 lg:hidden">
+                <Image src="/darklogo1.png" alt="ITR Manager" width={180} height={60} className="h-12 w-auto object-contain" />
               </div>
 
               {/* Step indicator */}

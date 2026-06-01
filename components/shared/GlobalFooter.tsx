@@ -1,4 +1,5 @@
-import { FileCheck2, Phone, Mail, MapPin } from 'lucide-react';
+import { Phone, Mail, MapPin } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function GlobalFooter() {
@@ -7,8 +8,7 @@ export default function GlobalFooter() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white"><FileCheck2 className="h-4 w-4" /></span>
-            <span className="font-bold text-slate-900">ITR Manager</span>
+            <Image src="/darklogo1.png" alt="ITR Manager" width={160} height={50} className="h-10 w-auto object-contain" />
           </div>
           <p className="mt-2 text-sm leading-relaxed">The end-to-end ITR filing management platform for modern CA practices in India.</p>
           <div className="mt-3 space-y-1 text-sm">
@@ -39,9 +39,9 @@ export default function GlobalFooter() {
           </div>
         </div>
       </div>
-      <div className="max-w-7xl mx-auto px-6 mt-6 pt-4 border-t border-indigo-200 text-xs text-slate-500 flex flex-col md:flex-row justify-between gap-2">
-        <span>© {new Date().getFullYear()} ITR Manager. All rights reserved.</span>
-        <span className="font-medium text-indigo-600">A Pgjco Product</span>
+      <div className="max-w-7xl mx-auto px-6 mt-6 pt-4 border-t border-indigo-200 text-xs text-slate-500 flex flex-col md:flex-row justify-between items-center gap-2">
+        <span>© {new Date().getFullYear()} AIकर. All rights reserved.</span>
+        <Image src="/built by Black.png" alt="A Pgjco Product" width={640} height={320} className="h-12 object-contain ml-auto" />
       </div>
       <div className="max-w-7xl mx-auto px-6 mt-3 text-xs text-slate-500 flex flex-col md:flex-row items-center md:items-start gap-1 md:gap-4">
         <span className="font-semibold text-slate-700">Developer Info</span>

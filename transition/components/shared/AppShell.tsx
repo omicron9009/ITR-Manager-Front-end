@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { FileCheck2, LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { clearAuth, getUser } from '@/lib/auth';
 import NotificationBell from '@/components/shared/NotificationBell';
@@ -37,9 +38,8 @@ export default function AppShell({ nav, role, avatarHref, children }: { nav: Nav
     <div className="min-h-screen bg-slate-50">
       <aside className={cn('fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform md:translate-x-0', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>
         <div className="px-6 py-5 border-b border-slate-200">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white"><FileCheck2 className="h-5 w-5" /></span>
-            <span className="font-bold text-slate-900">ITR Manager</span>
+          <Link href="/" className="flex items-center">
+            <Image src="/darklogo1.png" alt="ITR Manager" width={160} height={50} className="h-10 w-auto object-contain" />
           </Link>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

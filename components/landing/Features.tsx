@@ -14,7 +14,7 @@ export default function Features() {
     <section id="features" className="py-24 bg-white">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold uppercase tracking-wide">Why ITR Manager</div>
+          <div className="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold uppercase tracking-wide">Why AIकर</div>
           <h2 className="mt-4 text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">Filing taxes shouldn&rsquo;t feel like work.</h2>
           <p className="mt-4 text-lg text-slate-600">Everything you need to file your ITR with your Chartered Accountant &mdash; without the back-and-forth.</p>
         </div>
