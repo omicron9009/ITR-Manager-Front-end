@@ -39,6 +39,7 @@ export default function Footer() {
             <li><a href="#how" className="hover:text-white">How it Works</a></li>
             <li><a href="#roles" className="hover:text-white">For CAs</a></li>
             <li><a href="/auth/login" className="hover:text-white">Login</a></li>
+            <li><a href="/Privacy%20Policy%20%E2%80%93%20AI%E0%A4%95%E0%A4%B0.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-white">Privacy Policy</a></li>
           </ul>
         </div>
       </div>
