@@ -1,21 +1,17 @@
 // @ts-nocheck
 "use client";
-import { Suspense, useEffect, useState , useRef } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { useSearchParams } from "next/navigation";   // Added useSearchParams
-import { Mail, CheckCircle2, XCircle, ExternalLink, Upload, Send, Loader2, Copy } from "lucide-react";
+import { Mail, CheckCircle2, XCircle, Send, Loader2, ShieldCheck } from "lucide-react";
 import {
   getEmailConfig,
   setupEmailConfig,
-  getEmailAuthUrl,
-  authorizeEmail,
-  uploadEmailToken,
   testEmailConfig,
   apiErr,
 } from "@/lib/api";
@@ -24,80 +20,42 @@ interface EmailConfig {
   id: string;
   sender_email: string;
   is_configured: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  use_tls: boolean;
   configured_by: string;
   created_at: string;
   updated_at: string;
 }
 
 export default function EmailConfigPage() {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
-      <EmailConfigContent />
-    </Suspense>
-  );
-}
-
-function EmailConfigContent() {
   const [config, setConfig] = useState<EmailConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Setup form
+  // SMTP form
   const [senderEmail, setSenderEmail] = useState("");
-  const [credentialsJson, setCredentialsJson] = useState("");
+  const [smtpHost, setSmtpHost] = useState("smtp.gmail.com");
+  const [smtpPort, setSmtpPort] = useState(587);
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [useTls, setUseTls] = useState(true);
   const [setupLoading, setSetupLoading] = useState(false);
-
-  const searchParams = useSearchParams();
-  const hasAuthorized = useRef(false);
-
-  // Auth flow
-  const [authUrl, setAuthUrl] = useState("");
-  const [authCode, setAuthCode] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
-
-  // Token upload
-  const [tokenJson, setTokenJson] = useState("");
-  const [tokenLoading, setTokenLoading] = useState(false);
 
   // Test
   const [testRecipient, setTestRecipient] = useState("");
   const [testLoading, setTestLoading] = useState(false);
-  
-  const handleAutoAuthorize = async (code: string) => {
-    setAuthLoading(true);
-    try {
-      // Use your existing library function 'authorizeEmail'
-      const data = await authorizeEmail(code);
-      setConfig(data);
-      toast.success("Email authorized automatically!");
-
-      // Optional: Remove the code from the URL so it looks clean
-      window.history.replaceState({}, '', '/partner/email-config');
-    } catch (e) {
-      toast.error("Automatic authorization failed: " + apiErr(e));
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const code = searchParams.get("code");
-
-    // If there's a code in the URL and we haven't already tried to authorize...
-    if (code && !hasAuthorized.current) {
-      hasAuthorized.current = true; // Prevents the code from running twice
-
-      // Trigger the authorization automatically
-      handleAutoAuthorize(code);
-    }
-  }, [searchParams]);
 
   const fetchConfig = async () => {
     try {
       const data = await getEmailConfig();
       setConfig(data);
       if (data?.sender_email) setSenderEmail(data.sender_email);
+      if (data?.smtp_host) setSmtpHost(data.smtp_host);
+      if (data?.smtp_port) setSmtpPort(data.smtp_port);
+      if (data?.smtp_user) setSmtpUser(data.smtp_user);
+      if (data?.use_tls !== undefined) setUseTls(data.use_tls);
     } catch {
-      // No config yet — that's fine
       setConfig(null);
     } finally {
       setLoading(false);
@@ -109,69 +67,27 @@ function EmailConfigContent() {
   }, []);
 
   const handleSetup = async () => {
-    if (!senderEmail || !credentialsJson) {
-      toast.error("Please provide both sender email and credentials JSON");
+    if (!senderEmail || !smtpUser || !smtpPassword) {
+      toast.error("Please fill in sender email, SMTP user, and password");
       return;
     }
     setSetupLoading(true);
     try {
-      const data = await setupEmailConfig({ sender_email: senderEmail, credentials_json: credentialsJson });
+      const data = await setupEmailConfig({
+        sender_email: senderEmail,
+        smtp_host: smtpHost,
+        smtp_port: smtpPort,
+        smtp_user: smtpUser,
+        smtp_password: smtpPassword,
+        use_tls: useTls,
+      });
       setConfig(data);
-      toast.success("Email credentials saved. Now complete OAuth authorization.");
+      setSmtpPassword("");
+      toast.success("SMTP configuration saved successfully!");
     } catch (e) {
       toast.error(apiErr(e));
     } finally {
       setSetupLoading(false);
-    }
-  };
-
-  const handleGetAuthUrl = async () => {
-    setAuthLoading(true);
-    try {
-      const data = await getEmailAuthUrl();
-      setAuthUrl(data.auth_url);
-      toast.success(data.message || "Auth URL generated. Open it in your browser.");
-    } catch (e) {
-      toast.error(apiErr(e));
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleAuthorize = async () => {
-    if (!authCode.trim()) {
-      toast.error("Please enter the authorization code");
-      return;
-    }
-    setAuthLoading(true);
-    try {
-      const data = await authorizeEmail(authCode.trim());
-      setConfig(data);
-      setAuthUrl("");
-      setAuthCode("");
-      toast.success("Email authorized successfully!");
-    } catch (e) {
-      toast.error(apiErr(e));
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleUploadToken = async () => {
-    if (!tokenJson.trim()) {
-      toast.error("Please paste the token JSON");
-      return;
-    }
-    setTokenLoading(true);
-    try {
-      const data = await uploadEmailToken(tokenJson.trim());
-      setConfig(data);
-      setTokenJson("");
-      toast.success("Token uploaded successfully!");
-    } catch (e) {
-      toast.error(apiErr(e));
-    } finally {
-      setTokenLoading(false);
     }
   };
 
@@ -205,7 +121,7 @@ function EmailConfigContent() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Email Configuration</h1>
         <p className="text-slate-500 mt-1">
-          Configure Gmail OAuth to send email notifications from the platform.
+          Configure SMTP settings to send email notifications from the platform.
         </p>
       </div>
 
@@ -227,22 +143,20 @@ function EmailConfigContent() {
           )}
         </CardHeader>
         <CardContent>
-          {config ? (
+          {config?.is_configured ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-slate-500">Sender Email</span>
                 <p className="font-medium text-slate-900">{config.sender_email}</p>
               </div>
               <div>
+                <span className="text-slate-500">SMTP Server</span>
+                <p className="font-medium text-slate-900">{config.smtp_host}:{config.smtp_port}</p>
+              </div>
+              <div>
                 <span className="text-slate-500">Last Updated</span>
                 <p className="font-medium text-slate-900">
                   {new Date(config.updated_at).toLocaleDateString()}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-500">Status</span>
-                <p className="font-medium text-slate-900">
-                  {config.is_configured ? "Fully authorized" : "Pending authorization"}
                 </p>
               </div>
             </div>
@@ -252,146 +166,110 @@ function EmailConfigContent() {
         </CardContent>
       </Card>
 
-      {/* Step 1: Setup credentials */}
+      {/* Step 1: SMTP Setup */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">1</span>
-            Setup Credentials
+            SMTP Configuration
           </CardTitle>
           <CardDescription>
-            Provide your Gmail address and OAuth2 client credentials JSON from Google Cloud Console.
+            Enter your SMTP credentials. For Gmail, use an App Password (enable 2FA first, then generate at{" "}
+            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">
+              myaccount.google.com/apppasswords
+            </a>).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="sender-email">Sender Email (Gmail)</Label>
-            <Input
-              id="sender-email"
-              type="email"
-              placeholder="notifications@yourdomain.com"
-              value={senderEmail}
-              onChange={(e) => setSenderEmail(e.target.value)}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="sender-email">Sender Email</Label>
+              <Input
+                id="sender-email"
+                type="email"
+                placeholder="notifications@yourdomain.com"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="smtp-user">SMTP Username</Label>
+              <Input
+                id="smtp-user"
+                type="text"
+                placeholder="Same as sender email for Gmail"
+                value={smtpUser}
+                onChange={(e) => setSmtpUser(e.target.value)}
+              />
+            </div>
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="credentials-json">Credentials JSON</Label>
-            <textarea
-              id="credentials-json"
-              className="w-full h-32 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder='Paste the OAuth2 client credentials JSON content here...'
-              value={credentialsJson}
-              onChange={(e) => setCredentialsJson(e.target.value)}
+            <Label htmlFor="smtp-password">SMTP Password (App Password)</Label>
+            <Input
+              id="smtp-password"
+              type="password"
+              placeholder="Enter your App Password (16 characters for Gmail)"
+              value={smtpPassword}
+              onChange={(e) => setSmtpPassword(e.target.value)}
             />
             <p className="text-xs text-slate-500">
-              Download from Google Cloud Console → Credentials → OAuth 2.0 Client ID → Download JSON
+              For Gmail: Enable 2-Step Verification → Generate App Password → Use the 16-character code.
             </p>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="smtp-host">SMTP Host</Label>
+              <Input
+                id="smtp-host"
+                type="text"
+                placeholder="smtp.gmail.com"
+                value={smtpHost}
+                onChange={(e) => setSmtpHost(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="smtp-port">SMTP Port</Label>
+              <Input
+                id="smtp-port"
+                type="number"
+                placeholder="587"
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(Number(e.target.value))}
+              />
+            </div>
+            <div className="flex items-end pb-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="use-tls"
+                  checked={useTls}
+                  onCheckedChange={(checked) => setUseTls(checked === true)}
+                />
+                <Label htmlFor="use-tls" className="text-sm font-normal cursor-pointer">
+                  Use TLS (STARTTLS)
+                </Label>
+              </div>
+            </div>
+          </div>
+
           <Button onClick={handleSetup} disabled={setupLoading}>
             {setupLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save Credentials
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            Save Configuration
           </Button>
         </CardContent>
       </Card>
 
-      {/* Step 2: OAuth Authorization */}
+      {/* Step 2: Test */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">2</span>
-            OAuth Authorization
-          </CardTitle>
-          <CardDescription>
-            Generate an authorization URL, open it in your browser, authorize access, then paste the code below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button variant="outline" onClick={handleGetAuthUrl} disabled={authLoading || !config}>
-            {authLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Generate Auth URL
-          </Button>
-
-          {authUrl && (
-            <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-              <p className="text-sm font-medium text-slate-700">Open this URL in your browser and authorize:</p>
-              <div className="flex items-center gap-2">
-                <Input value={authUrl} readOnly className="text-xs font-mono" />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => { navigator.clipboard.writeText(authUrl); toast.success("Copied!"); }}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="outline" asChild>
-                  <a href={authUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="auth-code">Authorization Code</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="auth-code"
-                    placeholder="Paste the authorization code here"
-                    value={authCode}
-                    onChange={(e) => setAuthCode(e.target.value)}
-                  />
-                  <Button onClick={handleAuthorize} disabled={authLoading}>
-                    {authLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Authorize
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Alternative: Upload token directly */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Upload className="h-4 w-4 text-slate-500" />
-            Alternative: Upload Token Directly
-          </CardTitle>
-          <CardDescription>
-            If you already have a token JSON (generated locally), you can upload it directly instead of using the OAuth flow above.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="token-json">Token JSON</Label>
-            <textarea
-              id="token-json"
-              className="w-full h-28 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder='Paste the OAuth token JSON here...'
-              value={tokenJson}
-              onChange={(e) => setTokenJson(e.target.value)}
-            />
-          </div>
-          <Button variant="outline" onClick={handleUploadToken} disabled={tokenLoading || !config}>
-            {tokenLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Token
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Step 3: Test */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">3</span>
             Test Configuration
           </CardTitle>
           <CardDescription>
-            Send a test email to verify everything is working correctly.
+            Send a test email to verify your SMTP settings are working correctly.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -410,7 +288,7 @@ function EmailConfigContent() {
             </Button>
           </div>
           {!config?.is_configured && (
-            <p className="text-xs text-amber-600">Complete OAuth authorization first to test.</p>
+            <p className="text-xs text-amber-600">Save SMTP configuration first to send a test email.</p>
           )}
         </CardContent>
       </Card>

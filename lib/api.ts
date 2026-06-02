@@ -159,13 +159,14 @@ export const generateAuditReport = (params: any = {}) => api.post('/api/v1/audit
 
 // ---------- EMAIL CONFIG ----------
 export const getEmailConfig = () => api.get('/api/v1/email/config').then((r) => r.data);
-export const setupEmailConfig = (data: { sender_email: string; credentials_json: string }) =>
-  api.post('/api/v1/email/setup', data).then((r) => r.data);
-export const getEmailAuthUrl = () => api.post('/api/v1/email/auth-url').then((r) => r.data);
-export const authorizeEmail = (auth_code: string) =>
-  api.post('/api/v1/email/authorize', null, { params: { auth_code } }).then((r) => r.data);
-export const uploadEmailToken = (token_json: string) =>
-  api.post('/api/v1/email/token', { token_json }).then((r) => r.data);
+export const setupEmailConfig = (data: {
+  sender_email: string;
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user: string;
+  smtp_password: string;
+  use_tls?: boolean;
+}) => api.post('/api/v1/email/setup', data).then((r) => r.data);
 export const testEmailConfig = (test_recipient: string) =>
   api.post('/api/v1/email/test', { test_recipient }).then((r) => r.data);
 
