@@ -5145,136 +5145,14 @@
         "tags": [
           "Email Configuration"
         ],
-        "summary": "Setup Email Credentials",
-        "description": "Set up email configuration (Partner only).\n\nThe partner provides:\n- sender_email: The Gmail address to send notifications from\n- credentials_json: The OAuth2 client credentials JSON content\n  (downloaded from Google Cloud Console → Credentials → OAuth 2.0 Client ID)",
-        "operationId": "setup_email_credentials_api_v1_email_setup_post",
+        "summary": "Setup Email",
+        "description": "Set up SMTP email configuration (Partner only).\n\nThe partner provides:\n- sender_email: The email address to send notifications from\n- smtp_host: SMTP server hostname (default: smtp.gmail.com)\n- smtp_port: SMTP port (default: 587)\n- smtp_user: SMTP username (usually the email address)\n- smtp_password: SMTP password (App Password for Gmail)\n- use_tls: Whether to use STARTTLS (default: true)",
+        "operationId": "setup_email_api_v1_email_setup_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EmailConfigSetupRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmailConfigResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/email/auth-url": {
-      "post": {
-        "tags": [
-          "Email Configuration"
-        ],
-        "summary": "Get Email Auth Url",
-        "description": "Generate the Gmail OAuth authorization URL (Partner only).\n\nAfter calling POST /email/setup, the partner calls this endpoint\nto get a URL. Open the URL in a browser, authorize, then use the\nreturned auth code with POST /email/authorize.",
-        "operationId": "get_email_auth_url_api_v1_email_auth_url_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmailConfigAuthUrlResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/email/authorize": {
-      "post": {
-        "tags": [
-          "Email Configuration"
-        ],
-        "summary": "Authorize Email",
-        "description": "Complete Gmail OAuth authorization (Partner only).\n\nAfter visiting the auth URL and authorizing, the partner\nprovides the authorization code here to generate the token.",
-        "operationId": "authorize_email_api_v1_email_authorize_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "auth_code",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Auth Code"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmailConfigResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/email/token": {
-      "post": {
-        "tags": [
-          "Email Configuration"
-        ],
-        "summary": "Upload Email Token",
-        "description": "Directly upload an OAuth token JSON (Partner only).\n\nAlternative to the auth-url → authorize flow. If the partner\nalready has a token JSON (generated locally), they can upload it directly.",
-        "operationId": "upload_email_token_api_v1_email_token_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EmailConfigTokenRequest"
               }
             }
           },
@@ -8529,25 +8407,6 @@
         ],
         "title": "DocumentUploadURLResponse"
       },
-      "EmailConfigAuthUrlResponse": {
-        "properties": {
-          "auth_url": {
-            "type": "string",
-            "title": "Auth Url"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          }
-        },
-        "type": "object",
-        "required": [
-          "auth_url",
-          "message"
-        ],
-        "title": "EmailConfigAuthUrlResponse",
-        "description": "OAuth authorization URL for the partner to complete Gmail auth."
-      },
       "EmailConfigResponse": {
         "properties": {
           "id": {
@@ -8558,6 +8417,22 @@
           "sender_email": {
             "type": "string",
             "title": "Sender Email"
+          },
+          "smtp_host": {
+            "type": "string",
+            "title": "Smtp Host"
+          },
+          "smtp_port": {
+            "type": "integer",
+            "title": "Smtp Port"
+          },
+          "smtp_user": {
+            "type": "string",
+            "title": "Smtp User"
+          },
+          "use_tls": {
+            "type": "boolean",
+            "title": "Use Tls"
           },
           "is_configured": {
             "type": "boolean",
@@ -8583,6 +8458,10 @@
         "required": [
           "id",
           "sender_email",
+          "smtp_host",
+          "smtp_port",
+          "smtp_user",
+          "use_tls",
           "is_configured",
           "configured_by",
           "created_at",
@@ -8598,18 +8477,38 @@
             "format": "email",
             "title": "Sender Email"
           },
-          "credentials_json": {
+          "smtp_host": {
             "type": "string",
-            "title": "Credentials Json"
+            "title": "Smtp Host",
+            "default": "smtp.gmail.com"
+          },
+          "smtp_port": {
+            "type": "integer",
+            "title": "Smtp Port",
+            "default": 587
+          },
+          "smtp_user": {
+            "type": "string",
+            "title": "Smtp User"
+          },
+          "smtp_password": {
+            "type": "string",
+            "title": "Smtp Password"
+          },
+          "use_tls": {
+            "type": "boolean",
+            "title": "Use Tls",
+            "default": true
           }
         },
         "type": "object",
         "required": [
           "sender_email",
-          "credentials_json"
+          "smtp_user",
+          "smtp_password"
         ],
         "title": "EmailConfigSetupRequest",
-        "description": "Partner sets up email credentials for the platform."
+        "description": "Partner sets up SMTP credentials for the platform."
       },
       "EmailConfigTestRequest": {
         "properties": {
@@ -8625,20 +8524,6 @@
         ],
         "title": "EmailConfigTestRequest",
         "description": "Test the email configuration by sending a test email."
-      },
-      "EmailConfigTokenRequest": {
-        "properties": {
-          "token_json": {
-            "type": "string",
-            "title": "Token Json"
-          }
-        },
-        "type": "object",
-        "required": [
-          "token_json"
-        ],
-        "title": "EmailConfigTokenRequest",
-        "description": "Partner provides the OAuth token after authorization flow."
       },
       "ExecutiveAnalyticsResponse": {
         "properties": {
