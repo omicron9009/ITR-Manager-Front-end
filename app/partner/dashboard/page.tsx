@@ -158,15 +158,6 @@ export default function PartnerDashboardPage() {
                 </div>
                 {c.key === 'AWAITING_TAX_PAYMENT' ? <IndianRupee className="h-4 w-4 text-amber-600" /> : <ArrowRight className="h-4 w-4 text-slate-300" />}
               </div>
-              {c.key === 'COMPUTATION' && (summary?.computation_sub_counters || []).length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {(summary.computation_sub_counters || []).filter((s: any) => s.count > 0).slice(0, 3).map((s: any) => (
-                    <span key={s.raw_status} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 text-violet-700">
-                      {s.sub_status}: {s.count}
-                    </span>
-                  ))}
-                </div>
-              )}
             </Card>
           );
 
@@ -182,6 +173,26 @@ export default function PartnerDashboardPage() {
                         <div key={s.raw_status} className="flex items-center justify-between text-xs">
                           <span className="text-slate-600">{s.sub_status}</span>
                           <span className="font-semibold text-slate-900 bg-violet-50 px-2 py-0.5 rounded">{s.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+            );
+          }
+          if (c.key === 'FILING' && (summary?.filing_doc_sub_counters || []).length > 0) {
+            return (
+              <HoverCard key={c.key} openDelay={200} closeDelay={100}>
+                <HoverCardTrigger asChild>{cardContent}</HoverCardTrigger>
+                <HoverCardContent className="w-72 p-3">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-slate-900">Filing Doc Approval Status</h4>
+                    <div className="space-y-1.5">
+                      {(summary.filing_doc_sub_counters || []).map((s: any) => (
+                        <div key={s.raw_status} className="flex items-center justify-between text-xs">
+                          <span className="text-slate-600">{s.sub_status}</span>
+                          <span className="font-semibold text-slate-900 bg-orange-50 px-2 py-0.5 rounded">{s.count}</span>
                         </div>
                       ))}
                     </div>

@@ -191,6 +191,9 @@ export const getOnboardingFiles = (client_id?: string) => api.get('/api/v1/stora
 export const completedDocs = (filing_id: string) => api.get(`/api/v1/storage/completed-docs/${filing_id}`).then((r) => r.data);
 export const completedDocUploadUrl = (params: any) => api.post('/api/v1/storage/completed-doc/upload-url', null, { params }).then((r) => r.data);
 export const completedDocConfirm = (params: any) => api.post('/api/v1/storage/completed-doc/confirm', null, { params }).then((r) => r.data);
+export const completedDocManagerApprove = (doc_id: string) => api.post('/api/v1/storage/completed-doc/manager-approve', null, { params: { doc_id } }).then((r) => r.data);
+export const completedDocPartnerApprove = (doc_id: string) => api.post('/api/v1/storage/completed-doc/partner-approve', null, { params: { doc_id } }).then((r) => r.data);
+export const completedDocManagerReject = (doc_id: string, reason: string) => api.post('/api/v1/storage/completed-doc/manager-reject', null, { params: { doc_id, reason } }).then((r) => r.data);
 export const otherDocUploadUrl = (params: any) => api.post('/api/v1/storage/other-doc/upload-url', null, { params }).then((r) => r.data);
 export const otherDocConfirm = (params: any) => api.post('/api/v1/storage/other-doc/confirm', null, { params }).then((r) => r.data);
 export const listOtherDocs = (filing_id: string) => api.get(`/api/v1/storage/other-docs/${filing_id}`).then((r) => r.data);
@@ -261,6 +264,18 @@ export const removeTagFromManager = (manager_id: string, tag_id: string) =>
   api.delete(`/api/v1/managers/${manager_id}/tags/${tag_id}`).then((r) => r.data);
 export const getManagerTags = (manager_id: string) =>
   api.get(`/api/v1/managers/${manager_id}/tags`).then((r) => r.data);
+
+// ---------- INTERNAL WORKINGS ----------
+export const internalWorkingUploadUrl = (data: { filing_id: string; filename: string; content_type: string; label?: string }) =>
+  api.post('/api/v1/internal-workings/upload-url', data).then((r) => r.data);
+export const internalWorkingConfirm = (params: { filing_id: string; object_key: string; filename: string; content_type: string; file_size: number; label?: string }) =>
+  api.post('/api/v1/internal-workings/confirm-upload', null, { params }).then((r) => r.data);
+export const listInternalWorkings = (filing_id: string) =>
+  api.get(`/api/v1/internal-workings/filing/${filing_id}`).then((r) => r.data);
+export const internalWorkingDownloadUrl = (doc_id: string) =>
+  api.get(`/api/v1/internal-workings/${doc_id}/download`).then((r) => r.data);
+export const deleteInternalWorking = (doc_id: string) =>
+  api.delete(`/api/v1/internal-workings/${doc_id}`).then((r) => r.data);
 
 // ---------- COMPUTATION MULTI-STEP APPROVAL ----------
 export const managerApproveComp = (computation_id: string) =>

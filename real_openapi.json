@@ -5016,7 +5016,7 @@
           "Storage"
         ],
         "summary": "Get Completed Docs",
-        "description": "Get completed docs (acknowledgement, invoice) for a filing.\nClients can only see these once filing is COMPLETED.",
+        "description": "Get completed docs (acknowledgement, invoice) for a filing.\nClients can only see PARTNER_APPROVED docs after filing is COMPLETED.",
         "operationId": "get_completed_docs_api_v1_storage_completed_docs__filing_id__get",
         "security": [
           {
@@ -5046,6 +5046,166 @@
                     "type": "object"
                   },
                   "title": "Response Get Completed Docs Api V1 Storage Completed Docs  Filing Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/storage/completed-doc/manager-approve": {
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Manager Approve Completed Doc",
+        "description": "Manager/Partner approves a completed doc: UPLOADED → MANAGER_APPROVED.",
+        "operationId": "manager_approve_completed_doc_api_v1_storage_completed_doc_manager_approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Manager Approve Completed Doc Api V1 Storage Completed Doc Manager Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/storage/completed-doc/partner-approve": {
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Partner Approve Completed Doc",
+        "description": "Partner approves a completed doc: UPLOADED/MANAGER_APPROVED → PARTNER_APPROVED.\nPartner can bypass manager approval.",
+        "operationId": "partner_approve_completed_doc_api_v1_storage_completed_doc_partner_approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Partner Approve Completed Doc Api V1 Storage Completed Doc Partner Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/storage/completed-doc/manager-reject": {
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Manager Reject Completed Doc",
+        "description": "Manager/Partner rejects a completed doc: UPLOADED → MANAGER_REJECTED (staff re-uploads).",
+        "operationId": "manager_reject_completed_doc_api_v1_storage_completed_doc_manager_reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Reason"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Manager Reject Completed Doc Api V1 Storage Completed Doc Manager Reject Post"
                 }
               }
             }
@@ -6370,6 +6530,287 @@
         ]
       }
     },
+    "/api/v1/internal-workings/upload-url": {
+      "post": {
+        "tags": [
+          "Internal Workings"
+        ],
+        "summary": "Get Internal Working Upload Url",
+        "description": "Get a pre-signed URL to upload an internal working document.",
+        "operationId": "get_internal_working_upload_url_api_v1_internal_workings_upload_url_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalWorkingUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalWorkingUploadURLResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal-workings/confirm-upload": {
+      "post": {
+        "tags": [
+          "Internal Workings"
+        ],
+        "summary": "Confirm Internal Working Upload",
+        "description": "Confirm internal working upload after file is in MinIO.",
+        "operationId": "confirm_internal_working_upload_api_v1_internal_workings_confirm_upload_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          },
+          {
+            "name": "object_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Object Key"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          },
+          {
+            "name": "content_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Content Type"
+            }
+          },
+          {
+            "name": "file_size",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "File Size"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Label"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalWorkingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal-workings/filing/{filing_id}": {
+      "get": {
+        "tags": [
+          "Internal Workings"
+        ],
+        "summary": "List Internal Workings",
+        "description": "List all internal working documents for a filing. Not visible to clients.",
+        "operationId": "list_internal_workings_api_v1_internal_workings_filing__filing_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalWorkingListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal-workings/{doc_id}/download": {
+      "get": {
+        "tags": [
+          "Internal Workings"
+        ],
+        "summary": "Download Internal Working",
+        "description": "Get a pre-signed download URL for an internal working document.",
+        "operationId": "download_internal_working_api_v1_internal_workings__doc_id__download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal-workings/{doc_id}": {
+      "delete": {
+        "tags": [
+          "Internal Workings"
+        ],
+        "summary": "Delete Internal Working",
+        "description": "Delete an internal working document.",
+        "operationId": "delete_internal_working_api_v1_internal_workings__doc_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/my-tax-filings": {
       "get": {
         "summary": "Read Filings",
@@ -6535,6 +6976,9 @@
           "REVISE_COMPUTATION",
           "MOVE_TO_FILING",
           "UPLOAD_COMPLETED_DOCS",
+          "MANAGER_APPROVE_COMPLETED_DOCS",
+          "PARTNER_APPROVE_COMPLETED_DOCS",
+          "REVISE_COMPLETED_DOC",
           "MARK_PAYMENT_RECEIVED",
           "MANAGER_APPROVE_COMPUTATION",
           "PARTNER_APPROVE_COMPUTATION",
@@ -7929,6 +8373,11 @@
                 "type": "null"
               }
             ]
+          },
+          "has_internal_workings": {
+            "type": "boolean",
+            "title": "Has Internal Workings",
+            "default": false
           }
         },
         "type": "object",
@@ -8346,6 +8795,14 @@
             "title": "Computation Sub Counters",
             "default": []
           },
+          "filing_doc_sub_counters": {
+            "items": {
+              "$ref": "#/components/schemas/FilingDocSubStateCounter"
+            },
+            "type": "array",
+            "title": "Filing Doc Sub Counters",
+            "default": []
+          },
           "total_clients": {
             "type": "integer",
             "title": "Total Clients"
@@ -8378,6 +8835,11 @@
           "doc_type": {
             "type": "string",
             "title": "Doc Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "UPLOADED"
           },
           "original_filename": {
             "anyOf": [
@@ -9852,6 +10314,29 @@
         ],
         "title": "FilingDirectoryResponse"
       },
+      "FilingDocSubStateCounter": {
+        "properties": {
+          "sub_status": {
+            "type": "string",
+            "title": "Sub Status"
+          },
+          "raw_status": {
+            "type": "string",
+            "title": "Raw Status"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sub_status",
+          "raw_status",
+          "count"
+        ],
+        "title": "FilingDocSubStateCounter"
+      },
       "FilingDocumentGroupResponse": {
         "properties": {
           "document_type_id": {
@@ -10439,6 +10924,11 @@
             ],
             "title": "Halt Reason"
           },
+          "has_internal_workings": {
+            "type": "boolean",
+            "title": "Has Internal Workings",
+            "default": false
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -11008,6 +11498,151 @@
         },
         "type": "object",
         "title": "IncomeHeadsResponse"
+      },
+      "InternalWorkingListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InternalWorkingResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "count"
+        ],
+        "title": "InternalWorkingListResponse"
+      },
+      "InternalWorkingResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "original_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Filename"
+          },
+          "uploaded_by": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Uploaded By"
+          },
+          "uploaded_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded By Name"
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Uploaded At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filing_id",
+          "file_id",
+          "uploaded_by",
+          "uploaded_at"
+        ],
+        "title": "InternalWorkingResponse"
+      },
+      "InternalWorkingUploadRequest": {
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filing_id",
+          "filename",
+          "content_type"
+        ],
+        "title": "InternalWorkingUploadRequest"
+      },
+      "InternalWorkingUploadURLResponse": {
+        "properties": {
+          "upload_url": {
+            "type": "string",
+            "title": "Upload Url"
+          },
+          "object_key": {
+            "type": "string",
+            "title": "Object Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "upload_url",
+          "object_key"
+        ],
+        "title": "InternalWorkingUploadURLResponse"
       },
       "LocationDetailResponse": {
         "properties": {

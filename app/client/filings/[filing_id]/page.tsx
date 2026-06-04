@@ -25,6 +25,7 @@ export default function FilingDetailPage() {
   const [docsMeta, setDocsMeta] = useState<any>({});
   const [computations, setComputations] = useState<any[]>([]);
   const [currentComp, setCurrentComp] = useState<any>(null);
+  const [hasInternalWorkings, setHasInternalWorkings] = useState(false);
   const [completed, setCompleted] = useState<any[]>([]);
   const [otherDocs, setOtherDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +65,7 @@ export default function FilingDetailPage() {
         const c = await compForFiling(filingId);
         setComputations(c?.items || []);
         setCurrentComp(c?.current_version || null);
+        setHasInternalWorkings(!!c?.has_internal_workings);
       }
       if (['FILING', 'PAYMENT', 'COMPLETED'].includes(state)) {
         const cd = await completedDocs(filingId);
@@ -499,8 +501,17 @@ export default function FilingDetailPage() {
             </div>
           )}
 
-          {/* Tax Payment Confirmation - shown when computation is approved but tax not yet paid */}
-          {currentComp && (currentComp.status === 'APPROVED' || currentComp.status === 'CLIENT_APPROVED') && !filing.is_tax_paid && state === 'COMPUTATION' && (
+          {/* Tax Payment Confirmation - shown when computation is approved but tax not yet paid AND internal workings uploaded */}
+          {currentComp && (currentComp.status === 'APPROVED' || currentComp.status === 'CLIENT_APPROVED') && !filing.is_tax_paid && state === 'COMPUTATION' && !hasInternalWorkings && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 mb-4 flex items-center gap-3">
+              <Clock className="h-5 w-5 text-slate-500 flex-shrink-0" />
+              <div>
+                <div className="text-sm font-semibold text-slate-700">Awaiting Internal Documents</div>
+                <div className="text-xs text-slate-500 mt-0.5">Your CA is preparing required internal documents. Tax payment confirmation will be available once they are ready.</div>
+              </div>
+            </div>
+          )}
+          {currentComp && (currentComp.status === 'APPROVED' || currentComp.status === 'CLIENT_APPROVED') && !filing.is_tax_paid && state === 'COMPUTATION' && hasInternalWorkings && (
             <div className="rounded-lg border-2 border-amber-200 bg-amber-50/50 p-4 mb-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">

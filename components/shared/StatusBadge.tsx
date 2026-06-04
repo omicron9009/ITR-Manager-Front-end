@@ -35,6 +35,9 @@ const CONFIG: Record<string, { bg: string; text: string; ring: string; icon?: an
   PENDING_UPLOAD: { bg: 'bg-slate-100', text: 'text-slate-600', ring: 'ring-slate-200', label: 'Pending Upload' },
   UPLOADED: { bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-200', label: 'Uploaded' },
   APPROVED: { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', label: 'Approved' },
+  MANAGER_APPROVED: { bg: 'bg-teal-50', text: 'text-teal-700', ring: 'ring-teal-200', icon: CheckCircle2, label: 'Manager Approved' },
+  PARTNER_APPROVED: { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', icon: CheckCircle2, label: 'Partner Approved' },
+  MANAGER_REJECTED: { bg: 'bg-rose-50', text: 'text-rose-700', ring: 'ring-rose-200', label: 'Rejected' },
 };
 
 export function StatusBadge({ status, size = 'md' }: { status: StatusKey; size?: 'sm' | 'md' }) {

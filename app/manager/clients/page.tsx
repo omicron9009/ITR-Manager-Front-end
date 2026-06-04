@@ -29,6 +29,7 @@ function ManagerClientsPage() {
   const [search, setSearch] = useState('');
   const [filingStatus, setFilingStatus] = useState(initialStatus);
   const [computationSubFilter, setComputationSubFilter] = useState('');
+  const [filingDocSubFilter, setFilingDocSubFilter] = useState('');
   const [computationFilings, setComputationFilings] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [teamExecs, setTeamExecs] = useState<any[]>([]);
@@ -109,6 +110,29 @@ function ManagerClientsPage() {
     return Array.from(set);
   }, [computationFilings]);
 
+  // Build filing doc sub-status lookup from action items
+  const FILING_DOC_ACTION_LABELS: Record<string, string> = {
+    MANAGER_APPROVE_COMPLETED_DOCS: 'Awaiting Manager Approval',
+    PARTNER_APPROVE_COMPLETED_DOCS: 'Awaiting Partner Approval',
+    REVISE_COMPLETED_DOC: 'Rejected — Re-upload Required',
+  };
+  const filingDocSubStatusMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const ai of actionItems) {
+      const label = FILING_DOC_ACTION_LABELS[ai.type];
+      if (label && ai.related_client_id) {
+        map.set(ai.related_client_id, label);
+      }
+    }
+    return map;
+  }, [actionItems]);
+
+  const filingDocSubStatuses = useMemo(() => {
+    const set = new Set<string>();
+    for (const label of filingDocSubStatusMap.values()) set.add(label);
+    return Array.from(set);
+  }, [filingDocSubStatusMap]);
+
   // Build filtered rows
   const filtered = useMemo(() => {
     let result = clients;
@@ -148,6 +172,12 @@ function ManagerClientsPage() {
         return computationSubStatusMap.get(key) === computationSubFilter;
       });
     }
+    // Filter by filing doc sub-status when viewing FILING filings
+    if (filingStatus === 'FILING' && filingDocSubFilter) {
+      result = result.filter((c) => {
+        return filingDocSubStatusMap.get(c.id) === filingDocSubFilter;
+      });
+    }
     if (search) {
       const q = search.toLowerCase();
       result = result.filter((c) => {
@@ -157,7 +187,7 @@ function ManagerClientsPage() {
       });
     }
     return result;
-  }, [clients, filingStatus, awaitingTaxRows, search, computationSubFilter, computationSubStatusMap]);
+  }, [clients, filingStatus, awaitingTaxRows, search, computationSubFilter, computationSubStatusMap, filingDocSubFilter, filingDocSubStatusMap]);
 
   // Build action item lookup by client_id
   const actionItemByClient = useMemo(() => {
@@ -241,6 +271,7 @@ function ManagerClientsPage() {
         case 'executive': va = (a.assigned_executive_name || 'zzz').toLowerCase(); vb = (b.assigned_executive_name || 'zzz').toLowerCase(); break;
         case 'state': va = a.current_filing_state || ''; vb = b.current_filing_state || ''; break;
         case 'comp_sub': va = (computationSubStatusMap.get(`${a.id}-${a.active_filing_year}`) || 'zzz').toLowerCase(); vb = (computationSubStatusMap.get(`${b.id}-${b.active_filing_year}`) || 'zzz').toLowerCase(); break;
+        case 'filing_doc_sub': va = (filingDocSubStatusMap.get(a.id) || 'zzz').toLowerCase(); vb = (filingDocSubStatusMap.get(b.id) || 'zzz').toLowerCase(); break;
         case 'action': va = actionItemByClient.get(a.id)?.title || 'zzz'; vb = actionItemByClient.get(b.id)?.title || 'zzz'; break;
         case 'time': va = getHoursInState(a) ?? 99999; vb = getHoursInState(b) ?? 99999; break;
         default: return 0;
@@ -285,7 +316,7 @@ function ManagerClientsPage() {
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email…" className="pl-9" />
           </div>
-          <Select value={filingStatus || 'all'} onValueChange={(v) => { setFilingStatus(v === 'all' ? '' : v); setComputationSubFilter(''); }}>
+          <Select value={filingStatus || 'all'} onValueChange={(v) => { setFilingStatus(v === 'all' ? '' : v); setComputationSubFilter(''); setFilingDocSubFilter(''); }}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filing State" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Filing States</SelectItem>
@@ -299,6 +330,15 @@ function ManagerClientsPage() {
               <SelectContent>
                 <SelectItem value="all">All Sub-States</SelectItem>
                 {computationSubStatuses.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {filingStatus === 'FILING' && filingDocSubStatuses.length > 0 && (
+            <Select value={filingDocSubFilter || 'all'} onValueChange={(v) => setFilingDocSubFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-[240px] border-orange-200 bg-orange-50/50"><SelectValue placeholder="Doc Approval Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Doc States</SelectItem>
+                {filingDocSubStatuses.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
           )}
@@ -348,6 +388,7 @@ function ManagerClientsPage() {
                   <SortHeader col="executive">Executive</SortHeader>
                   <SortHeader col="state">Current State</SortHeader>
                   {filingStatus === 'COMPUTATION' && <SortHeader col="comp_sub">Sub-Status</SortHeader>}
+                  {filingStatus === 'FILING' && <SortHeader col="filing_doc_sub">Doc Status</SortHeader>}
                   <SortHeader col="action">Action Required</SortHeader>
                   {showTimeInState && <SortHeader col="time">Time in State</SortHeader>}
                   {(filingStatus === 'AWAITING_TAX_PAYMENT' || filingStatus === 'COMPUTATION') && (
@@ -393,6 +434,20 @@ function ManagerClientsPage() {
                           return (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-violet-100 text-violet-700 ring-1 ring-inset ring-violet-200">
                               {subStatus}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                    )}
+                    {filingStatus === 'FILING' && (
+                      <td className="px-5 py-3">
+                        {(() => {
+                          const docSub = filingDocSubStatusMap.get(c.id);
+                          if (!docSub) return <span className="text-xs text-slate-400">—</span>;
+                          const colors = docSub.includes('Rejected') ? 'bg-rose-100 text-rose-700 ring-rose-200' : docSub.includes('Partner') ? 'bg-teal-100 text-teal-700 ring-teal-200' : 'bg-orange-100 text-orange-700 ring-orange-200';
+                          return (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 ring-inset ${colors}`}>
+                              {docSub}
                             </span>
                           );
                         })()}

@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock, IndianRupee, Pencil } from 'lucide-react';
@@ -435,6 +435,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
               </TabsContent>
               <TabsContent value="computations" className="mt-3">
                 <ComputationPanel filingId={f.id} filingStatus={status} filing={f} />
+                <InternalWorkingsSection filingId={f.id} filingStatus={status} />
               </TabsContent>
               <TabsContent value="filed-docs" className="mt-3">
                 <FiledDocsPanel filingId={f.id} filingStatus={status} onMoveToPayment={status === 'FILING' ? async () => { try { await transitionFiling(f.id, { to_status: 'PAYMENT' }); toast.success('Moved to Payment'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } } : undefined} />
@@ -910,10 +911,18 @@ const COMPLETED_DOC_TYPES = [
 ];
 
 function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId: string; filingStatus: string; onMoveToPayment?: () => Promise<void> }) {
+  const pathname = usePathname();
+  const isPartner = pathname.startsWith('/partner');
+  const isManager = pathname.startsWith('/manager');
+  const isExecutive = pathname.startsWith('/executive');
+
   const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<Record<string, File>>({});
+  const [rejectingDoc, setRejectingDoc] = useState<any>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [acting, setActing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -944,6 +953,39 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
     finally { setUploading(null); }
   };
 
+  const handleManagerApprove = async (docId: string) => {
+    setActing(true);
+    try {
+      await completedDocManagerApprove(docId);
+      toast.success('Document approved');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Approval failed'); }
+    finally { setActing(false); }
+  };
+
+  const handlePartnerApprove = async (docId: string) => {
+    setActing(true);
+    try {
+      await completedDocPartnerApprove(docId);
+      toast.success('Document approved');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Approval failed'); }
+    finally { setActing(false); }
+  };
+
+  const handleReject = async () => {
+    if (!rejectingDoc) return;
+    setActing(true);
+    try {
+      await completedDocManagerReject(rejectingDoc.id, rejectReason || 'Rejected');
+      toast.success('Document rejected');
+      setRejectingDoc(null);
+      setRejectReason('');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Rejection failed'); }
+    finally { setActing(false); }
+  };
+
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
@@ -956,6 +998,21 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
   };
 
   const getUploadedDoc = (docType: string) => docs.find((d: any) => d.doc_type === docType);
+
+  // Gate Move to Payment: all required docs must be PARTNER_APPROVED
+  const allRequiredApproved = COMPLETED_DOC_TYPES.filter(d => d.required).every(dt => {
+    const doc = getUploadedDoc(dt.key);
+    return doc && doc.status === 'PARTNER_APPROVED';
+  });
+
+  const getStatusBorderColor = (status: string) => {
+    switch (status) {
+      case 'PARTNER_APPROVED': return 'border-emerald-200 bg-emerald-50/40';
+      case 'MANAGER_APPROVED': return 'border-teal-200 bg-teal-50/40';
+      case 'MANAGER_REJECTED': return 'border-rose-200 bg-rose-50/40';
+      default: return 'border-emerald-200 bg-emerald-50/40';
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -977,8 +1034,14 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
 
             if (uploaded) {
               const pending = pendingFiles[dt.key];
+              const docStatus = uploaded.status || 'UPLOADED';
+              const canReUpload = (isExecutive || isManager || isPartner) && (docStatus === 'UPLOADED' || docStatus === 'MANAGER_REJECTED');
+              const showManagerApprove = (isManager || isPartner) && docStatus === 'UPLOADED';
+              const showPartnerApprove = isPartner && (docStatus === 'UPLOADED' || docStatus === 'MANAGER_APPROVED');
+              const showReject = (isManager || isPartner) && docStatus === 'UPLOADED';
+
               return (
-                <div key={dt.key} className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/40">
+                <div key={dt.key} className={`p-3 rounded-lg border ${getStatusBorderColor(docStatus)}`}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <FileArchive className="h-4 w-4 text-emerald-600 flex-shrink-0" />
@@ -989,15 +1052,47 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">UPLOADED</span>
+                      <StatusBadge status={docStatus} size="sm" />
                       <Button size="sm" variant="ghost" onClick={() => download(uploaded.id)}><Eye className="h-3.5 w-3.5" /></Button>
-                      {/* Allow re-upload */}
-                      <Button size="sm" variant="ghost" className="text-slate-500" onClick={() => document.getElementById(`filed-${filingId}-${dt.key}`)?.click()}>
-                        <Upload className="h-3.5 w-3.5" />
-                      </Button>
-                      <input id={`filed-${filingId}-${dt.key}`} type="file" hidden accept=".pdf,.json,.xlsx,.xls,.doc,.docx" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFiles(prev => ({ ...prev, [dt.key]: f })); e.target.value = ''; }} />
+                      {canReUpload && (
+                        <>
+                          <Button size="sm" variant="ghost" className="text-slate-500" onClick={() => document.getElementById(`filed-${filingId}-${dt.key}`)?.click()}>
+                            <Upload className="h-3.5 w-3.5" />
+                          </Button>
+                          <input id={`filed-${filingId}-${dt.key}`} type="file" hidden accept=".pdf,.json,.xlsx,.xls,.doc,.docx" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFiles(prev => ({ ...prev, [dt.key]: f })); e.target.value = ''; }} />
+                        </>
+                      )}
                     </div>
                   </div>
+
+                  {/* Rejection reason display */}
+                  {docStatus === 'MANAGER_REJECTED' && uploaded.rejection_reason && (
+                    <div className="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded px-2 py-1">
+                      <span className="font-semibold">Rejection reason:</span> {uploaded.rejection_reason}
+                    </div>
+                  )}
+
+                  {/* Approve / Reject action buttons */}
+                  {(showManagerApprove || showPartnerApprove || showReject) && (
+                    <div className="mt-2 flex items-center gap-2">
+                      {showPartnerApprove ? (
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-xs h-7" disabled={acting} onClick={() => handlePartnerApprove(uploaded.id)}>
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
+                        </Button>
+                      ) : showManagerApprove ? (
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-xs h-7" disabled={acting} onClick={() => handleManagerApprove(uploaded.id)}>
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
+                        </Button>
+                      ) : null}
+                      {showReject && (
+                        <Button size="sm" variant="outline" className="text-rose-600 border-rose-200 hover:bg-rose-50 text-xs h-7" disabled={acting} onClick={() => setRejectingDoc(uploaded)}>
+                          <X className="h-3 w-3 mr-1" /> Reject
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Pending re-upload confirmation */}
                   {pending && (
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 truncate flex-1">{pending.name}</span>
@@ -1052,9 +1147,9 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
             );
           })}
 
-          {docs.length >= COMPLETED_DOC_TYPES.filter(d => d.required).length && COMPLETED_DOC_TYPES.filter(d => d.required).every(dt => docs.some((d: any) => d.doc_type === dt.key)) && (
+          {allRequiredApproved && (
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 text-center">
-              ✅ All required filed documents uploaded. You can now mark payment and complete the filing.
+              ✅ All required filed documents approved. You can now mark payment and complete the filing.
             </div>
           )}
 
@@ -1064,8 +1159,169 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
           {/* Move to Payment button at the end of filed docs */}
           {onMoveToPayment && (
             <div className="mt-4 pt-4 border-t border-slate-200">
-              <Button onClick={onMoveToPayment} className="w-full bg-indigo-600 hover:bg-indigo-700">
+              <Button onClick={onMoveToPayment} className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={!allRequiredApproved}>
                 Move to Payment
+              </Button>
+              {!allRequiredApproved && (
+                <p className="text-xs text-slate-500 text-center mt-1">All required documents must be Partner Approved before moving to payment.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Rejection Reason Dialog */}
+      <Dialog open={!!rejectingDoc} onOpenChange={(open) => { if (!open) { setRejectingDoc(null); setRejectReason(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">Provide a reason for rejecting this document. The executive will need to re-upload.</p>
+            <Textarea placeholder="Reason for rejection (optional)" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRejectingDoc(null); setRejectReason(''); }}>Cancel</Button>
+            <Button className="bg-rose-600 hover:bg-rose-700" onClick={handleReject} disabled={acting}>
+              {acting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={undefined} />
+    </div>
+  );
+}
+
+function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string; filingStatus: string }) {
+  const pathname = usePathname();
+  const isClient = pathname.startsWith('/client');
+  // Only show to Partner/Manager/Executive
+  if (isClient) return null;
+
+  const [docs, setDocs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingLabel, setPendingLabel] = useState('');
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+
+  const canUpload = ['COMPUTATION', 'FILING'].includes(filingStatus);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await listInternalWorkings(filingId);
+      setDocs(r?.items || []);
+    } catch {} finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, [filingId]);
+
+  const handleUpload = async () => {
+    if (!pendingFile) return;
+    if (pendingFile.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
+    setUploading(true);
+    try {
+      const params: any = { filing_id: filingId, filename: pendingFile.name, content_type: pendingFile.type };
+      if (pendingLabel.trim()) params.label = pendingLabel.trim();
+      const urlRes = await internalWorkingUploadUrl(params);
+      const axios = (await import('axios')).default;
+      await axios.put(urlRes.upload_url, pendingFile, { headers: { 'Content-Type': pendingFile.type } });
+      await internalWorkingConfirm({ filing_id: filingId, object_key: urlRes.object_key, filename: pendingFile.name, content_type: pendingFile.type, file_size: pendingFile.size, ...(pendingLabel.trim() ? { label: pendingLabel.trim() } : {}) });
+      toast.success('Internal working document uploaded');
+      setPendingFile(null);
+      setPendingLabel('');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
+    finally { setUploading(false); }
+  };
+
+  const handleDelete = async (docId: string) => {
+    try {
+      await deleteInternalWorking(docId);
+      toast.success('Document removed');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to delete'); }
+  };
+
+  const handleView = async (docId: string) => {
+    try {
+      const r = await internalWorkingDownloadUrl(docId);
+      setViewerUrl(r.download_url || r.url);
+      setViewerOpen(true);
+    } catch { toast.error('Could not load file'); }
+  };
+
+  return (
+    <div className="mt-6 pt-5 border-t border-slate-200 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-500 uppercase">Internal Working Documents</span>
+        <Button size="sm" variant="ghost" onClick={load} disabled={loading}><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /></Button>
+      </div>
+
+      {/* Warning if no docs and in COMPUTATION state */}
+      {docs.length === 0 && filingStatus === 'COMPUTATION' && !loading && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-center gap-2">
+          <Clock className="h-4 w-4 flex-shrink-0" />
+          <span>At least one internal working document must be uploaded before the filing can advance to FILING state.</span>
+        </div>
+      )}
+
+      {/* List existing docs */}
+      {docs.length > 0 && (
+        <div className="space-y-2">
+          {docs.map((doc: any) => (
+            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white">
+              <FileArchive className="h-4 w-4 text-violet-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-900 truncate">{doc.filename || doc.label || 'Document'}</div>
+                {doc.label && doc.filename && <div className="text-xs text-slate-400 truncate">{doc.label}</div>}
+                <div className="text-[10px] text-slate-400">
+                  {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('en-IN') : ''}
+                  {doc.uploaded_by_name ? ` · ${doc.uploaded_by_name}` : ''}
+                </div>
+              </div>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => handleView(doc.id)}>
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-rose-500 hover:text-rose-700" onClick={() => handleDelete(doc.id)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {docs.length === 0 && !loading && filingStatus !== 'COMPUTATION' && (
+        <p className="text-xs text-slate-400 italic">No internal working documents uploaded yet.</p>
+      )}
+
+      {/* Upload area */}
+      {canUpload && (
+        <div className="p-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-violet-400 transition-colors space-y-2">
+          {!pendingFile ? (
+            <div className="flex items-center gap-3">
+              <Button size="sm" variant="outline" onClick={() => document.getElementById(`iw-upload-${filingId}`)?.click()}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Internal Working
+              </Button>
+              <span className="text-xs text-slate-400">PDF, Word, Excel, Images (max 10 MB)</span>
+              <input id={`iw-upload-${filingId}`} type="file" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <FileArchive className="h-4 w-4 text-violet-500 flex-shrink-0" />
+                <span className="text-sm text-slate-700 truncate flex-1">{pendingFile.name}</span>
+                <Button size="sm" variant="ghost" className="h-6 px-1 text-rose-500" onClick={() => { setPendingFile(null); setPendingLabel(''); }}>✕</Button>
+              </div>
+              <Input placeholder="Label (optional)" value={pendingLabel} onChange={(e) => setPendingLabel(e.target.value)} className="h-8 text-sm" />
+              <Button size="sm" className="bg-violet-600 hover:bg-violet-700" disabled={uploading} onClick={handleUpload}>
+                {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
+                Upload
               </Button>
             </div>
           )}
