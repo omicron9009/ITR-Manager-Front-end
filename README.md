@@ -1,6 +1,6 @@
 # ITR Manager — Frontend
 
-Next.js frontend for the ITR filing management platform.
+Next.js frontend for the ITR filing management platform..
 
 ## Development
 
