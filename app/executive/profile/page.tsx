@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { me, changePassword, changeEmail } from '@/lib/api';
+import { me, changePassword, changeEmail, updateMyName } from '@/lib/api';
 import { toast } from 'sonner';
-import { Loader2, Lock, Mail } from 'lucide-react';
+import { Loader2, Lock, Mail, Pencil } from 'lucide-react';
 
 export default function ExecutiveProfilePage() {
   const [profile, setProfile] = useState<any>({});
@@ -19,9 +19,12 @@ export default function ExecutiveProfilePage() {
   const [newEmail, setNewEmail] = useState('');
   const [emailPassword, setEmailPassword] = useState('');
   const [changingEmail, setChangingEmail] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
-    me().then((p) => setProfile(p)).catch(() => {});
+    me().then((p) => { setProfile(p); setNameValue(p?.full_name || ''); }).catch(() => {});
   }, []);
 
   const handleChangePassword = async () => {
@@ -62,7 +65,30 @@ export default function ExecutiveProfilePage() {
       <Card className="rounded-xl p-6">
         <h2 className="font-bold text-slate-900 mb-4">Account</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div><div className="text-xs text-slate-500">Name</div><div className="font-medium text-slate-900">{profile.full_name || '—'}</div></div>
+          <div>
+            <div className="text-xs text-slate-500">Name</div>
+            {editingName ? (
+              <div className="flex items-center gap-2 mt-1">
+                <Input value={nameValue} onChange={(e) => setNameValue(e.target.value)} className="h-8 text-sm" autoFocus />
+                <Button size="sm" className="h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-xs" disabled={savingName || !nameValue.trim()} onClick={async () => {
+                  setSavingName(true);
+                  try {
+                    const res = await updateMyName(nameValue.trim());
+                    setProfile((p: any) => ({ ...p, full_name: res.full_name || nameValue.trim() }));
+                    toast.success('Name updated');
+                    setEditingName(false);
+                  } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+                  finally { setSavingName(false); }
+                }}>{savingName ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}</Button>
+                <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => { setEditingName(false); setNameValue(profile.full_name || ''); }}>Cancel</Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-900">{profile.full_name || '—'}</span>
+                <button onClick={() => setEditingName(true)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
+          </div>
           <div><div className="text-xs text-slate-500">Email</div><div className="font-medium text-slate-900">{profile.email || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Phone</div><div className="font-medium text-slate-900">{profile.phone_number || profile.phone || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Status</div><StatusBadge status={profile.account_status} /></div>

@@ -76,6 +76,10 @@ export const changePassword = (data: { old_password: string; new_password: strin
   api.post('/api/v1/auth/change-password', data).then((r) => r.data);
 export const changeEmail = (data: { new_email: string; password: string }) =>
   api.post('/api/v1/auth/change-email', data).then((r) => r.data);
+export const updateMyName = (full_name: string) =>
+  api.patch('/api/v1/auth/me/profile', { full_name }).then((r) => r.data);
+export const updateMyIncomeHeads = (data: Record<string, boolean>) =>
+  api.put('/api/v1/clients/me/income-heads', data).then((r) => r.data);
 export const adminGenerateRecoveryCodes = (data: { email: string }) =>
   api.post('/api/v1/auth/admin/generate-recovery-codes', data).then((r) => r.data);
 export const regenerateRecoveryCodes = () =>
@@ -232,6 +236,14 @@ export const getReportDashboard = (fy?: string) =>
   api.get('/api/v1/reports/dashboard', { params: fy ? { fy } : {} }).then((r) => r.data);
 export const downloadReport = (fy?: string) =>
   api.get('/api/v1/reports/download', { params: fy ? { fy } : {}, responseType: 'blob' });
+
+// ---------- COMPLETED QUEUE (DASHBOARD_USER / PARTNER) ----------
+export const getCompletedQueue = () =>
+  api.get('/api/v1/dashboard/completed-queue').then((r) => r.data);
+export const dismissQueueItem = (queue_id: string) =>
+  api.post('/api/v1/dashboard/completed-queue/dismiss', { queue_id }).then((r) => r.data);
+export const dismissAllQueue = () =>
+  api.post('/api/v1/dashboard/completed-queue/dismiss-all').then((r) => r.data);
 
 // ---------- ACTION ITEMS ----------
 export const getActionItems = (params?: { type?: string; filing_id?: string }) =>

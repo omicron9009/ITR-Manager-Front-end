@@ -68,7 +68,7 @@ export const roleToDashboard = (role: UserRole | null): string => {
   switch (role) {
     case 'PARTNER': return '/partner/dashboard';
     case 'MANAGER': return '/manager/dashboard';
-    case 'DASHBOARD_USER': return '/summary/dashboard';
+    case 'DASHBOARD_USER': return '/summary/leaderboard';
     case 'EXECUTIVE': return '/executive/dashboard';
     case 'CLIENT': return '/client/dashboard';
     default: return '/auth/login';

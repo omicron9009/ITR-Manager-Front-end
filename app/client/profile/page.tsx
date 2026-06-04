@@ -8,11 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { me, getClient, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl, getOnboardingFiles, changePassword, changeEmail } from '@/lib/api';
+import { me, getClient, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl, getOnboardingFiles, changePassword, changeEmail, updateMyName, updateMyIncomeHeads } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Loader2, Upload, Eye, FileText, CheckCircle2, Lock, Mail, IndianRupee, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle } from 'lucide-react';
+import { Loader2, Upload, Eye, FileText, CheckCircle2, Lock, Mail, IndianRupee, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle, Pencil } from 'lucide-react';
 
 export default function ClientProfilePage() {
   const [profile, setProfile] = useState<any>({});
@@ -33,13 +33,22 @@ export default function ClientProfilePage() {
   const [changingEmail, setChangingEmail] = useState(false);
 
   const [clientProfile, setClientProfile] = useState<any>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [incomeHeads, setIncomeHeads] = useState<Record<string, boolean>>({});
+  const [savingIncomeHeads, setSavingIncomeHeads] = useState(false);
 
   useEffect(() => {
     me().then((p) => {
       setProfile(p);
+      setNameValue(p?.full_name || '');
       // Also fetch full client profile (has income_heads + professional_fee)
       const userId = p?.id || p?.user_id || getUser()?.user_id;
-      if (userId) getClient(userId).then((cp) => setClientProfile(cp)).catch(() => {});
+      if (userId) getClient(userId).then((cp) => {
+        setClientProfile(cp);
+        if (cp?.income_heads) setIncomeHeads({ ...cp.income_heads });
+      }).catch(() => {});
     }).catch(() => {});
     const loadForm = async () => {
       try {
@@ -128,7 +137,30 @@ export default function ClientProfilePage() {
         {/* Account info */}
         <h2 className="font-bold text-slate-900 mb-4">Account</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div><div className="text-xs text-slate-500">Name</div><div className="font-medium text-slate-900">{profile.full_name || '—'}</div></div>
+          <div>
+            <div className="text-xs text-slate-500">Name</div>
+            {editingName ? (
+              <div className="flex items-center gap-2 mt-1">
+                <Input value={nameValue} onChange={(e) => setNameValue(e.target.value)} className="h-8 text-sm" autoFocus />
+                <Button size="sm" className="h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-xs" disabled={savingName || !nameValue.trim()} onClick={async () => {
+                  setSavingName(true);
+                  try {
+                    const res = await updateMyName(nameValue.trim());
+                    setProfile((p: any) => ({ ...p, full_name: res.full_name || nameValue.trim() }));
+                    toast.success('Name updated');
+                    setEditingName(false);
+                  } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+                  finally { setSavingName(false); }
+                }}>{savingName ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}</Button>
+                <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => { setEditingName(false); setNameValue(profile.full_name || ''); }}>Cancel</Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-900">{profile.full_name || '—'}</span>
+                <button onClick={() => setEditingName(true)} className="text-slate-400 hover:text-indigo-600 transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
+          </div>
           <div><div className="text-xs text-slate-500">Email</div><div className="font-medium text-slate-900">{profile.email || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Phone</div><div className="font-medium text-slate-900">{profile.phone_number || profile.phone || profile.mobile || values['phone'] || values['mobile'] || values['phone_number'] || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Status</div><StatusBadge status={profile.account_status} /></div>
@@ -138,8 +170,28 @@ export default function ClientProfilePage() {
         {clientProfile?.income_heads && (
           <>
             <hr className="my-5 border-slate-100" />
-            <h2 className="font-bold text-slate-900 mb-3">Income Sources</h2>
-            <IncomeHeadsDisplay incomeHeads={clientProfile.income_heads} />
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-slate-900">Income Sources</h2>
+              <Button size="sm" className="h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-xs" disabled={savingIncomeHeads} onClick={async () => {
+                setSavingIncomeHeads(true);
+                try {
+                  const res = await updateMyIncomeHeads(incomeHeads);
+                  setClientProfile((cp: any) => ({ ...cp, income_heads: res }));
+                  toast.success('Income sources updated');
+                } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to update'); }
+                finally { setSavingIncomeHeads(false); }
+              }}>{savingIncomeHeads ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Save</Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {Object.entries(INCOME_HEAD_LABELS).map(([key, label]) => (
+                <button key={key} type="button" onClick={() => setIncomeHeads((prev) => ({ ...prev, [key]: !prev[key] }))} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${incomeHeads[key] ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-100 hover:bg-slate-50'}`}>
+                  <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold ${incomeHeads[key] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                    {incomeHeads[key] ? '✓' : '✗'}
+                  </span>
+                  <span className="text-sm text-slate-700">{label}</span>
+                </button>
+              ))}
+            </div>
           </>
         )}
 
@@ -328,21 +380,3 @@ const INCOME_HEAD_LABELS: Record<string, string> = {
   foreign_assets: 'Foreign Assets / Income',
   any_other: 'Any Other Income',
 };
-
-function IncomeHeadsDisplay({ incomeHeads }: { incomeHeads: Record<string, boolean> }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      {Object.entries(INCOME_HEAD_LABELS).map(([key, label]) => {
-        const val = incomeHeads[key];
-        return (
-          <div key={key} className="flex items-center gap-2 rounded-md border border-slate-100 px-3 py-2">
-            <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold ${val ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
-              {val ? '✓' : '✗'}
-            </span>
-            <span className="text-sm text-slate-700">{label}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}

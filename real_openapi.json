@@ -306,6 +306,53 @@
         ]
       }
     },
+    "/api/v1/auth/me/profile": {
+      "patch": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Update My Profile",
+        "description": "Update the current user's profile (name). Available to all roles.",
+        "operationId": "update_my_profile_api_v1_auth_me_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/auth/health": {
       "get": {
         "tags": [
@@ -636,6 +683,53 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/clients/me/income-heads": {
+      "put": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Update My Income Heads",
+        "description": "Client updates their own income heads (partial update).",
+        "operationId": "update_my_income_heads_api_v1_clients_me_income_heads_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncomeHeadsUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeHeadsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/clients/{client_id}": {
@@ -4413,6 +4507,109 @@
         ]
       }
     },
+    "/api/v1/dashboard/completed-queue": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Get Completed Queue",
+        "description": "Get all pending (undismissed) completed filings for the logged-in viewer.",
+        "operationId": "get_completed_queue_api_v1_dashboard_completed_queue_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletedQueueResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/dashboard/completed-queue/dismiss": {
+      "post": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Dismiss Completed Queue Item",
+        "description": "Dismiss a single item from the completed queue.",
+        "operationId": "dismiss_completed_queue_item_api_v1_dashboard_completed_queue_dismiss_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissQueueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Dismiss Completed Queue Item Api V1 Dashboard Completed Queue Dismiss Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/dashboard/completed-queue/dismiss-all": {
+      "post": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Dismiss All Completed Queue",
+        "description": "Dismiss all pending items from the completed queue.",
+        "operationId": "dismiss_all_completed_queue_api_v1_dashboard_completed_queue_dismiss_all_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Dismiss All Completed Queue Api V1 Dashboard Completed Queue Dismiss All Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/audit/logs": {
       "get": {
         "tags": [
@@ -5194,6 +5391,7 @@
             "schema": {
               "type": "string",
               "minLength": 1,
+              "maxLength": 1000,
               "title": "Reason"
             }
           }
@@ -8243,6 +8441,74 @@
         ],
         "title": "CompletedDocType"
       },
+      "CompletedQueueItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "client_name": {
+            "type": "string",
+            "title": "Client Name"
+          },
+          "financial_year": {
+            "type": "string",
+            "title": "Financial Year"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Completed At"
+          },
+          "completed_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed By Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filing_id",
+          "client_name",
+          "financial_year",
+          "completed_at"
+        ],
+        "title": "CompletedQueueItem"
+      },
+      "CompletedQueueResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CompletedQueueItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "count"
+        ],
+        "title": "CompletedQueueResponse"
+      },
       "ComprehensiveReportResponse": {
         "properties": {
           "generated_at": {
@@ -8409,6 +8675,8 @@
           },
           "reason": {
             "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
             "title": "Reason"
           }
         },
@@ -8442,6 +8710,8 @@
           },
           "reason": {
             "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
             "title": "Reason"
           }
         },
@@ -8461,6 +8731,8 @@
           },
           "reason": {
             "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
             "title": "Reason"
           }
         },
@@ -9013,6 +9285,20 @@
           "uploaded_at"
         ],
         "title": "DirectoryOtherDocItem"
+      },
+      "DismissQueueRequest": {
+        "properties": {
+          "queue_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Queue Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "queue_id"
+        ],
+        "title": "DismissQueueRequest"
       },
       "DocumentApproveRequest": {
         "properties": {
@@ -11499,6 +11785,123 @@
         "type": "object",
         "title": "IncomeHeadsResponse"
       },
+      "IncomeHeadsUpdateRequest": {
+        "properties": {
+          "salary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salary"
+          },
+          "esop": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Esop"
+          },
+          "rental_income": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rental Income"
+          },
+          "more_than_2_properties": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "More Than 2 Properties"
+          },
+          "capital_gain_shares": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capital Gain Shares"
+          },
+          "capital_gain_land": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capital Gain Land"
+          },
+          "business_profession": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Profession"
+          },
+          "interest_dividend": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interest Dividend"
+          },
+          "foreign_assets": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreign Assets"
+          },
+          "any_other": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Any Other"
+          }
+        },
+        "type": "object",
+        "title": "IncomeHeadsUpdateRequest",
+        "description": "Update income heads — all fields optional for partial update."
+      },
       "InternalWorkingListResponse": {
         "properties": {
           "items": {
@@ -13165,6 +13568,22 @@
           "total"
         ],
         "title": "PendingVerificationResponse"
+      },
+      "ProfileUpdateRequest": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "full_name"
+        ],
+        "title": "ProfileUpdateRequest",
+        "description": "Update user profile (name)."
       },
       "RecoveryCodesResponse": {
         "properties": {
