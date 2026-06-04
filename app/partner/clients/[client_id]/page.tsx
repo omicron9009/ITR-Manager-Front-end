@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock, IndianRupee, Pencil } from 'lucide-react';
@@ -34,6 +34,7 @@ export default function ClientDetailPage() {
   const pathname = usePathname();
   const isPartner = pathname.startsWith('/partner');
   const isManager = pathname.startsWith('/manager');
+  const isExecutive = pathname.startsWith('/executive');
   const [client, setClient] = useState<any>(null);
   const [filings, setFilings] = useState<any[]>([]);
   const [docs, setDocs] = useState<Record<string, any[]>>({});
@@ -254,7 +255,7 @@ export default function ClientDetailPage() {
           <Card className="rounded-xl overflow-hidden">
             <div className="max-h-[calc(100vh-140px)] overflow-y-auto divide-y divide-slate-100">
               {filings.map((f: any) => (
-                <FilingAccordionItem key={f.id} filing={f} docs={docs} docGroups={docGroups} load={load} viewDoc={viewDoc} />
+                <FilingAccordionItem key={f.id} filing={f} docs={docs} docGroups={docGroups} load={load} viewDoc={viewDoc} isExecutive={isExecutive} />
               ))}
             </div>
           </Card>
@@ -266,7 +267,7 @@ export default function ClientDetailPage() {
   );
 }
 
-function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc }: { filing: any; docs: Record<string, any[]>; docGroups: Record<string, any[]>; load: () => void; viewDoc: (id: string, name?: string) => void }) {
+function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExecutive = false }: { filing: any; docs: Record<string, any[]>; docGroups: Record<string, any[]>; load: () => void; viewDoc: (id: string, name?: string) => void; isExecutive?: boolean }) {
   const storageKey = `filing-accordion-${f.id}`;
   const [open, setOpen] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -342,7 +343,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc }: { fi
                   <TabsTrigger value="computations">Computations</TabsTrigger>
                   <TabsTrigger value="filed-docs">Filed Docs</TabsTrigger>
                 </TabsList>
-                {status === 'PAYMENT' && (
+                {status === 'PAYMENT' && !isExecutive && (
                   <Button
                     size="sm"
                     className="bg-emerald-600 hover:bg-emerald-700"
@@ -442,7 +443,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc }: { fi
 
             {/* State actions + Fee — always visible below tabs */}
             <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
-              <StateActions filing={f} onChange={load} />
+              <StateActions filing={f} onChange={load} isExecutive={isExecutive} />
               <FilingFeeUpdate filing={f} onUpdated={load} />
             </div>
           </div>
@@ -532,7 +533,7 @@ function MoveToComputationButton({ filingId, onMoved }: { filingId: string; onMo
   );
 }
 
-function StateActions({ filing, onChange }: { filing: any; onChange: () => void }) {
+function StateActions({ filing, onChange, isExecutive = false }: { filing: any; onChange: () => void; isExecutive?: boolean }) {
   const state = filing.status || filing.current_state;
 
   const tx = async (target: string) => {
@@ -554,7 +555,7 @@ function StateActions({ filing, onChange }: { filing: any; onChange: () => void 
       tooltip: !canMoveToFiling ? 'Client must confirm tax payment before transitioning to Filing' : undefined,
     });
   }
-  if (state === 'PAYMENT') items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
+  if (state === 'PAYMENT' && !isExecutive) items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
 
   return (
     <div className="space-y-3">
@@ -1057,6 +1058,9 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
             </div>
           )}
 
+          {/* Other Documents Section */}
+          <OtherDocsSection filingId={filingId} filingStatus={filingStatus} viewDoc={(url: string) => { setViewerUrl(url); setViewerOpen(true); }} />
+
           {/* Move to Payment button at the end of filed docs */}
           {onMoveToPayment && (
             <div className="mt-4 pt-4 border-t border-slate-200">
@@ -1069,6 +1073,131 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
       )}
 
       <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={undefined} />
+    </div>
+  );
+}
+
+function OtherDocsSection({ filingId, filingStatus, viewDoc }: { filingId: string; filingStatus: string; viewDoc: (url: string) => void }) {
+  const pathname = usePathname();
+  const isClient = pathname.startsWith('/client');
+  const canManage = !isClient; // Executive, Manager, Partner can upload/delete
+
+  const [otherDocs, setOtherDocs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingLabel, setPendingLabel] = useState('');
+
+  // Client can only see other docs after COMPLETED
+  const clientCanView = filingStatus === 'COMPLETED';
+  if (isClient && !clientCanView) return null;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await listOtherDocs(filingId);
+      setOtherDocs(r || []);
+    } catch {} finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, [filingId]);
+
+  const handleUpload = async () => {
+    if (!pendingFile) return;
+    if (pendingFile.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
+    setUploading(true);
+    try {
+      const params: any = { filing_id: filingId, filename: pendingFile.name, content_type: pendingFile.type };
+      if (pendingLabel.trim()) params.label = pendingLabel.trim();
+      const urlRes = await otherDocUploadUrl(params);
+      const axios = (await import('axios')).default;
+      await axios.put(urlRes.upload_url, pendingFile, { headers: { 'Content-Type': pendingFile.type } });
+      await otherDocConfirm({ filing_id: filingId, object_key: urlRes.object_key, filename: pendingFile.name, content_type: pendingFile.type, file_size: pendingFile.size, ...(pendingLabel.trim() ? { label: pendingLabel.trim() } : {}) });
+      toast.success('Document uploaded');
+      setPendingFile(null);
+      setPendingLabel('');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
+    finally { setUploading(false); }
+  };
+
+  const handleDelete = async (docId: string) => {
+    try {
+      await deleteOtherDoc(docId);
+      toast.success('Document removed');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to delete'); }
+  };
+
+  const handleView = async (fileId: string) => {
+    try {
+      const r = await storageDownloadUrl(fileId);
+      viewDoc(r.url || r.download_url);
+    } catch { toast.error('Could not load file'); }
+  };
+
+  return (
+    <div className="mt-6 pt-5 border-t border-slate-200 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-500 uppercase">Other Documents</span>
+        <Button size="sm" variant="ghost" onClick={load} disabled={loading}><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /></Button>
+      </div>
+
+      {/* List existing other docs */}
+      {otherDocs.length > 0 && (
+        <div className="space-y-2">
+          {otherDocs.map((doc: any) => (
+            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white">
+              <FileText className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-900 truncate">{doc.filename || doc.label || 'Document'}</div>
+                {doc.label && doc.filename && <div className="text-xs text-slate-400 truncate">{doc.label}</div>}
+                <div className="text-[10px] text-slate-400">{doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('en-IN') : ''}</div>
+              </div>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => handleView(doc.file_id || doc.id)}>
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
+              {canManage && (
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-rose-500 hover:text-rose-700" onClick={() => handleDelete(doc.id)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {otherDocs.length === 0 && !loading && (
+        <p className="text-xs text-slate-400 italic">No other documents uploaded yet.</p>
+      )}
+
+      {/* Upload area — only for Executive/Manager/Partner */}
+      {canManage && ['FILING', 'PAYMENT', 'COMPLETED'].includes(filingStatus) && (
+        <div className="p-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-indigo-400 transition-colors space-y-2">
+          {!pendingFile ? (
+            <div className="flex items-center gap-3">
+              <Button size="sm" variant="outline" onClick={() => document.getElementById(`other-doc-input-${filingId}`)?.click()}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Document
+              </Button>
+              <span className="text-xs text-slate-400">PDF, Word, Excel, Images (max 10 MB)</span>
+              <input id={`other-doc-input-${filingId}`} type="file" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.json" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <FileArchive className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+                <span className="text-sm text-slate-700 truncate flex-1">{pendingFile.name}</span>
+                <Button size="sm" variant="ghost" className="h-6 px-1 text-rose-500" onClick={() => { setPendingFile(null); setPendingLabel(''); }}>✕</Button>
+              </div>
+              <Input placeholder="Label (optional)" value={pendingLabel} onChange={(e) => setPendingLabel(e.target.value)} className="h-8 text-sm" />
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" disabled={uploading} onClick={handleUpload}>
+                {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
+                Upload
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

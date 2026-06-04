@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, approveFilingFee, rejectFilingFee, getClient, submitFeedback, getFilingFeedback } from '@/lib/api';
+import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, approveFilingFee, rejectFilingFee, getClient, submitFeedback, getFilingFeedback, listOtherDocs } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee, Plus, Trash2, Star } from 'lucide-react';
@@ -26,6 +26,7 @@ export default function FilingDetailPage() {
   const [computations, setComputations] = useState<any[]>([]);
   const [currentComp, setCurrentComp] = useState<any>(null);
   const [completed, setCompleted] = useState<any[]>([]);
+  const [otherDocs, setOtherDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
@@ -67,6 +68,8 @@ export default function FilingDetailPage() {
       if (['FILING', 'PAYMENT', 'COMPLETED'].includes(state)) {
         const cd = await completedDocs(filingId);
         setCompleted(cd || []);
+        const od = await listOtherDocs(filingId);
+        setOtherDocs(od || []);
       }
       if (state === 'PAYMENT' && f?.client_id) {
         getClient(f.client_id).then(setClientProfile).catch(() => {});
@@ -618,26 +621,13 @@ export default function FilingDetailPage() {
       )}
 
       {/* Completed Documents (filed) */}
-      {(completed.length > 0 || (currentComp && ['FILING', 'PAYMENT', 'COMPLETED'].includes(state))) && (
+      {completed.length > 0 && (
         <Card className="rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
             <h2 className="font-bold text-slate-900">Filed Documents</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Approved Computation */}
-            {currentComp && ['FILING', 'PAYMENT', 'COMPLETED'].includes(state) && (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calculator className="h-4 w-4 text-emerald-600" />
-                  <div>
-                    <div className="font-medium text-sm text-slate-900">Tax Paid Computation</div>
-                    <div className="text-xs text-slate-500">{currentComp.original_filename || 'computation'}</div>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => onDownloadComp(currentComp.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
-              </div>
-            )}
             {completed.map((d: any) => (
               <div key={d.id} className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -648,6 +638,31 @@ export default function FilingDetailPage() {
                   </div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => onDownloadStorage(d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Other Documents */}
+      {otherDocs.length > 0 && (
+        <Card className="rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <FolderOpen className="h-5 w-5 text-indigo-600" />
+            <h2 className="font-bold text-slate-900">Other Documents</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {otherDocs.map((d: any) => (
+              <div key={d.id} className="rounded-lg border border-slate-200 bg-white p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-indigo-500" />
+                  <div>
+                    <div className="font-medium text-sm text-slate-900">{d.label || d.filename || 'Document'}</div>
+                    {d.label && d.filename && <div className="text-xs text-slate-500">{d.filename}</div>}
+                    {d.uploaded_at && <div className="text-[10px] text-slate-400">{new Date(d.uploaded_at).toLocaleDateString('en-IN')}</div>}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => onDownloadStorage(d.file_id || d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
               </div>
             ))}
           </div>

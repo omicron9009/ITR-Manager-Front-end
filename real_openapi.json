@@ -2314,7 +2314,7 @@
           "Filings"
         ],
         "summary": "Mark Payment Received",
-        "description": "Mark payment as received (Manager/Executive/Partner action). Transitions to COMPLETED.",
+        "description": "Mark payment as received (Manager/Partner action). Transitions to COMPLETED.",
         "operationId": "mark_payment_received_api_v1_filings__filing_id__mark_payment_post",
         "security": [
           {
@@ -2647,7 +2647,7 @@
           "Documents"
         ],
         "summary": "Assign Documents To Filing",
-        "description": "Assign document placeholders to a filing (Executive/Partner).\n\nIdempotent: can be called multiple times to update the checklist.\nWorks in INITIATED or DOCUMENT_UPLOAD state.",
+        "description": "Assign document placeholders to a filing (Manager/Executive/Partner).\n\nIdempotent: can be called multiple times to update the checklist.\nWorks in INITIATED or DOCUMENT_UPLOAD state.",
         "operationId": "assign_documents_to_filing_api_v1_documents_filings__filing_id__assign_post",
         "security": [
           {
@@ -2987,7 +2987,7 @@
           "Documents"
         ],
         "summary": "Approve Filing Documents",
-        "description": "Approve one or more documents (Executive/Partner).",
+        "description": "Approve one or more documents (Manager/Executive/Partner).",
         "operationId": "approve_filing_documents_api_v1_documents_approve_post",
         "requestBody": {
           "content": {
@@ -3035,7 +3035,7 @@
           "Documents"
         ],
         "summary": "Reject Filing Documents",
-        "description": "Reject one or more documents with reasons (Executive/Partner).",
+        "description": "Reject one or more documents with reasons (Manager/Executive/Partner).",
         "operationId": "reject_filing_documents_api_v1_documents_reject_post",
         "requestBody": {
           "content": {
@@ -4845,7 +4845,7 @@
           "Storage"
         ],
         "summary": "Get Completed Doc Upload Url",
-        "description": "Get upload URL for ITR Acknowledgement or Invoice (Executive/Partner).",
+        "description": "Get upload URL for ITR Acknowledgement or Invoice (Manager/Executive/Partner).",
         "operationId": "get_completed_doc_upload_url_api_v1_storage_completed_doc_upload_url_post",
         "security": [
           {
@@ -5096,6 +5096,288 @@
                 "schema": {
                   "type": "object",
                   "title": "Response Get File Download Url Api V1 Storage  File Id  Download Url Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/storage/other-doc/upload-url": {
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Get Other Doc Upload Url",
+        "description": "Get upload URL for an 'other' document (Manager/Executive/Partner).",
+        "operationId": "get_other_doc_upload_url_api_v1_storage_other_doc_upload_url_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          },
+          {
+            "name": "content_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Content Type"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "description": "Optional label for the document",
+              "title": "Label"
+            },
+            "description": "Optional label for the document"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Get Other Doc Upload Url Api V1 Storage Other Doc Upload Url Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/storage/other-doc/confirm": {
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Confirm Other Doc Upload",
+        "description": "Confirm upload of an 'other' document. Multiple docs allowed per filing.",
+        "operationId": "confirm_other_doc_upload_api_v1_storage_other_doc_confirm_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          },
+          {
+            "name": "object_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Object Key"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          },
+          {
+            "name": "content_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Content Type"
+            }
+          },
+          {
+            "name": "file_size",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "File Size"
+            }
+          },
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "description": "Optional label for the document",
+              "title": "Label"
+            },
+            "description": "Optional label for the document"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Confirm Other Doc Upload Api V1 Storage Other Doc Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/storage/other-docs/{filing_id}": {
+      "get": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Get Other Docs",
+        "description": "Get other docs for a filing.\nClients can only see these once filing is COMPLETED.",
+        "operationId": "get_other_docs_api_v1_storage_other_docs__filing_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  },
+                  "title": "Response Get Other Docs Api V1 Storage Other Docs  Filing Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/storage/other-doc/{doc_id}": {
+      "delete": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Delete Other Doc",
+        "description": "Delete an 'other' document (Manager/Executive/Partner).",
+        "operationId": "delete_other_doc_api_v1_storage_other_doc__doc_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Delete Other Doc Api V1 Storage Other Doc  Doc Id  Delete"
                 }
               }
             }
@@ -8222,6 +8504,54 @@
         ],
         "title": "DirectoryDocumentItem"
       },
+      "DirectoryOtherDocItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "file_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "File Id"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "original_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Filename"
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Uploaded At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "file_id",
+          "uploaded_at"
+        ],
+        "title": "DirectoryOtherDocItem"
+      },
       "DocumentApproveRequest": {
         "properties": {
           "document_ids": {
@@ -9501,6 +9831,14 @@
             },
             "type": "array",
             "title": "Completed Docs"
+          },
+          "other_docs": {
+            "items": {
+              "$ref": "#/components/schemas/DirectoryOtherDocItem"
+            },
+            "type": "array",
+            "title": "Other Docs",
+            "default": []
           }
         },
         "type": "object",

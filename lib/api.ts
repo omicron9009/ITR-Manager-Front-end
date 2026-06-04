@@ -34,6 +34,15 @@ api.interceptors.response.use(
   (r) => r,
   (err: AxiosError<any>) => {
     const status = err.response?.status;
+    // Normalize detail: convert array/object to string so toast.error never receives a non-string
+    if (err.response?.data?.detail && typeof err.response.data.detail !== 'string') {
+      const detail = err.response.data.detail;
+      if (Array.isArray(detail)) {
+        err.response.data.detail = detail.map((d: any) => d?.msg || d?.message || JSON.stringify(d)).join('; ');
+      } else if (typeof detail === 'object') {
+        err.response.data.detail = detail.msg || detail.message || JSON.stringify(detail);
+      }
+    }
     if (status === 401) {
       if (typeof window !== 'undefined') {
         const path = window.location.pathname;
@@ -49,7 +58,13 @@ api.interceptors.response.use(
   }
 );
 
-export const apiErr = (e: any): string => e?.response?.data?.detail || e?.response?.data?.message || e?.message || 'Something went wrong';
+export const apiErr = (e: any): string => {
+  const detail = e?.response?.data?.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length > 0) return detail.map((d: any) => d?.msg || d?.message || JSON.stringify(d)).join('; ');
+  if (detail && typeof detail === 'object') return detail.msg || detail.message || JSON.stringify(detail);
+  return e?.response?.data?.message || e?.message || 'Something went wrong';
+};
 
 // ---------- AUTH ----------
 export const login = (email: string, password: string) =>
@@ -176,6 +191,10 @@ export const getOnboardingFiles = (client_id?: string) => api.get('/api/v1/stora
 export const completedDocs = (filing_id: string) => api.get(`/api/v1/storage/completed-docs/${filing_id}`).then((r) => r.data);
 export const completedDocUploadUrl = (params: any) => api.post('/api/v1/storage/completed-doc/upload-url', null, { params }).then((r) => r.data);
 export const completedDocConfirm = (params: any) => api.post('/api/v1/storage/completed-doc/confirm', null, { params }).then((r) => r.data);
+export const otherDocUploadUrl = (params: any) => api.post('/api/v1/storage/other-doc/upload-url', null, { params }).then((r) => r.data);
+export const otherDocConfirm = (params: any) => api.post('/api/v1/storage/other-doc/confirm', null, { params }).then((r) => r.data);
+export const listOtherDocs = (filing_id: string) => api.get(`/api/v1/storage/other-docs/${filing_id}`).then((r) => r.data);
+export const deleteOtherDoc = (doc_id: string) => api.delete(`/api/v1/storage/other-doc/${doc_id}`).then((r) => r.data);
 export const onboardingUploadUrl = (params: any) => api.post('/api/v1/storage/onboarding-upload-url', null, { params }).then((r) => r.data);
 export const confirmOnboardingUpload = (params: any) => api.post('/api/v1/storage/confirm-onboarding-upload', null, { params }).then((r) => r.data);
 
