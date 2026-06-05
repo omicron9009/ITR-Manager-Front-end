@@ -37,6 +37,11 @@
   body { @apply bg-background text-foreground antialiased; }
 }
 
+/* ─── 4K / TV (≥3200px) scaling ────────────────────────────────────────── */
+@media (min-width: 3200px) {
+  html { font-size: 22px; }
+}
+
 @layer utilities {
   .text-gradient-indigo {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-500;

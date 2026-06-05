@@ -248,10 +248,10 @@ export default function SummaryLayout({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Sidebar */}
-      <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform md:translate-x-0", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
-        <div className="h-16 px-6 flex items-center border-b border-indigo-100 bg-indigo-50">
+      <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 tv:w-96 bg-white border-r border-slate-200 flex flex-col transition-transform md:translate-x-0", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
+        <div className="h-16 tv:h-24 px-6 tv:px-8 flex items-center border-b border-indigo-100 bg-indigo-50">
           <Link href="/summary/dashboard" className="flex items-center">
-            <Image src="/darklogo1.png" alt="ITR Manager" width={160} height={50} className="h-10 w-auto object-contain" />
+            <Image src="/darklogo1.png" alt="ITR Manager" width={160} height={50} className="h-10 tv:h-16 w-auto object-contain" />
           </Link>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -259,18 +259,18 @@ export default function SummaryLayout({ children }: { children: React.ReactNode 
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
             return (
-              <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn("flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors", active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")}>
-                <Icon className="h-4 w-4" /> {item.label}
+              <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn("flex items-center gap-3 px-3 tv:px-5 py-2 tv:py-4 rounded-lg text-sm tv:text-xl font-medium transition-colors", active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")}>
+                <Icon className="h-4 w-4 tv:h-7 tv:w-7" /> {item.label}
               </Link>
             );
           })}
         </nav>
         <div className="border-t border-slate-200 p-3">
           <div className="flex items-center gap-3 px-2 py-2">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xs font-bold">{initials}</div>
+            <div className="h-9 w-9 tv:h-14 tv:w-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xs tv:text-base font-bold">{initials}</div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-900 truncate">{user?.full_name || user?.name || "User"}</p>
-              <p className="text-[10px] uppercase tracking-wide text-indigo-600 font-bold">VIEWER</p>
+              <p className="text-sm tv:text-lg font-semibold text-slate-900 truncate">{user?.full_name || user?.name || "User"}</p>
+              <p className="text-[10px] tv:text-sm uppercase tracking-wide text-indigo-600 font-bold">VIEWER</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={logout} className="w-full mt-1 justify-start text-slate-600 hover:text-rose-600 hover:bg-rose-50">
@@ -280,8 +280,8 @@ export default function SummaryLayout({ children }: { children: React.ReactNode 
       </aside>
 
       {/* Main */}
-      <div className="md:pl-64 flex flex-col min-h-screen">
-        <main className="p-6 flex-1">{children}</main>
+      <div className="md:pl-64 tv:pl-96 flex flex-col min-h-screen">
+        <main className="p-6 tv:p-16 flex-1">{children}</main>
       </div>
       {mobileOpen && <div className="fixed inset-0 bg-black/30 z-30 md:hidden" onClick={() => setMobileOpen(false)} />}
 

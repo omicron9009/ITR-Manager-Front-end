@@ -242,7 +242,7 @@ export default function SummaryDashboardPage() {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 tv:grid-cols-6 gap-4 tv:gap-8">
         {[
           { label: "Total Filings", value: overall.total_filings, icon: BarChart3, color: "text-indigo-600", bg: "bg-indigo-50" },
           { label: "Completed", value: overall.completed_filings, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -255,7 +255,7 @@ export default function SummaryDashboardPage() {
             <div className={`w-8 h-8 rounded-lg ${kpi.bg} ${kpi.color} grid place-items-center mb-3`}>
               <kpi.icon className="w-4 h-4" />
             </div>
-            <div className="text-2xl font-bold text-slate-900">{kpi.value}</div>
+            <div className="text-2xl tv:text-5xl font-bold text-slate-900">{kpi.value}</div>
             <div className="text-xs text-slate-500 mt-1">{kpi.label}</div>
           </div>
         ))}
@@ -267,7 +267,7 @@ export default function SummaryDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <h3 className="font-medium text-sm text-slate-700 mb-4">Filing Status Distribution</h3>
-            <div className="h-[200px]">
+            <div className="h-[200px] tv:h-[480px]">
               <ResponsiveContainer>
                 <PieChart>
                   <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" paddingAngle={2}>
@@ -290,7 +290,7 @@ export default function SummaryDashboardPage() {
 
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
             <h3 className="font-medium text-sm text-slate-700 mb-4">Avg Days by Stage</h3>
-            <div className="h-[260px]">
+            <div className="h-[260px] tv:h-[560px]">
               <ResponsiveContainer>
                 <BarChart data={stageData} layout="vertical" margin={{ left: 10 }}>
                   <XAxis type="number" stroke="#e2e8f0" tick={{ fill: "#64748b", fontSize: 11 }} />
@@ -334,10 +334,10 @@ export default function SummaryDashboardPage() {
       {fy_wise.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Financial Year Intelligence</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 tv:grid-cols-2 gap-5 tv:gap-10">
             <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
               <h3 className="font-medium text-sm text-slate-700 mb-4">FY Comparison</h3>
-              <div className="h-[260px]">
+              <div className="h-[260px] tv:h-[560px]">
                 <ResponsiveContainer>
                   <BarChart data={fyChartData} margin={{ left: 10 }}>
                     <XAxis dataKey="fy" stroke="#e2e8f0" tick={{ fill: "#64748b", fontSize: 10 }} />
@@ -432,7 +432,7 @@ export default function SummaryDashboardPage() {
             {/* Bar Chart */}
             <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
               <h3 className="font-medium text-sm text-slate-700 mb-4">Filings by Location</h3>
-              <div className="h-[280px]">
+              <div className="h-[280px] tv:h-[580px]">
                 <ResponsiveContainer>
                   <BarChart data={locationBarData} layout="vertical" margin={{ left: 10 }}>
                     <XAxis type="number" stroke="#e2e8f0" tick={{ fill: "#64748b", fontSize: 10 }} />

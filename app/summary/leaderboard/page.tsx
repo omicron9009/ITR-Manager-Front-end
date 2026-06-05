@@ -109,7 +109,7 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Two Leaderboards Side by Side */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 tv:grid-cols-2 gap-6 tv:gap-12">
 
         {/* ─── Executive Leaderboard ─── */}
         {executives.length > 0 && (
