@@ -31,13 +31,16 @@ export default function LoginPage() {
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
   const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
 
-  const downloadRecoveryCodes = (codes: string[]) => {
+  const downloadRecoveryCodes = (codes: string[], email: string) => {
     const content = [
       '═══════════════════════════════════════════════════════════',
       '       ITR MANAGER — ACCOUNT RECOVERY CODES',
       '═══════════════════════════════════════════════════════════',
+      '',
+      `Account: ${email}`,
       '',
       'IMPORTANT: Store these codes in a safe place.',
       '',
@@ -105,8 +108,9 @@ export default function LoginPage() {
         setRecoveryCodes(res.recovery_codes);
         setShowRecoveryDialog(true);
         setPendingRedirect(roleToDashboard(role));
+        setRecoveryEmail(res.email || values.email);
         // Auto-download the file
-        downloadRecoveryCodes(res.recovery_codes);
+        downloadRecoveryCodes(res.recovery_codes, res.email || values.email);
       } else {
         toast.success('Welcome back!');
         router.push(roleToDashboard(role));
@@ -226,7 +230,7 @@ export default function LoginPage() {
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {!downloaded && recoveryCodes && (
-              <Button variant="outline" onClick={() => downloadRecoveryCodes(recoveryCodes)} className="gap-2">
+              <Button variant="outline" onClick={() => downloadRecoveryCodes(recoveryCodes, recoveryEmail)} className="gap-2">
                 <Download className="h-4 w-4" /> Download Again
               </Button>
             )}
