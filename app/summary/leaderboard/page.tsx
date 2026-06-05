@@ -40,60 +40,30 @@ export default function LeaderboardPage() {
   const [managers, setManagers] = useState<ManagerLeaderboardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const prevExecMapRef = useRef<Record<string, number>>({});
-  const prevMgrMapRef = useRef<Record<string, number>>({});
   const isFirstLoadRef = useRef(true);
-  const [celebration, setCelebration] = useState<{ name: string; count: number; type: 'exec' | 'mgr' } | null>(null);
 
-  const fetchData = useCallback(async (isRefresh = false) => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
+    if (isFirstLoadRef.current) setLoading(true);
     setError("");
     try {
       const res = await getReportDashboard();
-      const newExecs: ExecutiveLeaderboardItem[] = res.leaderboard_executive || [];
-      const newMgrs: ManagerLeaderboardItem[] = res.leaderboard_manager || [];
-
-      // Only detect new completions on auto-refresh, never on initial page load
-      if (isRefresh && !isFirstLoadRef.current) {
-        let found: { name: string; count: number; type: 'exec' | 'mgr' } | null = null;
-        for (const ex of newExecs) {
-          const prev = prevExecMapRef.current[ex.executive_id];
-          if (prev !== undefined && ex.completed_filings > prev) {
-            found = { name: ex.executive_name, count: ex.completed_filings, type: 'exec' };
-            break;
-          }
-        }
-        if (!found) {
-          for (const m of newMgrs) {
-            const prev = prevMgrMapRef.current[m.tag_id];
-            if (prev !== undefined && m.completed_filings > prev) {
-              found = { name: m.manager_name, count: m.completed_filings, type: 'mgr' };
-              break;
-            }
-          }
-        }
-        if (found) setCelebration(found);
-      }
-
-      // Snapshot current counts for next comparison
-      prevExecMapRef.current = Object.fromEntries(newExecs.map(e => [e.executive_id, e.completed_filings]));
-      prevMgrMapRef.current = Object.fromEntries(newMgrs.map(m => [m.tag_id, m.completed_filings]));
-      isFirstLoadRef.current = false;
-
-      setExecutives(newExecs);
-      setManagers(newMgrs);
+      setExecutives(res.leaderboard_executive || []);
+      setManagers(res.leaderboard_manager || []);
     } catch (e: any) {
       setError(e?.response?.data?.detail || "Failed to load leaderboard data");
     } finally {
-      setLoading(false);
+      if (isFirstLoadRef.current) {
+        setLoading(false);
+        isFirstLoadRef.current = false;
+      }
     }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Auto-refresh — isRefresh=true enables completion detection
+  // Auto-refresh — silent background refresh, no loading spinner
   useEffect(() => {
-    const interval = setInterval(() => fetchData(true), 30000);
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -124,11 +94,6 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Fullscreen celebration card — only on detected new completion */}
-      {celebration && (
-        <CelebrationCard data={celebration} onClose={() => setCelebration(null)} />
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -397,135 +362,4 @@ export default function LeaderboardPage() {
   );
 }
 
-// ─── Fullscreen Celebration Card (TV-friendly, viewport-scaled) ──────────────
-function CelebrationCard({ data, onClose }: { data: { name: string; count: number; type: 'exec' | 'mgr' }; onClose: () => void }) {
-  const [timeLeft, setTimeLeft] = useState(15);
-  const isExec = data.type === 'exec';
-  const confettiColors = isExec
-    ? ['#f59e0b', '#fbbf24', '#d97706', '#fef3c7', '#ffffff']
-    : ['#8b5cf6', '#7c3aed', '#a78bfa', '#ede9fe', '#ffffff'];
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // Confetti burst
-    import('canvas-confetti').then((mod) => {
-      if (cancelled) return;
-      const confetti = mod.default;
-      const end = Date.now() + 15000;
-      const fire = () => {
-        if (Date.now() > end || cancelled) return;
-        confetti({ particleCount: 6, angle: 60, spread: 65, origin: { x: 0, y: 0.5 }, colors: confettiColors });
-        confetti({ particleCount: 6, angle: 120, spread: 65, origin: { x: 1, y: 0.5 }, colors: confettiColors });
-        requestAnimationFrame(fire);
-      };
-      confetti({ particleCount: 160, spread: 130, origin: { y: 0.35 }, colors: confettiColors });
-      confetti({ particleCount: 80, spread: 80, angle: 60, origin: { x: 0.05, y: 0.5 }, colors: confettiColors });
-      confetti({ particleCount: 80, spread: 80, angle: 120, origin: { x: 0.95, y: 0.5 }, colors: confettiColors });
-      fire();
-    });
-
-    // Countdown tick
-    const countdown = setInterval(() => {
-      setTimeLeft(t => (t <= 1 ? 0 : t - 1));
-    }, 1000);
-
-    const timer = setTimeout(() => { cancelled = true; onClose(); }, 15000);
-    return () => { cancelled = true; clearTimeout(timer); clearInterval(countdown); };
-  }, []);
-
-  const gradientBg = isExec
-    ? 'linear-gradient(135deg, #78350f 0%, #92400e 40%, #1c1917 100%)'
-    : 'linear-gradient(135deg, #2e1065 0%, #3b0764 40%, #0f0a19 100%)';
-  const accentColor = isExec ? '#fbbf24' : '#a78bfa';
-  const barColor = isExec ? '#f59e0b' : '#8b5cf6';
-
-  return (
-    <div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden cursor-pointer"
-      style={{ width: '100vw', height: '100vh', background: gradientBg }}
-      onClick={onClose}
-    >
-      {/* Radial glow behind content */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `radial-gradient(ellipse 60% 50% at 50% 50%, ${accentColor}22 0%, transparent 70%)`,
-        }}
-      />
-
-      {/* Skip button — top-right, scales with viewport */}
-      <button
-        className="absolute text-white/50 hover:text-white transition-colors border border-white/20 hover:border-white/50 rounded-full backdrop-blur-sm"
-        style={{ top: '2vw', right: '2vw', fontSize: 'clamp(0.7rem, 1.4vw, 1.4rem)', padding: '0.6vw 1.4vw' }}
-        onClick={(e) => { e.stopPropagation(); onClose(); }}
-      >
-        ✕ Skip
-      </button>
-
-      {/* Central content */}
-      <div
-        className="relative flex flex-col items-center text-center select-none"
-        style={{ gap: 'clamp(0.75rem, 3vh, 3rem)', padding: '0 5vw' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Emoji */}
-        <div style={{ fontSize: 'clamp(4rem, 16vw, 15rem)', lineHeight: 1 }}>🎉</div>
-
-        {/* Headline */}
-        <div
-          className="font-black text-white tracking-tight"
-          style={{ fontSize: 'clamp(1.8rem, 6vw, 7rem)', lineHeight: 1.05, textShadow: `0 0 40px ${accentColor}88` }}
-        >
-          Filing Completed!
-        </div>
-
-        {/* Name */}
-        <div
-          className="font-bold"
-          style={{ fontSize: 'clamp(1.2rem, 4vw, 5rem)', color: accentColor, lineHeight: 1.2 }}
-        >
-          {data.name}
-        </div>
-
-        {/* Count badge */}
-        <div
-          className="font-extrabold text-white rounded-full"
-          style={{
-            fontSize: 'clamp(1rem, 2.8vw, 3.5rem)',
-            padding: 'clamp(0.4rem, 1.2vh, 1.2rem) clamp(1rem, 3vw, 3.5rem)',
-            background: 'rgba(255,255,255,0.12)',
-            border: `clamp(1px, 0.25vw, 3px) solid ${accentColor}88`,
-            backdropFilter: 'blur(10px)',
-          }}
-        >
-          🏆 {data.count} Filing{data.count !== 1 ? 's' : ''} Completed
-        </div>
-
-        {/* Role label */}
-        <div
-          className="text-white/40 uppercase tracking-widest font-semibold"
-          style={{ fontSize: 'clamp(0.6rem, 1.3vw, 1.4rem)' }}
-        >
-          {isExec ? 'Executive' : 'Manager'} · Leaderboard
-        </div>
-
-        {/* Countdown number */}
-        <div className="text-white/30" style={{ fontSize: 'clamp(0.6rem, 1.2vw, 1.2rem)' }}>
-          Dismissing in {timeLeft}s
-        </div>
-      </div>
-
-      {/* Countdown progress bar — bottom of screen */}
-      <div
-        className="absolute bottom-0 left-0 right-0"
-        style={{ height: 'clamp(4px, 0.8vh, 10px)', background: 'rgba(255,255,255,0.1)' }}
-      >
-        <div
-          className="h-full transition-all duration-1000 ease-linear"
-          style={{ width: `${(timeLeft / 15) * 100}%`, background: barColor }}
-        />
-      </div>
-    </div>
-  );
-}
+// Celebration is handled by /summary/layout.tsx via the completed-queue API
