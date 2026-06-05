@@ -37,7 +37,7 @@ function ClientsListPage() {
   const routePrefix = pathname.startsWith('/executive') ? '/executive' : '/partner';
   const initialStatus = params.get('status') || '';
   const [search, setSearch] = useState('');
-  const [accountStatus, setAccountStatus] = useState('');
+  const [accountStatus, setAccountStatus] = useState('ACTIVE');
   const [filingStatus, setFilingStatus] = useState(initialStatus);
   const [financialYear, setFinancialYear] = useState('');
   const [computationSubFilter, setComputationSubFilter] = useState('');
