@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { getReportDashboard } from "@/lib/api";
 import { Users, Crown, AlertTriangle, Trophy, Target, TrendingUp } from "lucide-react";
 
@@ -39,6 +39,7 @@ export default function LeaderboardPage() {
   const [managers, setManagers] = useState<ManagerLeaderboardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const hasFiredConfetti = useRef(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -61,6 +62,45 @@ export default function LeaderboardPage() {
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  // Confetti: fire once when data first loads, auto-stop after 15s
+  useEffect(() => {
+    if (hasFiredConfetti.current) return;
+    if (executives.length === 0 && managers.length === 0) return;
+    hasFiredConfetti.current = true;
+
+    let cancelled = false;
+    import('canvas-confetti').then((mod) => {
+      if (cancelled) return;
+      const confetti = mod.default;
+      const end = Date.now() + 15000;
+
+      const fire = () => {
+        if (Date.now() > end || cancelled) return;
+        if (executives.length > 0) {
+          confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0.25, y: 0.55 }, colors: ['#f59e0b', '#fbbf24', '#d97706'] });
+          confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 0.25, y: 0.55 }, colors: ['#f59e0b', '#fbbf24', '#d97706'] });
+        }
+        if (managers.length > 0) {
+          confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0.75, y: 0.55 }, colors: ['#8b5cf6', '#7c3aed', '#a78bfa'] });
+          confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 0.75, y: 0.55 }, colors: ['#8b5cf6', '#7c3aed', '#a78bfa'] });
+        }
+        requestAnimationFrame(fire);
+      };
+
+      // Initial burst — executive #1 (amber) on the left, manager #1 (violet) on the right
+      if (executives.length > 0) {
+        confetti({ particleCount: 90, spread: 110, origin: { x: 0.25, y: 0.4 }, colors: ['#f59e0b', '#fbbf24', '#d97706', '#fef3c7'] });
+      }
+      if (managers.length > 0) {
+        confetti({ particleCount: 90, spread: 110, origin: { x: 0.75, y: 0.4 }, colors: ['#8b5cf6', '#7c3aed', '#a78bfa', '#ede9fe'] });
+      }
+      fire();
+    });
+
+    const timer = setTimeout(() => { cancelled = true; }, 15000);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [executives.length, managers.length]);
 
   if (loading) {
     return (

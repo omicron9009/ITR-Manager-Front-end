@@ -195,8 +195,13 @@ export default function FilingDetailPage() {
     catch { toast.error('Could not load file'); }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-indigo-600" /></div>;
-  if (!filing) return <div className="text-center py-16 text-slate-500">Filing not found.</div>;
+  if (loading && !showCelebration) return <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-indigo-600" /></div>;
+  if (!loading && !filing) return <div className="text-center py-16 text-slate-500">Filing not found.</div>;
+
+  // Render celebration overlay even while reloading
+  if (showCelebration) {
+    return <CelebrationOverlay onClose={() => { setShowCelebration(false); load(); }} />;
+  }
 
   const state = filing.status;
 
@@ -579,10 +584,8 @@ export default function FilingDetailPage() {
                   setActing(true);
                   try {
                     await confirmTaxPaid(currentComp.id);
-                    setShowCelebration(true);
-                    setTimeout(() => { setShowCelebration(false); }, 5000);
                     toast.success('Tax payment confirmed! Ready for filing.');
-                    load();
+                    setShowCelebration(true);
                   } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to confirm tax payment'); }
                   finally { setActing(false); }
                 }}
@@ -697,10 +700,7 @@ export default function FilingDetailPage() {
 
       <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={viewerFileName} />
 
-      {/* Celebration video overlay with confetti */}
-      {showCelebration && (
-        <CelebrationOverlay onClose={() => setShowCelebration(false)} />
-      )}
+      {/* Celebration overlay is rendered at the top-level return, above loading guard */}
     </div>
   );
 }
@@ -712,7 +712,7 @@ function CelebrationOverlay({ onClose }: { onClose: () => void }) {
     import('canvas-confetti').then((mod) => {
       if (cancelled) return;
       const confetti = mod.default;
-      const end = Date.now() + 5000;
+      const end = Date.now() + 15000;
       const fire = () => {
         if (Date.now() > end || cancelled) return;
         confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#ec4899'] });
@@ -723,7 +723,7 @@ function CelebrationOverlay({ onClose }: { onClose: () => void }) {
       confetti({ particleCount: 100, spread: 100, origin: { y: 0.6 }, colors: ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#ec4899'] });
       fire();
     });
-    const timer = setTimeout(onClose, 5000);
+    const timer = setTimeout(onClose, 15000);
     return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
