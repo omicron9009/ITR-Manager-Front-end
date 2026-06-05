@@ -12,18 +12,35 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { getCompletedQueue, dismissQueueItem, dismissAllQueue } from "@/lib/api";
 
 // ─── Fullscreen Celebration Card (TV-friendly, viewport-scaled) ─────────────
-function CelebrationCard({ item, onClose }: { item: { id: string; client_name: string; financial_year: string; completed_by_name?: string; completed_at: string }; onClose: () => void }) {
+type CelebrationItem = {
+  id: string;
+  filing_id: string;
+  client_name: string;
+  financial_year: string;
+  completed_at: string;
+  completed_by_name?: string;
+  executive_id?: string | null;
+  executive_name?: string | null;
+  manager_id?: string | null;
+  manager_name?: string | null;
+};
+
+function CelebrationCard({ item, onClose }: { item: CelebrationItem; onClose: () => void }) {
   const [timeLeft, setTimeLeft] = useState(15);
+
+  // Hero is executive if present, otherwise fall back to completed_by_name
+  const heroName = item.executive_name || item.completed_by_name || null;
+  const showExecutiveHero = !!item.executive_name;
 
   useEffect(() => {
     let cancelled = false;
 
-    // Confetti for 15 seconds
+    // Confetti — golden/warm palette for award feel
     import('canvas-confetti').then((mod) => {
       if (cancelled) return;
       const confetti = mod.default;
       const end = Date.now() + 15000;
-      const colors = ['#6366f1', '#10b981', '#f59e0b', '#22d3ee', '#a78bfa', '#ffffff'];
+      const colors = ['#f59e0b', '#fbbf24', '#fde68a', '#6366f1', '#a78bfa', '#ffffff', '#10b981'];
       const fire = () => {
         if (Date.now() > end || cancelled) return;
         confetti({ particleCount: 5, angle: 60, spread: 65, origin: { x: 0, y: 0.5 }, colors, zIndex: 99999 });
@@ -52,11 +69,11 @@ function CelebrationCard({ item, onClose }: { item: { id: string; client_name: s
   return (
     <div
       className="fixed inset-0 z-[99999] flex flex-col items-center justify-center overflow-hidden cursor-pointer"
-      style={{ width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #064e3b 100%)' }}
+      style={{ width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #0f172a 0%, #1c1833 40%, #0a2818 100%)' }}
       onClick={onClose}
     >
-      {/* Radial glow behind content */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(99,102,241,0.2) 0%, transparent 70%)' }} />
+      {/* Radial glow — warm gold for award stage */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 55% at 50% 45%, rgba(245,158,11,0.15) 0%, rgba(99,102,241,0.12) 50%, transparent 75%)' }} />
 
       {/* Skip button */}
       <button
@@ -70,51 +87,94 @@ function CelebrationCard({ item, onClose }: { item: { id: string; client_name: s
       {/* Central content */}
       <div
         className="relative flex flex-col items-center text-center select-none"
-        style={{ gap: 'clamp(0.75rem, 3vh, 3rem)', padding: '0 5vw' }}
+        style={{ gap: 'clamp(0.5rem, 2.2vh, 2.2rem)', padding: '0 5vw', maxWidth: '90vw' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ fontSize: 'clamp(4rem, 16vw, 15rem)', lineHeight: 1 }}>🎉</div>
+        {/* Trophy icon */}
+        <div style={{ fontSize: 'clamp(3rem, 10vw, 10rem)', lineHeight: 1, filter: 'drop-shadow(0 0 2vw rgba(245,158,11,0.7))' }}>🏆</div>
 
+        {/* Appreciation label */}
         <div
-          className="font-black text-white tracking-tight"
-          style={{ fontSize: 'clamp(1.8rem, 6vw, 7rem)', lineHeight: 1.05, textShadow: '0 0 40px rgba(99,102,241,0.6)' }}
+          className="font-semibold uppercase tracking-widest"
+          style={{ fontSize: 'clamp(0.65rem, 1.6vw, 1.8rem)', color: '#fbbf24', letterSpacing: '0.25em' }}
         >
-          Filing Completed!
+          Filing Completed
         </div>
 
+        {/* ── HERO: Executive Name ── */}
+        {heroName && (
+          <div
+            className="font-black tracking-tight"
+            style={{
+              fontSize: 'clamp(2rem, 7.5vw, 9rem)',
+              lineHeight: 1,
+              color: showExecutiveHero ? '#fde68a' : '#e0e7ff',
+              textShadow: showExecutiveHero
+                ? '0 0 4vw rgba(245,158,11,0.7), 0 0 8vw rgba(245,158,11,0.4)'
+                : '0 0 4vw rgba(99,102,241,0.6)',
+            }}
+          >
+            {heroName}
+          </div>
+        )}
+
+        {/* Manager name — shown only if executive is the hero */}
+        {showExecutiveHero && item.manager_name && (
+          <div
+            className="font-medium"
+            style={{ fontSize: 'clamp(0.75rem, 2vw, 2.4rem)', color: 'rgba(255,255,255,0.55)' }}
+          >
+            under&nbsp;<span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 700 }}>{item.manager_name}</span>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div style={{ width: 'clamp(60px, 15vw, 200px)', height: 'clamp(1px, 0.2vw, 2px)', background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.25), transparent)' }} />
+
+        {/* Client name */}
+        <div style={{ fontSize: 'clamp(0.7rem, 1.8vw, 2rem)', color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
+          Filed for
+        </div>
         <div
           className="font-bold"
-          style={{ fontSize: 'clamp(1.2rem, 4vw, 5rem)', color: '#a5f3fc', lineHeight: 1.2 }}
+          style={{ fontSize: 'clamp(1.2rem, 4vw, 5rem)', color: '#a5f3fc', lineHeight: 1.1 }}
         >
           {item.client_name}
         </div>
 
+        {/* FY badge */}
         <div
           className="font-extrabold text-white rounded-full"
           style={{
-            fontSize: 'clamp(1rem, 2.8vw, 3.5rem)',
-            padding: 'clamp(0.4rem, 1.2vh, 1.2rem) clamp(1rem, 3vw, 3.5rem)',
-            background: 'rgba(255,255,255,0.12)',
-            border: 'clamp(1px, 0.25vw, 3px) solid rgba(99,102,241,0.5)',
+            fontSize: 'clamp(0.8rem, 2.2vw, 2.8rem)',
+            padding: 'clamp(0.3rem, 0.9vh, 0.9rem) clamp(0.8rem, 2.5vw, 3rem)',
+            background: 'rgba(255,255,255,0.08)',
+            border: 'clamp(1px, 0.2vw, 2px) solid rgba(99,102,241,0.45)',
             backdropFilter: 'blur(10px)',
           }}
         >
-          🏆 FY {item.financial_year}
+          FY {item.financial_year}
         </div>
 
-        {item.completed_by_name && (
-          <div className="text-white/60" style={{ fontSize: 'clamp(0.7rem, 1.8vw, 2rem)' }}>
-            Completed by <span className="text-white/90 font-semibold">{item.completed_by_name}</span>
-          </div>
-        )}
+        {/* Divider */}
+        <div style={{ width: 'clamp(60px, 15vw, 200px)', height: 'clamp(1px, 0.2vw, 2px)', background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.15), transparent)' }} />
 
-        {item.completed_at && (
-          <div className="text-white/40" style={{ fontSize: 'clamp(0.6rem, 1.2vw, 1.4rem)' }}>
-            {new Date(item.completed_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-          </div>
-        )}
+        {/* Completed by + timestamp */}
+        <div className="flex flex-col items-center" style={{ gap: 'clamp(0.2rem, 0.8vh, 0.8rem)' }}>
+          {item.completed_by_name && (
+            <div style={{ fontSize: 'clamp(0.65rem, 1.5vw, 1.8rem)', color: 'rgba(255,255,255,0.45)' }}>
+              Marked complete by&nbsp;<span style={{ color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>{item.completed_by_name}</span>
+            </div>
+          )}
+          {item.completed_at && (
+            <div style={{ fontSize: 'clamp(0.55rem, 1.1vw, 1.3rem)', color: 'rgba(255,255,255,0.3)' }}>
+              {new Date(item.completed_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+            </div>
+          )}
+        </div>
 
-        <div className="text-white/30" style={{ fontSize: 'clamp(0.6rem, 1.2vw, 1.2rem)' }}>
+        {/* Countdown */}
+        <div style={{ fontSize: 'clamp(0.55rem, 1vw, 1.1rem)', color: 'rgba(255,255,255,0.25)' }}>
           Dismissing in {timeLeft}s
         </div>
       </div>
@@ -122,11 +182,11 @@ function CelebrationCard({ item, onClose }: { item: { id: string; client_name: s
       {/* Countdown progress bar pinned to bottom */}
       <div
         className="absolute bottom-0 left-0 right-0"
-        style={{ height: 'clamp(4px, 0.8vh, 10px)', background: 'rgba(255,255,255,0.1)' }}
+        style={{ height: 'clamp(4px, 0.8vh, 10px)', background: 'rgba(255,255,255,0.08)' }}
       >
         <div
           className="h-full transition-all duration-1000 ease-linear"
-          style={{ width: `${(timeLeft / 15) * 100}%`, background: 'linear-gradient(to right, #6366f1, #10b981)' }}
+          style={{ width: `${(timeLeft / 15) * 100}%`, background: 'linear-gradient(to right, #f59e0b, #6366f1)' }}
         />
       </div>
     </div>
