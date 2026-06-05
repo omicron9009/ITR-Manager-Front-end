@@ -4,30 +4,133 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu, LayoutDashboard, Trophy, PartyPopper, X } from "lucide-react";
+import { LogOut, Menu, LayoutDashboard, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { clearAuth, getUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { getCompletedQueue, dismissQueueItem, dismissAllQueue } from "@/lib/api";
 
-// ─── Confetti Celebration ───────────────────────────────────────────────
-async function fireCelebration() {
-  const confettiModule = await import("canvas-confetti");
-  const confetti = confettiModule.default;
-  const duration = 4000;
-  const end = Date.now() + duration;
-  const colors = ["#6366f1", "#10b981", "#f59e0b", "#22d3ee", "#a78bfa"];
+// ─── Fullscreen Celebration Card (TV-friendly, viewport-scaled) ─────────────
+function CelebrationCard({ item, onClose }: { item: { id: string; client_name: string; financial_year: string; completed_by_name?: string; completed_at: string }; onClose: () => void }) {
+  const [timeLeft, setTimeLeft] = useState(15);
 
-  (function frame() {
-    confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors, zIndex: 99999 });
-    confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors, zIndex: 99999 });
-    if (Date.now() < end) requestAnimationFrame(frame);
-  })();
+  useEffect(() => {
+    let cancelled = false;
 
-  confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors, zIndex: 99999 });
-  setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { y: 0.5 }, colors, zIndex: 99999 }), 1500);
-  setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.4 }, colors, zIndex: 99999 }), 3000);
+    // Confetti for 15 seconds
+    import('canvas-confetti').then((mod) => {
+      if (cancelled) return;
+      const confetti = mod.default;
+      const end = Date.now() + 15000;
+      const colors = ['#6366f1', '#10b981', '#f59e0b', '#22d3ee', '#a78bfa', '#ffffff'];
+      const fire = () => {
+        if (Date.now() > end || cancelled) return;
+        confetti({ particleCount: 5, angle: 60, spread: 65, origin: { x: 0, y: 0.5 }, colors, zIndex: 99999 });
+        confetti({ particleCount: 5, angle: 120, spread: 65, origin: { x: 1, y: 0.5 }, colors, zIndex: 99999 });
+        requestAnimationFrame(fire);
+      };
+      confetti({ particleCount: 150, spread: 130, origin: { y: 0.35 }, colors, zIndex: 99999 });
+      confetti({ particleCount: 80, spread: 80, angle: 60, origin: { x: 0.05, y: 0.5 }, colors, zIndex: 99999 });
+      confetti({ particleCount: 80, spread: 80, angle: 120, origin: { x: 0.95, y: 0.5 }, colors, zIndex: 99999 });
+      fire();
+    });
+
+    // Sound
+    playTadaSound();
+
+    // Countdown tick
+    const countdown = setInterval(() => {
+      setTimeLeft(t => (t <= 1 ? 0 : t - 1));
+    }, 1000);
+
+    const timer = setTimeout(() => { cancelled = true; onClose(); }, 15000);
+    return () => { cancelled = true; clearTimeout(timer); clearInterval(countdown); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-[99999] flex flex-col items-center justify-center overflow-hidden cursor-pointer"
+      style={{ width: '100vw', height: '100vh', background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #064e3b 100%)' }}
+      onClick={onClose}
+    >
+      {/* Radial glow behind content */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(99,102,241,0.2) 0%, transparent 70%)' }} />
+
+      {/* Skip button */}
+      <button
+        className="absolute text-white/50 hover:text-white transition-colors border border-white/20 hover:border-white/50 rounded-full backdrop-blur-sm"
+        style={{ top: '2vw', right: '2vw', fontSize: 'clamp(0.7rem, 1.4vw, 1.4rem)', padding: '0.6vw 1.4vw' }}
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+      >
+        ✕ Skip
+      </button>
+
+      {/* Central content */}
+      <div
+        className="relative flex flex-col items-center text-center select-none"
+        style={{ gap: 'clamp(0.75rem, 3vh, 3rem)', padding: '0 5vw' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ fontSize: 'clamp(4rem, 16vw, 15rem)', lineHeight: 1 }}>🎉</div>
+
+        <div
+          className="font-black text-white tracking-tight"
+          style={{ fontSize: 'clamp(1.8rem, 6vw, 7rem)', lineHeight: 1.05, textShadow: '0 0 40px rgba(99,102,241,0.6)' }}
+        >
+          Filing Completed!
+        </div>
+
+        <div
+          className="font-bold"
+          style={{ fontSize: 'clamp(1.2rem, 4vw, 5rem)', color: '#a5f3fc', lineHeight: 1.2 }}
+        >
+          {item.client_name}
+        </div>
+
+        <div
+          className="font-extrabold text-white rounded-full"
+          style={{
+            fontSize: 'clamp(1rem, 2.8vw, 3.5rem)',
+            padding: 'clamp(0.4rem, 1.2vh, 1.2rem) clamp(1rem, 3vw, 3.5rem)',
+            background: 'rgba(255,255,255,0.12)',
+            border: 'clamp(1px, 0.25vw, 3px) solid rgba(99,102,241,0.5)',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          🏆 FY {item.financial_year}
+        </div>
+
+        {item.completed_by_name && (
+          <div className="text-white/60" style={{ fontSize: 'clamp(0.7rem, 1.8vw, 2rem)' }}>
+            Completed by <span className="text-white/90 font-semibold">{item.completed_by_name}</span>
+          </div>
+        )}
+
+        {item.completed_at && (
+          <div className="text-white/40" style={{ fontSize: 'clamp(0.6rem, 1.2vw, 1.4rem)' }}>
+            {new Date(item.completed_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+          </div>
+        )}
+
+        <div className="text-white/30" style={{ fontSize: 'clamp(0.6rem, 1.2vw, 1.2rem)' }}>
+          Dismissing in {timeLeft}s
+        </div>
+      </div>
+
+      {/* Countdown progress bar pinned to bottom */}
+      <div
+        className="absolute bottom-0 left-0 right-0"
+        style={{ height: 'clamp(4px, 0.8vh, 10px)', background: 'rgba(255,255,255,0.1)' }}
+      >
+        <div
+          className="h-full transition-all duration-1000 ease-linear"
+          style={{ width: `${(timeLeft / 15) * 100}%`, background: 'linear-gradient(to right, #6366f1, #10b981)' }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function playTadaSound() {
@@ -76,39 +179,7 @@ function playTadaSound() {
   } catch {}
 }
 
-function CelebrationBanner({ item, onClose, progress }: { item: { id: string; client_name: string; financial_year: string; completed_by_name: string; completed_at: string }; onClose: () => void; progress: number }) {
-  return (
-    <div className="fixed inset-0 z-[99998] flex items-center justify-center bg-black/20 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 bg-white rounded-3xl shadow-2xl border-2 border-indigo-200 p-10 max-w-lg mx-4 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 opacity-80" />
-        <div className="relative z-10">
-          <div className="text-6xl mb-5">🎉</div>
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">Filing Completed!</h2>
-          <p className="text-slate-500 text-sm mb-4">A filing has been successfully completed</p>
-          <div className="mt-3 inline-block px-5 py-3 rounded-2xl bg-indigo-50 border border-indigo-200">
-            <span className="font-bold text-indigo-700 text-lg">{item.client_name}</span>
-          </div>
-          <div className="mt-4 flex flex-col items-center gap-1.5 text-sm text-slate-500">
-            <span>Completed by: <span className="font-semibold text-slate-700">{item.completed_by_name}</span></span>
-            <span>Financial Year: <span className="font-semibold text-slate-700">{item.financial_year}</span></span>
-            {item.completed_at && <span className="text-xs text-slate-400">{new Date(item.completed_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>}
-          </div>
-          <div className="mt-5 flex items-center justify-center gap-2 text-sm text-slate-400">
-            <PartyPopper className="w-4 h-4" />
-            <span>Great work! Keep it up!</span>
-          </div>
-          {/* Progress bar (auto-dismiss countdown) */}
-          <div className="mt-5 w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-1000 ease-linear" style={{ width: `${progress}%` }} />
-          </div>
-          <button onClick={onClose} className="mt-4 inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition">
-            <X className="h-3 w-3" /> Dismiss
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+function CelebrationBanner_UNUSED() { return null; }
 
 const NAV = [
   { href: "/summary/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -124,9 +195,8 @@ export default function SummaryLayout({ children }: { children: React.ReactNode 
   // Completed-queue celebration state
   const [queue, setQueue] = useState<any[]>([]);
   const [currentItem, setCurrentItem] = useState<any | null>(null);
-  const [progress, setProgress] = useState(100);
-  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Track IDs already shown this session to prevent re-showing on poll cycles
+  const shownIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => { setUser(getUser()); }, []);
 
@@ -145,43 +215,23 @@ export default function SummaryLayout({ children }: { children: React.ReactNode 
     return () => clearInterval(interval);
   }, [pollQueue]);
 
-  // Show next item from queue when no current item is displayed
+  // Show next unseen item from queue when nothing is currently displayed
   useEffect(() => {
     if (currentItem || queue.length === 0) return;
-    const next = queue[0];
+    const next = queue.find(item => !shownIdsRef.current.has(item.id));
+    if (!next) return;
+    shownIdsRef.current.add(next.id);
     setCurrentItem(next);
-    setProgress(100);
-    fireCelebration();
-    playTadaSound();
-
-    // Auto-dismiss after 15 seconds
-    dismissTimerRef.current = setTimeout(() => { handleDismiss(next.id); }, 15000);
-    // Progress bar countdown (update every 150ms for smooth animation)
-    let remaining = 100;
-    progressRef.current = setInterval(() => {
-      remaining -= (150 / 15000) * 100;
-      if (remaining <= 0) remaining = 0;
-      setProgress(remaining);
-    }, 150);
-
-    return () => {
-      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-      if (progressRef.current) clearInterval(progressRef.current);
-    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue, currentItem]);
 
   const handleDismiss = async (id: string) => {
-    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    if (progressRef.current) clearInterval(progressRef.current);
     try { await dismissQueueItem(id); } catch {}
     setCurrentItem(null);
     setQueue((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleDismissAll = async () => {
-    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    if (progressRef.current) clearInterval(progressRef.current);
     try { await dismissAllQueue(); } catch {}
     setCurrentItem(null);
     setQueue([]);
@@ -235,11 +285,10 @@ export default function SummaryLayout({ children }: { children: React.ReactNode 
       </div>
       {mobileOpen && <div className="fixed inset-0 bg-black/30 z-30 md:hidden" onClick={() => setMobileOpen(false)} />}
 
-      {/* Celebration overlay — covers entire viewport */}
+      {/* Celebration overlay — fullscreen, covers entire viewport */}
       {currentItem && (
-        <CelebrationBanner
+        <CelebrationCard
           item={currentItem}
-          progress={progress}
           onClose={() => handleDismiss(currentItem.id)}
         />
       )}
