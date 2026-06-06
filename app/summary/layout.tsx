@@ -196,46 +196,50 @@ function CelebrationCard({ item, onClose }: { item: CelebrationItem; onClose: ()
 function playTadaSound() {
   try {
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const clapTimes = [0, 120, 240, 400, 520, 680, 800, 950, 1100, 1250, 1400, 1580, 1750, 1900, 2050];
-    clapTimes.forEach((delay) => {
-      setTimeout(() => {
-        const bufferSize = Math.floor(audioCtx.sampleRate * 0.04);
-        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          const envelope = Math.exp(-i / (bufferSize * 0.15));
-          data[i] = (Math.random() * 2 - 1) * envelope * (0.3 + Math.random() * 0.3);
-        }
-        const source = audioCtx.createBufferSource();
-        source.buffer = buffer;
-        const filter = audioCtx.createBiquadFilter();
-        filter.type = "bandpass";
-        filter.frequency.value = 2000 + Math.random() * 1500;
-        filter.Q.value = 0.8;
-        const gain = audioCtx.createGain();
-        gain.gain.setValueAtTime(0.6 + Math.random() * 0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
-        source.connect(filter);
-        filter.connect(gain);
-        gain.connect(audioCtx.destination);
-        source.start();
-      }, delay);
-    });
-    setTimeout(() => {
-      const notes = [523.25, 659.25, 783.99, 1046.50];
-      notes.forEach((freq, i) => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = "triangle";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.12 + 0.6);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + i * 0.12);
-        osc.stop(audioCtx.currentTime + i * 0.12 + 0.6);
+    // resume() resolves immediately if context is already running (after a user gesture),
+    // or once the browser allows audio — prevents silent failure under autoplay policy.
+    audioCtx.resume().then(() => {
+      const clapTimes = [0, 120, 240, 400, 520, 680, 800, 950, 1100, 1250, 1400, 1580, 1750, 1900, 2050];
+      clapTimes.forEach((delay) => {
+        setTimeout(() => {
+          const bufferSize = Math.floor(audioCtx.sampleRate * 0.04);
+          const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            const envelope = Math.exp(-i / (bufferSize * 0.15));
+            data[i] = (Math.random() * 2 - 1) * envelope * (0.3 + Math.random() * 0.3);
+          }
+          const source = audioCtx.createBufferSource();
+          source.buffer = buffer;
+          const filter = audioCtx.createBiquadFilter();
+          filter.type = "bandpass";
+          filter.frequency.value = 2000 + Math.random() * 1500;
+          filter.Q.value = 0.8;
+          const gain = audioCtx.createGain();
+          gain.gain.setValueAtTime(0.6 + Math.random() * 0.3, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
+          source.connect(filter);
+          filter.connect(gain);
+          gain.connect(audioCtx.destination);
+          source.start();
+        }, delay);
       });
-    }, 500);
+      setTimeout(() => {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, i) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "triangle";
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.12 + 0.6);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(audioCtx.currentTime + i * 0.12);
+          osc.stop(audioCtx.currentTime + i * 0.12 + 0.6);
+        });
+      }, 500);
+    });
   } catch {}
 }
 
@@ -259,6 +263,31 @@ export default function SummaryLayout({ children }: { children: React.ReactNode 
   const shownIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => { setUser(getUser()); }, []);
+
+  // Pre-unlock AudioContext on first user interaction so the tada sound can play
+  // under browsers' autoplay policy (especially important on TV/kiosk displays).
+  useEffect(() => {
+    let unlocked = false;
+    const unlock = () => {
+      if (unlocked) return;
+      unlocked = true;
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        ctx.resume().then(() => ctx.close());
+      } catch {}
+      window.removeEventListener('click', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+      window.removeEventListener('touchstart', unlock, true);
+    };
+    window.addEventListener('click', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    window.addEventListener('touchstart', unlock, true);
+    return () => {
+      window.removeEventListener('click', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+      window.removeEventListener('touchstart', unlock, true);
+    };
+  }, []);
 
   // Poll completed-queue every 12 seconds
   const pollQueue = useCallback(async () => {
