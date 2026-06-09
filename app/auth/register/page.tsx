@@ -85,8 +85,8 @@ export default function RegisterPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <AuthHeader activePage="register" />
-        <main className="flex-1 flex items-center justify-center px-4 py-12 bg-gradient-to-br from-indigo-50 via-white to-indigo-100">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-emerald-100 p-10 text-center">
+        <main className="flex-1 flex items-center justify-center px-4 py-12 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/bg-dark.png')" }}>
+          <div className="w-full max-w-md bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-emerald-100 p-10 text-center">
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 mx-auto"><CheckCircle2 className="h-8 w-8" /></div>
             <h2 className="mt-5 text-2xl font-bold text-slate-900">Registration submitted!</h2>
             <p className="mt-2 text-sm text-slate-600">Your account is under verification. We&rsquo;ll email you once it&rsquo;s activated by the CA team.</p>
@@ -102,7 +102,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex flex-col">
       <AuthHeader activePage="register" />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12 bg-gradient-to-br from-indigo-50 via-white to-indigo-100">
+      <main className="flex-1 flex items-center justify-center px-4 py-12 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/bg-dark.png')" }}>
         <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left: About section */}
           <div className="hidden lg:block space-y-6">
@@ -130,7 +130,7 @@ export default function RegisterPage() {
 
           {/* Right: Form */}
           <div className="w-full max-w-md mx-auto lg:mx-0">
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8">
               <div className="flex items-center mb-6 lg:hidden">
                 <Image src="/darklogo1.png" alt="ITR Manager" width={180} height={60} className="h-12 w-auto object-contain" />
               </div>

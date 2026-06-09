@@ -134,7 +134,7 @@ export default function LoginPage() {
       <AuthHeader activePage="login" />
 
       {/* Main content */}
-      <main className="flex-1 flex items-center justify-center px-4 py-12 bg-gradient-to-br from-indigo-50 via-white to-indigo-100">
+      <main className="flex-1 flex items-center justify-center px-4 py-12 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/bg-dark.png')" }}>
         <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left: About section */}
           <div className="hidden lg:block space-y-6">
@@ -162,7 +162,7 @@ export default function LoginPage() {
 
           {/* Right: Login form */}
           <div className="w-full max-w-md mx-auto lg:mx-0">
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-8">
               <div className="flex items-center mb-6 lg:hidden">
                 <Image src="/darklogo1.png" alt="ITR Manager" width={180} height={60} className="h-12 w-auto object-contain" />
               </div>
