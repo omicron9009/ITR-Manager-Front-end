@@ -9,11 +9,11 @@ const BENEFITS = [
 
 export default function RoleCards() {
   return (
-    <section id="benefits" className="py-24 bg-white">
+    <section id="benefits" className="py-24">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold uppercase tracking-wide">Why taxpayers love it</div>
-          <h2 className="mt-4 text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">Built for you, the taxpayer.</h2>
+          {/* <div className="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold uppercase tracking-wide">Why taxpayers love it</div> */}
+          <h2 className="mt-4 text-4xl md:text-5xl font-bold text-indigo-900 tracking-tight">Built for you, the taxpayer.</h2>
           <p className="mt-4 text-lg text-slate-600">Your CA does the filing. You stay informed every step of the way.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">

@@ -5,9 +5,7 @@ import { Button } from '@/components/ui/button';
 
 export default function Hero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-indigo-800 to-indigo-600 pt-32 pb-24">
-      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
-      <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl" />
+    <section className="relative overflow-hidden pt-32 pb-24">
       <div className="relative max-w-7xl mx-auto px-6 text-center">
         <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur px-4 py-1.5 text-xs font-medium text-white/90 border border-white/15">
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> File your ITR online &middot; FY 2025-26 (AY 2026-27) open now
@@ -37,7 +35,7 @@ export default function Hero() {
           <ClientMockup />
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-white/70">
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-black">
           <span className="inline-flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5" /> Bank-grade security</span>
           <span className="inline-flex items-center gap-2"><Bell className="h-3.5 w-3.5" /> Real-time updates</span>
           <span className="inline-flex items-center gap-2"><FolderOpen className="h-3.5 w-3.5" /> Secure document vault</span>
