@@ -14,6 +14,14 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { Loader2, Upload, Eye, FileText, CheckCircle2, Lock, Mail, IndianRupee, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle, Pencil } from 'lucide-react';
 
+const REFERRAL_SOURCE_LABELS: Record<string, string> = {
+  WEBSITE: 'Website',
+  FRIEND_RELATIVE: 'Friend / Relative',
+  PROFESSIONAL_REFERRAL: 'Professional Referral',
+  DIRECTED_BY_FIRM: 'Directed by Firm',
+  OTHER: 'Other',
+};
+
 export default function ClientProfilePage() {
   const [profile, setProfile] = useState<any>({});
   const [fields, setFields] = useState<any[]>([]);
@@ -164,6 +172,17 @@ export default function ClientProfilePage() {
           <div><div className="text-xs text-slate-500">Email</div><div className="font-medium text-slate-900">{profile.email || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Phone</div><div className="font-medium text-slate-900">{profile.phone_number || profile.phone || profile.mobile || values['phone'] || values['mobile'] || values['phone_number'] || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Status</div><StatusBadge status={profile.account_status} /></div>
+          {clientProfile?.referral_source && (
+            <div>
+              <div className="text-xs text-slate-500">Referral Source</div>
+              <div className="font-medium text-slate-900">
+                {REFERRAL_SOURCE_LABELS[clientProfile.referral_source] || clientProfile.referral_source}
+                {clientProfile.referral_source === 'OTHER' && clientProfile.referral_source_other && (
+                  <span className="text-slate-500 font-normal"> — {clientProfile.referral_source_other}</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Income Heads */}

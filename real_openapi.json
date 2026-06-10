@@ -8197,6 +8197,28 @@
               }
             ]
           },
+          "referral_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Source"
+          },
+          "referral_source_other": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Source Other"
+          },
           "professional_fee": {
             "anyOf": [
               {
@@ -8417,6 +8439,24 @@
             "type": "boolean",
             "title": "Any Other",
             "default": false
+          },
+          "referral_source": {
+            "type": "string",
+            "title": "Referral Source",
+            "description": "How did you hear about us? One of: WEBSITE, FRIEND_RELATIVE, PROFESSIONAL_REFERRAL, DIRECTED_BY_FIRM, OTHER"
+          },
+          "referral_source_other": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Source Other",
+            "description": "Required if referral_source is OTHER"
           }
         },
         "type": "object",
@@ -8424,7 +8464,8 @@
           "email",
           "full_name",
           "password",
-          "declaration_accepted"
+          "declaration_accepted",
+          "referral_source"
         ],
         "title": "ClientRegistrationRequest"
       },

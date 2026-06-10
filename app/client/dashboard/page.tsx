@@ -57,6 +57,10 @@ export default function ClientDashboard() {
 
   const checkOnboarding = async () => {
     try {
+      // Don't show onboarding popup until client is activated
+      const user = await me();
+      if (user?.account_status !== 'ACTIVE') return;
+
       const r = await getOnboardingForm();
       const fields = r?.fields || [];
       if (fields.length > 0 && !r?.submitted) {

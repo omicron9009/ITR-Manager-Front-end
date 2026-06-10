@@ -6,13 +6,22 @@ import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, CheckCircle2, ShieldCheck, Bell, FolderOpen, ArrowLeft, ArrowRight, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, ShieldCheck, Bell, FolderOpen, ArrowLeft, ArrowRight, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { registerClient } from '@/lib/api';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import GlobalFooter from '@/components/shared/GlobalFooter';
 import AuthHeader from '@/components/shared/AuthHeader';
+
+const REFERRAL_OPTIONS = [
+  { value: 'WEBSITE', label: 'Website' },
+  { value: 'FRIEND_RELATIVE', label: 'Friend / Relative' },
+  { value: 'PROFESSIONAL_REFERRAL', label: 'Professional Referral' },
+  { value: 'DIRECTED_BY_FIRM', label: 'Directed by Firm' },
+  { value: 'OTHER', label: 'Other' },
+] as const;
 
 /* Step 1 schema — basic info only */
 const step1Schema = z.object({
@@ -47,6 +56,10 @@ export default function RegisterPage() {
   });
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
 
+  /* Step 3 state — referral source */
+  const [referralSource, setReferralSource] = useState('');
+  const [referralSourceOther, setReferralSourceOther] = useState('');
+
   const toggleHead = (key: string) => setIncomeHeads((prev) => ({ ...prev, [key]: !prev[key] }));
 
   /* Step 1 → Step 2 */
@@ -55,13 +68,27 @@ export default function RegisterPage() {
     setStep(2);
   };
 
-  /* Final submit */
-  const onFinalSubmit = async () => {
+  /* Step 2 → Step 3 */
+  const onStep2Next = () => {
     setErr('');
-    // Validate at least one income head is selected
     const anySelected = Object.values(incomeHeads).some(Boolean);
     if (!anySelected) {
       setErr('Please select at least one income source to continue.');
+      return;
+    }
+    if (!declarationAccepted) return;
+    setStep(3);
+  };
+
+  /* Final submit */
+  const onFinalSubmit = async () => {
+    setErr('');
+    if (!referralSource) {
+      setErr('Please select how you heard about us.');
+      return;
+    }
+    if (referralSource === 'OTHER' && !referralSourceOther.trim()) {
+      setErr('Please mention the source.');
       return;
     }
     setSubmitting(true);
@@ -74,6 +101,8 @@ export default function RegisterPage() {
         phone_number: vals.phone_number || undefined,
         declaration_accepted: true,
         ...incomeHeads,
+        referral_source: referralSource,
+        referral_source_other: referralSource === 'OTHER' ? referralSourceOther.trim() : null,
       });
       setDone(true);
     } catch (e: any) {
@@ -140,6 +169,8 @@ export default function RegisterPage() {
                 <div className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ${step >= 1 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}`}>1</div>
                 <div className={`flex-1 h-0.5 ${step >= 2 ? 'bg-indigo-600' : 'bg-slate-200'}`} />
                 <div className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ${step >= 2 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}`}>2</div>
+                <div className={`flex-1 h-0.5 ${step >= 3 ? 'bg-indigo-600' : 'bg-slate-200'}`} />
+                <div className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ${step >= 3 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}`}>3</div>
               </div>
 
               {/* ──────────── STEP 1: Basic Info ──────────── */}
@@ -297,7 +328,60 @@ export default function RegisterPage() {
                     </Button>
                     <Button
                       type="button"
-                      disabled={!declarationAccepted || submitting}
+                      disabled={!declarationAccepted}
+                      onClick={onStep2Next}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-50"
+                    >
+                      Next <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {/* ──────────── STEP 3: Referral Source ──────────── */}
+              {step === 3 && (
+                <>
+                  <h1 className="text-xl font-bold text-slate-900">How did you hear about us?</h1>
+                  <p className="mt-1 text-sm text-slate-500">Let us know how you found us — it helps us serve you better.</p>
+
+                  <div className="mt-5 space-y-4">
+                    <div>
+                      <Label>Referral Source <span className="text-rose-500">*</span></Label>
+                      <Select value={referralSource} onValueChange={(v) => setReferralSource(v)}>
+                        <SelectTrigger className="mt-1.5">
+                          <SelectValue placeholder="Select an option..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {REFERRAL_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {referralSource === 'OTHER' && (
+                      <div>
+                        <Label>Please mention the source <span className="text-rose-500">*</span></Label>
+                        <Input
+                          value={referralSourceOther}
+                          onChange={(e) => setReferralSourceOther(e.target.value)}
+                          placeholder="e.g. Google search, newspaper ad..."
+                          maxLength={255}
+                          className="mt-1.5"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {err && <div className="mt-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg px-3 py-2">{err}</div>}
+
+                  <div className="flex gap-3 mt-5">
+                    <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1">
+                      <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={submitting}
                       onClick={onFinalSubmit}
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-50"
                     >
