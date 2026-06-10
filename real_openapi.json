@@ -636,6 +636,118 @@
         }
       }
     },
+    "/api/v1/clients/{client_id}/set-partner-tag": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Set Client Partner Tag",
+        "description": "Assign or change the partner tag for a client. Partner only.",
+        "operationId": "set_client_partner_tag_api_v1_clients__client_id__set_partner_tag_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Client Id"
+            }
+          },
+          {
+            "name": "tag_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Partner tag ID to assign",
+              "title": "Tag Id"
+            },
+            "description": "Partner tag ID to assign"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Set Client Partner Tag Api V1 Clients  Client Id  Set Partner Tag Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clients/{client_id}/partner-tag": {
+      "delete": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Remove Client Partner Tag",
+        "description": "Remove the partner tag from a client. Partner only.",
+        "operationId": "remove_client_partner_tag_api_v1_clients__client_id__partner_tag_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Remove Client Partner Tag Api V1 Clients  Client Id  Partner Tag Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clients": {
       "get": {
         "tags": [
@@ -720,6 +832,25 @@
               ],
               "title": "Financial Year"
             }
+          },
+          {
+            "name": "partner_tag_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by partner tag",
+              "title": "Partner Tag Id"
+            },
+            "description": "Filter by partner tag"
           }
         ],
         "responses": {
@@ -1979,7 +2110,7 @@
           "Filings"
         ],
         "summary": "Update Filing Fee",
-        "description": "Propose a fee change for a filing. Partner only. Client must approve before it takes effect.",
+        "description": "Set/update the professional fee for a filing. Partner only.\n\nDirectly applies the fee, regenerates the engagement letter with the\nactual fee amount, and emails the revised letter to the client.\nNo client approval step needed — the client pre-agreed to 'mutually decided' fees.",
         "operationId": "update_filing_fee_api_v1_filings__filing_id__update_fee_post",
         "security": [
           {
@@ -2004,10 +2135,10 @@
             "schema": {
               "type": "number",
               "exclusiveMinimum": 0,
-              "description": "Proposed professional fee in rupees",
+              "description": "Professional fee in rupees",
               "title": "Fee"
             },
-            "description": "Proposed professional fee in rupees"
+            "description": "Professional fee in rupees"
           }
         ],
         "responses": {
@@ -2041,8 +2172,9 @@
           "Filings"
         ],
         "summary": "Approve Fee Change",
-        "description": "Client approves a proposed fee change. Updates fee and regenerates engagement letter.",
+        "description": "DEPRECATED: Fee is now set directly by Partner via update-fee. No client approval needed.",
         "operationId": "approve_fee_change_api_v1_filings__filing_id__approve_fee_post",
+        "deprecated": true,
         "security": [
           {
             "HTTPBearer": []
@@ -2091,8 +2223,9 @@
           "Filings"
         ],
         "summary": "Reject Fee Change",
-        "description": "Client rejects a proposed fee change. Fee stays unchanged.",
+        "description": "DEPRECATED: Fee is now set directly by Partner via update-fee. No client approval/rejection needed.",
         "operationId": "reject_fee_change_api_v1_filings__filing_id__reject_fee_post",
+        "deprecated": true,
         "security": [
           {
             "HTTPBearer": []
@@ -6476,6 +6609,82 @@
         }
       }
     },
+    "/api/v1/tags/summary/partner": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Partner Tag Summary",
+        "description": "Per-partner-tag summary: client count, filing stats. Partner only.",
+        "operationId": "partner_tag_summary_api_v1_tags_summary_partner_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerTagSummaryResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/summary/partner/{tag_id}": {
+      "get": {
+        "tags": [
+          "Tags"
+        ],
+        "summary": "Partner Tag Detail",
+        "description": "Detailed view for one partner tag: clients, filings. Partner only.",
+        "operationId": "partner_tag_detail_api_v1_tags_summary_partner__tag_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerTagDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/reports/dashboard": {
       "get": {
         "tags": [
@@ -7239,6 +7448,7 @@
           "PARTNER_APPROVE_COMPLETED_DOCS",
           "REVISE_COMPLETED_DOC",
           "MARK_PAYMENT_RECEIVED",
+          "SET_PROFESSIONAL_FEE",
           "MANAGER_APPROVE_COMPUTATION",
           "PARTNER_APPROVE_COMPUTATION",
           "ASSIGN_CLIENT_TO_EXECUTIVE",
@@ -7621,6 +7831,52 @@
         ],
         "title": "ClientAnalyticsResponse"
       },
+      "ClientBriefItem": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "client_name": {
+            "type": "string",
+            "title": "Client Name"
+          },
+          "account_status": {
+            "type": "string",
+            "title": "Account Status"
+          },
+          "active_filing_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Filing Year"
+          },
+          "filing_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filing Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "client_id",
+          "client_name",
+          "account_status"
+        ],
+        "title": "ClientBriefItem"
+      },
       "ClientDashboardResponse": {
         "properties": {
           "account_status": {
@@ -7950,6 +8206,52 @@
             ],
             "title": "Assigned Executive Id"
           },
+          "assigned_manager_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Manager Id"
+          },
+          "assigned_manager_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Manager Name"
+          },
+          "partner_tag_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Tag Id"
+          },
+          "partner_tag_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Tag Name"
+          },
           "active_filing_years": {
             "items": {
               "type": "string"
@@ -8187,6 +8489,29 @@
             ],
             "title": "Assigned Executive Name"
           },
+          "assigned_manager_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Manager Id"
+          },
+          "assigned_manager_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Manager Name"
+          },
           "income_heads": {
             "anyOf": [
               {
@@ -8234,6 +8559,29 @@
             "type": "boolean",
             "title": "No Fees Applicable",
             "default": false
+          },
+          "partner_tag_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Tag Id"
+          },
+          "partner_tag_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Tag Name"
           },
           "created_at": {
             "type": "string",
@@ -13532,6 +13880,131 @@
         ],
         "title": "PartnerAnalyticsResponse"
       },
+      "PartnerTagDetailResponse": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "tag_name": {
+            "type": "string",
+            "title": "Tag Name"
+          },
+          "client_count": {
+            "type": "integer",
+            "title": "Client Count",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          },
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/ClientBriefItem"
+            },
+            "type": "array",
+            "title": "Clients",
+            "default": []
+          },
+          "recent_filings": {
+            "items": {
+              "$ref": "#/components/schemas/FilingBriefItem"
+            },
+            "type": "array",
+            "title": "Recent Filings",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "tag_name"
+        ],
+        "title": "PartnerTagDetailResponse"
+      },
+      "PartnerTagSummaryItem": {
+        "properties": {
+          "tag_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tag Id"
+          },
+          "tag_name": {
+            "type": "string",
+            "title": "Tag Name"
+          },
+          "client_count": {
+            "type": "integer",
+            "title": "Client Count",
+            "default": 0
+          },
+          "total_filings": {
+            "type": "integer",
+            "title": "Total Filings",
+            "default": 0
+          },
+          "active_filings": {
+            "type": "integer",
+            "title": "Active Filings",
+            "default": 0
+          },
+          "completed_filings": {
+            "type": "integer",
+            "title": "Completed Filings",
+            "default": 0
+          },
+          "halted_filings": {
+            "type": "integer",
+            "title": "Halted Filings",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "tag_id",
+          "tag_name"
+        ],
+        "title": "PartnerTagSummaryItem"
+      },
+      "PartnerTagSummaryResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PartnerTagSummaryItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "PartnerTagSummaryResponse"
+      },
       "PasswordChangeRequest": {
         "properties": {
           "old_password": {
@@ -13950,6 +14423,11 @@
             "type": "integer",
             "title": "Executive Count",
             "default": 0
+          },
+          "client_count": {
+            "type": "integer",
+            "title": "Client Count",
+            "default": 0
           }
         },
         "type": "object",
@@ -13965,9 +14443,9 @@
       "TagType": {
         "type": "string",
         "enum": [
-          "LOCATION"
+          "LOCATION",
+          "PARTNER"
         ],
-        "const": "LOCATION",
         "title": "TagType"
       },
       "TagUpdateRequest": {

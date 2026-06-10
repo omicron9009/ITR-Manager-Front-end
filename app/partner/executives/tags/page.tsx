@@ -9,7 +9,7 @@ import {
   listExecutivesWithTags, assignTag, unassignTag, listExecutives
 } from '@/lib/api';
 import { toast } from 'sonner';
-import { Plus, Loader2, MapPin, Trash2, X, Check } from 'lucide-react';
+import { Plus, Loader2, MapPin, Trash2, X, Check, Tag, Pencil } from 'lucide-react';
 
 export default function TagsManagementPage() {
   const [tags, setTags] = useState<any[]>([]);
@@ -21,13 +21,21 @@ export default function TagsManagementPage() {
   const [submitting, setSubmitting] = useState(false);
   const [assignModal, setAssignModal] = useState<any>(null);
 
+  // Partner tags state
+  const [partnerTags, setPartnerTags] = useState<any[]>([]);
+  const [newPartnerTagName, setNewPartnerTagName] = useState('');
+  const [editingPTag, setEditingPTag] = useState<any>(null);
+  const [editPTagName, setEditPTagName] = useState('');
+  const [ptSubmitting, setPtSubmitting] = useState(false);
+
   const load = async () => {
     setLoading(true);
     try {
-      const [t, e, et] = await Promise.all([listTags(), listExecutives(), listExecutivesWithTags()]);
+      const [t, e, et, pt] = await Promise.all([listTags(), listExecutives(), listExecutivesWithTags(), listTags('PARTNER')]);
       setTags((t?.items || t || []).filter((tag: any) => tag.is_active !== false));
       setExecutives(e?.items || e?.executives || e || []);
       setExecsWithTags(et?.items || et || []);
+      setPartnerTags((pt?.items || pt || []).filter((tag: any) => tag.is_active !== false));
     } finally { setLoading(false); }
   };
 
@@ -65,6 +73,42 @@ export default function TagsManagementPage() {
   const getExecTags = (execId: string) => {
     const exec = execsWithTags.find((e: any) => e.executive_id === execId || e.id === execId);
     return exec?.manager_tags || exec?.location_tags || exec?.tags || [];
+  };
+
+  // Partner Tag CRUD
+  const onCreatePartnerTag = async () => {
+    if (!newPartnerTagName.trim()) return;
+    setPtSubmitting(true);
+    try {
+      await createTag({ name: newPartnerTagName.trim(), tag_type: 'PARTNER' });
+      toast.success('Partner tag created');
+      setNewPartnerTagName('');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to create tag'); }
+    finally { setPtSubmitting(false); }
+  };
+
+  const onRenamePartnerTag = async () => {
+    if (!editingPTag || !editPTagName.trim()) return;
+    setPtSubmitting(true);
+    try {
+      await updateTag(editingPTag.id, { name: editPTagName.trim() });
+      toast.success('Tag renamed');
+      setEditingPTag(null);
+      setEditPTagName('');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to rename'); }
+    finally { setPtSubmitting(false); }
+  };
+
+  const onDeletePartnerTag = async (tag: any) => {
+    setPtSubmitting(true);
+    try {
+      await deleteTag(tag.id);
+      toast.success('Tag deleted');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to delete'); }
+    finally { setPtSubmitting(false); }
   };
 
   return (
@@ -139,6 +183,68 @@ export default function TagsManagementPage() {
             </Card>
           )}
         </div>
+
+      {/* Partner Tags Section */}
+      <div className="mt-10">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">Partner Tags</h2>
+            <p className="text-sm text-slate-500 mt-1">Create and manage Partner tags for client categorization</p>
+          </div>
+          <div className="flex items-end gap-2">
+            <div>
+              <Label className="text-xs text-slate-500">Name</Label>
+              <Input value={newPartnerTagName} onChange={(e) => setNewPartnerTagName(e.target.value)} className="mt-1 h-9 w-44" placeholder="e.g. Premium" onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), onCreatePartnerTag())} />
+            </div>
+            <Button size="sm" disabled={!newPartnerTagName.trim() || ptSubmitting} onClick={onCreatePartnerTag} className="h-9 bg-indigo-600 hover:bg-indigo-700">
+              {ptSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+              Create Partner Tag
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {partnerTags.map((tag) => (
+            <Card key={tag.id} className="rounded-xl p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-600">
+                    <Tag className="h-5 w-5" />
+                  </div>
+                  {editingPTag?.id === tag.id ? (
+                    <div className="flex items-center gap-2">
+                      <Input value={editPTagName} onChange={(e) => setEditPTagName(e.target.value)} className="h-8 w-40 text-sm" onKeyDown={(e) => e.key === 'Enter' && onRenamePartnerTag()} autoFocus />
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRenamePartnerTag} disabled={ptSubmitting}><Check className="h-4 w-4 text-emerald-600" /></Button>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setEditingPTag(null)}><X className="h-4 w-4 text-slate-400" /></Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="font-semibold text-slate-900">{tag.name}</div>
+                      {tag.description && <div className="text-xs text-slate-500">{tag.description}</div>}
+                      {tag.client_count != null && <div className="text-xs text-slate-400">{tag.client_count} clients</div>}
+                    </div>
+                  )}
+                </div>
+                {editingPTag?.id !== tag.id && (
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setEditingPTag(tag); setEditPTagName(tag.name); }}>
+                      <Pencil className="h-3 w-3 mr-1" /> Rename
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-rose-500 hover:text-rose-700 hover:bg-rose-50" onClick={() => onDeletePartnerTag(tag)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
+          {!loading && partnerTags.length === 0 && (
+            <Card className="rounded-xl p-10 text-center text-sm text-slate-500">
+              No partner tags yet. Create one above.
+            </Card>
+          )}
+        </div>
+      </div>
 
       {/* Assign Modal */}
       {assignModal && (

@@ -92,13 +92,11 @@ export const listClients = (params: any = {}) =>
   api.get('/api/v1/clients', { params }).then((r) => r.data);
 export const getClient = (id: string) => api.get(`/api/v1/clients/${id}`).then((r) => r.data);
 export const updateClientProfile = (id: string, data: any) => api.put(`/api/v1/clients/${id}/profile`, data).then((r) => r.data);
-export const activateClient = (client_id: string, professional_fee?: number, no_fees_applicable?: boolean) => api.post('/api/v1/clients/activate', { client_id, professional_fee, no_fees_applicable }).then((r) => r.data);
+export const activateClient = (client_id: string, no_fees_applicable?: boolean) => api.post('/api/v1/clients/activate', { client_id, no_fees_applicable }).then((r) => r.data);
 export const rejectClient = (client_id: string, reason: string) => api.post('/api/v1/clients/reject', { client_id, reason }).then((r) => r.data);
 export const setClientFee = (client_id: string, fee: number) => api.post(`/api/v1/clients/${client_id}/set-fee`, null, { params: { fee } }).then((r) => r.data);
 export const toggleNoFees = (client_id: string, no_fees: boolean) => api.post(`/api/v1/clients/${client_id}/toggle-no-fees`, null, { params: { no_fees } }).then((r) => r.data);
 export const updateFilingFee = (filing_id: string, fee: number) => api.post(`/api/v1/filings/${filing_id}/update-fee`, null, { params: { fee } }).then((r) => r.data);
-export const approveFilingFee = (filing_id: string) => api.post(`/api/v1/filings/${filing_id}/approve-fee`).then((r) => r.data);
-export const rejectFilingFee = (filing_id: string) => api.post(`/api/v1/filings/${filing_id}/reject-fee`).then((r) => r.data);
 
 // ---------- DASHBOARD ----------
 export const getSummary = () => api.get('/api/v1/dashboard/summary').then((r) => r.data);
@@ -231,6 +229,16 @@ export const getLocationSummary = () =>
   api.get('/api/v1/tags/summary/location').then((r) => r.data);
 export const getLocationDetail = (tag_id: string) =>
   api.get(`/api/v1/tags/summary/location/${tag_id}`).then((r) => r.data);
+
+// ---------- PARTNER TAGS ----------
+export const setClientPartnerTag = (client_id: string, tag_id: string) =>
+  api.post(`/api/v1/clients/${client_id}/set-partner-tag`, null, { params: { tag_id } }).then((r) => r.data);
+export const removeClientPartnerTag = (client_id: string) =>
+  api.delete(`/api/v1/clients/${client_id}/partner-tag`).then((r) => r.data);
+export const getPartnerTagSummary = () =>
+  api.get('/api/v1/tags/summary/partner').then((r) => r.data);
+export const getPartnerTagDetail = (tag_id: string) =>
+  api.get(`/api/v1/tags/summary/partner/${tag_id}`).then((r) => r.data);
 
 // ---------- REPORTS ----------
 export const getReportDashboard = (fy?: string) =>

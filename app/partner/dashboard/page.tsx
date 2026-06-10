@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, listFilings, listManagers, listExecutives, assignClientToManager, assignExecutive, setClientFee } from '@/lib/api';
+import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, listFilings, listManagers, listExecutives, assignClientToManager, assignExecutive, listTags, setClientPartnerTag, getManagerTeam } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
 import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader2, FileText, IndianRupee, AlertTriangle } from 'lucide-react';
@@ -40,6 +40,7 @@ export default function PartnerDashboardPage() {
   const [awaitingTaxPayment, setAwaitingTaxPayment] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
   const [executives, setExecutives] = useState<any[]>([]);
+  const [partnerTags, setPartnerTags] = useState<any[]>([]);
   const [justActivated, setJustActivated] = useState<any>(null); // client that was just activated, needs assignment
   const [feeForClient, setFeeForClient] = useState<any>(null); // client pending fee input before activation
 
@@ -61,6 +62,7 @@ export default function PartnerDashboardPage() {
     load();
     listManagers().then((r) => setManagers(r?.items || r?.managers || r || [])).catch(() => {});
     listExecutives().then((r) => setExecutives(r?.items || r?.executives || r || [])).catch(() => {});
+    listTags('PARTNER').then((r) => setPartnerTags((r?.items || r || []).filter((t: any) => t.is_active !== false))).catch(() => {});
   }, []);
 
   const getCount = (key: string) => {
@@ -79,7 +81,7 @@ export default function PartnerDashboardPage() {
     if (!feeForClient) return;
     setActing(true);
     try {
-      await activateClient(feeForClient.id, noFeesApplicable ? undefined : fee, noFeesApplicable || undefined);
+      await activateClient(feeForClient.id, noFeesApplicable || undefined);
       toast.success('Client activated! Now assign a manager.');
       setJustActivated(feeForClient);
       setFeeForClient(null);
@@ -87,13 +89,16 @@ export default function PartnerDashboardPage() {
     finally { setActing(false); }
   };
 
-  const onAssignAfterActivation = async (managerId: string, executiveId?: string) => {
+  const onAssignAfterActivation = async (managerId: string, executiveId?: string, partnerTagId?: string) => {
     if (!justActivated) return;
     setActing(true);
     try {
       await assignClientToManager(managerId, justActivated.id);
       if (executiveId) {
         await assignExecutive(justActivated.id, executiveId);
+      }
+      if (partnerTagId) {
+        await setClientPartnerTag(justActivated.id, partnerTagId);
       }
       toast.success('Manager assigned successfully');
       setJustActivated(null);
@@ -273,6 +278,7 @@ export default function PartnerDashboardPage() {
                   <th className="text-left px-5 py-3 font-semibold">Email</th>
                   <th className="text-left px-5 py-3 font-semibold">Phone</th>
                   <th className="text-left px-5 py-3 font-semibold">Registered</th>
+                  <th className="text-left px-5 py-3 font-semibold">Waiting</th>
                   <th className="text-right px-5 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -283,6 +289,14 @@ export default function PartnerDashboardPage() {
                     <td className="px-5 py-3 text-slate-600">{c.email}</td>
                     <td className="px-5 py-3 text-slate-600">{c.phone_number || '—'}</td>
                     <td className="px-5 py-3 text-slate-500 text-xs">{c.registered_at ? new Date(c.registered_at).toLocaleDateString() : '—'}</td>
+                    <td className="px-5 py-3 text-xs">{(() => {
+                      if (!c.registered_at) return '—';
+                      const diff = Date.now() - new Date(c.registered_at).getTime();
+                      const hours = Math.floor(diff / (1000 * 60 * 60));
+                      const days = Math.floor(hours / 24);
+                      if (days > 0) return <span className={`font-semibold ${days > 3 ? 'text-red-600' : days > 1 ? 'text-amber-600' : 'text-slate-600'}`}>{days}d {hours % 24}h</span>;
+                      return <span className="text-slate-600">{hours}h</span>;
+                    })()}</td>
                     <td className="px-5 py-3">
                       <div className="flex gap-2 justify-end">
                         <Button size="sm" onClick={() => onActivate(c)} disabled={acting} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Activate</Button>
@@ -338,6 +352,7 @@ export default function PartnerDashboardPage() {
         client={justActivated}
         managers={managers}
         executives={executives}
+        partnerTags={partnerTags}
         acting={acting}
         onAssign={onAssignAfterActivation}
         onSkip={() => { setJustActivated(null); load(); }}
@@ -346,16 +361,28 @@ export default function PartnerDashboardPage() {
   );
 }
 
-function AssignAfterActivationDialog({ client, managers, executives, acting, onAssign, onSkip }: {
+function AssignAfterActivationDialog({ client, managers, executives, partnerTags, acting, onAssign, onSkip }: {
   client: any;
   managers: any[];
   executives: any[];
+  partnerTags: any[];
   acting: boolean;
-  onAssign: (managerId: string, executiveId?: string) => void;
+  onAssign: (managerId: string, executiveId?: string, partnerTagId?: string) => void;
   onSkip: () => void;
 }) {
   const [selectedManager, setSelectedManager] = useState('');
   const [selectedExecutive, setSelectedExecutive] = useState('');
+  const [selectedPartnerTag, setSelectedPartnerTag] = useState('');
+  const [managerExecs, setManagerExecs] = useState<any[]>([]);
+
+  // When manager changes, load that manager's team executives
+  useEffect(() => {
+    if (!selectedManager) { setManagerExecs([]); setSelectedExecutive(''); return; }
+    setSelectedExecutive('');
+    getManagerTeam(selectedManager)
+      .then((r) => setManagerExecs(r?.executives || r?.items || []))
+      .catch(() => setManagerExecs([]));
+  }, [selectedManager]);
 
   if (!client) return null;
 
@@ -372,8 +399,21 @@ function AssignAfterActivationDialog({ client, managers, executives, acting, onA
             <div className="text-sm font-semibold text-slate-900">{client.full_name || client.name}</div>
             <div className="text-xs text-slate-500">{client.email}</div>
           </div>
-          <p className="text-sm text-slate-600">Assign a manager (and optionally an executive) to this client now.</p>
+          <p className="text-sm text-slate-600">Assign a manager, partner tag, and optionally an executive to this client.</p>
           <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Partner Tag <span className="text-rose-500">*</span></label>
+              <Select value={selectedPartnerTag} onValueChange={setSelectedPartnerTag}>
+                <SelectTrigger className={`w-full ${selectedPartnerTag ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                  <SelectValue placeholder="Select Partner Tag" />
+                </SelectTrigger>
+                <SelectContent>
+                  {partnerTags.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Manager <span className="text-rose-500">*</span></label>
               <Select value={selectedManager} onValueChange={setSelectedManager}>
@@ -389,14 +429,17 @@ function AssignAfterActivationDialog({ client, managers, executives, acting, onA
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Executive <span className="text-slate-400">(optional)</span></label>
-              <Select value={selectedExecutive} onValueChange={setSelectedExecutive}>
+              <Select value={selectedExecutive} onValueChange={setSelectedExecutive} disabled={!selectedManager}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select Executive (optional)" />
+                  <SelectValue placeholder={selectedManager ? 'Select Executive (optional)' : 'Select a manager first'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {executives.filter((e) => e.is_active !== false).map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{e.full_name || e.name}</SelectItem>
+                  {managerExecs.filter((e) => e.is_active !== false).map((e) => (
+                    <SelectItem key={e.executive_id || e.id} value={e.executive_id || e.id}>{e.executive_name || e.full_name || e.name}</SelectItem>
                   ))}
+                  {managerExecs.length === 0 && selectedManager && (
+                    <div className="px-3 py-2 text-xs text-slate-400">No executives under this manager</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -405,9 +448,9 @@ function AssignAfterActivationDialog({ client, managers, executives, acting, onA
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onSkip}>Skip for now</Button>
           <Button
-            disabled={!selectedManager || acting}
+            disabled={!selectedManager || !selectedPartnerTag || acting}
             className="bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => onAssign(selectedManager, selectedExecutive || undefined)}
+            onClick={() => onAssign(selectedManager, selectedExecutive || undefined, selectedPartnerTag || undefined)}
           >
             {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Assign & Done
           </Button>
@@ -423,7 +466,6 @@ function FeeInputDialog({ client, acting, onSubmit, onCancel }: {
   onSubmit: (fee: number | undefined, noFeesApplicable: boolean) => void;
   onCancel: () => void;
 }) {
-  const [fee, setFee] = useState('');
   const [noFees, setNoFees] = useState(false);
 
   if (!client) return null;
@@ -433,7 +475,7 @@ function FeeInputDialog({ client, acting, onSubmit, onCancel }: {
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <IndianRupee className="h-5 w-5 text-indigo-600" /> Set Professional Fee
+            <IndianRupee className="h-5 w-5 text-indigo-600" /> Activate Client
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
@@ -451,31 +493,17 @@ function FeeInputDialog({ client, acting, onSubmit, onCancel }: {
             </div>
           )}
           {!noFees && (
-            <>
-              <p className="text-sm text-slate-600">Enter the professional fee for this client. This will be included in their engagement letter.</p>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Fee (₹) <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={fee}
-                    onChange={(e) => setFee(e.target.value)}
-                    placeholder="5000"
-                    className="pl-7"
-                  />
-                </div>
-              </div>
-            </>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs text-slate-600">Professional fees will be mutually decided after computation is approved. The engagement letter will state: &ldquo;Professional fees shall be mutually decided depending upon the scope, volume and complexity of work.&rdquo;</p>
+            </div>
           )}
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
           <Button
-            disabled={(!noFees && (!fee || Number(fee) <= 0)) || acting}
+            disabled={acting}
             className="bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => onSubmit(noFees ? undefined : Number(fee), noFees)}
+            onClick={() => onSubmit(undefined, noFees)}
           >
             {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Activate Client
           </Button>

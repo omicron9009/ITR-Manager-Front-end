@@ -152,6 +152,7 @@ export default function ExecutivesPage() {
         })}
         {!loading && execs.length === 0 && <Card className="rounded-xl p-10 text-center text-sm text-slate-500">No executives(articles) yet.</Card>}
       </div>
+      <div className="space-y-5">
       <Card className="rounded-xl p-6 h-fit">
         <div className="flex items-center gap-2 mb-4"><Shield className="h-4 w-4 text-indigo-600" /><h2 className="font-bold text-slate-900">Create Executive(Article)</h2></div>
         <form onSubmit={submit} className="space-y-3">
@@ -188,6 +189,7 @@ export default function ExecutivesPage() {
           <Button type="submit" disabled={submitting} className="w-full bg-indigo-600 hover:bg-indigo-700">{submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />} Create & Assign</Button>
         </form>
       </Card>
+      </div>
 
       {/* Assign Manager Dialog */}
       <Dialog open={showAssignMgr} onOpenChange={setShowAssignMgr}>

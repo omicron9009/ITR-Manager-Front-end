@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { listClients, listExecutives, listFilings, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems, listManagers, assignClientToManager, getManagerClients, getManagerTeam } from '@/lib/api';
-import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot, ArrowUpDown, Clock, ArrowUp, ArrowDown } from 'lucide-react';
+import { listClients, listExecutives, listFilings, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems, listManagers, assignClientToManager, getManagerClients, getManagerTeam, listTags, setClientPartnerTag, getClient } from '@/lib/api';
+import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot, ArrowUpDown, Clock, ArrowUp, ArrowDown, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
 function getFYOptions() {
@@ -58,6 +58,8 @@ function ClientsListPage() {
   const [loadingTimestamps, setLoadingTimestamps] = useState(false);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [partnerTags, setPartnerTags] = useState<any[]>([]);
+  const [partnerTagFilter, setPartnerTagFilter] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const fyOptions = useMemo(() => getFYOptions(), []);
@@ -68,11 +70,23 @@ function ClientsListPage() {
       const params: any = { page: 1, page_size: 100 };
       if (search) params.search = search;
       if (accountStatus) params.account_status = accountStatus;
+      if (partnerTagFilter) params.partner_tag_id = partnerTagFilter;
       const [clientsRes, analyticsRes] = await Promise.all([
         listClients(params),
         (routePrefix === '/executive' ? getExecutiveAnalytics() : getPartnerAnalytics()).catch(() => null),
       ]);
-      setClients(clientsRes?.items || clientsRes?.clients || clientsRes || []);
+      const clientList = clientsRes?.items || clientsRes?.clients || clientsRes || [];
+
+      // Enrich clients with partner_tag_id/partner_tag_name from individual profiles
+      const enriched = await Promise.all(
+        clientList.map(async (c: any) => {
+          try {
+            const profile = await getClient(c.id);
+            return { ...c, partner_tag_id: profile.partner_tag_id || null, partner_tag_name: profile.partner_tag_name || null };
+          } catch { return c; }
+        })
+      );
+      setClients(enriched);
 
       // Extract all filing rows from analytics filing_status_breakdown
       const rows: any[] = [];
@@ -139,8 +153,11 @@ function ClientsListPage() {
       setManagerExecsMap(execMap);
     }).catch(() => {});
     getActionItems().then((r) => setActionItems(r?.items || [])).catch(() => {});
+    if (routePrefix === '/partner') {
+      listTags('PARTNER').then((r) => setPartnerTags((r?.items || r || []).filter((t: any) => t.is_active !== false))).catch(() => {});
+    }
   }, []);
-  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus, filingStatus]);
+  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus, filingStatus, partnerTagFilter]);
 
   const onAssign = async (client_id: string, executive_id: string) => {
     try { await assignExecutive(client_id, executive_id); toast.success('Executive assigned'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
@@ -198,6 +215,8 @@ function ClientsListPage() {
         assigned_manager_name: clientInfo?.assigned_manager_name || null,
         assigned_executive_id: clientInfo?.assigned_executive_id || null,
         assigned_executive_name: clientInfo?.assigned_executive_name || fr.assigned_executive || null,
+        partner_tag_id: clientInfo?.partner_tag_id || null,
+        partner_tag_name: clientInfo?.partner_tag_name || null,
         current_state: fr.filing_status,
         last_updated: fr.last_updated || clientInfo?.last_updated,
         _fy: fr.financial_year,
@@ -282,6 +301,8 @@ function ClientsListPage() {
           assigned_manager_name: clientInfo?.assigned_manager_name || null,
           assigned_executive_id: clientInfo?.assigned_executive_id || null,
           assigned_executive_name: clientInfo?.assigned_executive_name || f.assigned_executive_name || null,
+          partner_tag_id: clientInfo?.partner_tag_id || null,
+          partner_tag_name: clientInfo?.partner_tag_name || null,
           current_state: 'COMPUTATION',
           is_tax_paid: false,
           last_updated: f.last_updated || f.updated_at,
@@ -495,6 +516,15 @@ function ClientsListPage() {
               {fyOptions.map((fy) => <SelectItem key={fy} value={fy}>{`FY ${fy}`}</SelectItem>)}
             </SelectContent>
           </Select>
+          {routePrefix === '/partner' && partnerTags.length > 0 && (
+            <Select value={partnerTagFilter || 'all'} onValueChange={(v) => setPartnerTagFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Partner Tag" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Partner Tags</SelectItem>
+                {partnerTags.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </Card>
 
@@ -538,6 +568,7 @@ function ClientsListPage() {
                     <SortHeader col="phone">Phone</SortHeader>
                     <SortHeader col="fy" className="w-[160px]">Financial Year</SortHeader>
                     <SortHeader col="account">Account</SortHeader>
+                    <SortHeader col="partner_tag">Partner</SortHeader>
                     {routePrefix === '/partner' && <SortHeader col="manager">Manager</SortHeader>}
                     {routePrefix === '/partner' && <SortHeader col="executive">Executive</SortHeader>}
                     <SortHeader col="state">Current State</SortHeader>
@@ -562,6 +593,18 @@ function ClientsListPage() {
                       {c._fy ? `FY ${c._fy}` : <span className="text-xs text-slate-400">—</span>}
                     </td>
                     <td className="px-5 py-3"><StatusBadge status={c.account_status} /></td>
+                    <td className="px-5 py-3">
+                      {routePrefix === '/partner' ? (
+                        <Select value={c.partner_tag_id || ''} onValueChange={async (v) => { try { await setClientPartnerTag(c.id, v); toast.success('Partner tag updated'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>
+                          <SelectTrigger className="h-7 w-[130px] text-xs border-slate-200">
+                            <SelectValue placeholder="—" />
+                          </SelectTrigger>
+                          <SelectContent>{partnerTags.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="text-xs text-slate-700">{c.partner_tag_name || <span className="text-slate-400">—</span>}</span>
+                      )}
+                    </td>
                     {routePrefix === '/partner' && (
                       <td className="px-5 py-3">
                         <Select value={clientManagerMap.get(c.id) || ''} onValueChange={(v) => onAssignManager(c.id, v)}>

@@ -222,15 +222,21 @@ export default function ClientProfilePage() {
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">No Fees Applicable</span>
             </div>
           </>
-        ) : clientProfile?.professional_fee && (
+        ) : (
           <>
             <hr className="my-5 border-slate-100" />
             <div className="flex items-center gap-2">
               <IndianRupee className="h-4 w-4 text-indigo-600" />
               <span className="text-xs uppercase text-slate-500 font-semibold">Professional Fee</span>
             </div>
-            <div className="text-lg font-bold text-slate-900 mt-1">₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')}</div>
-            <p className="text-xs text-slate-500 mt-0.5">Plus applicable taxes, if any</p>
+            {clientProfile?.professional_fee ? (
+              <>
+                <div className="text-lg font-bold text-slate-900 mt-1">₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')}</div>
+                <p className="text-xs text-slate-500 mt-0.5">Plus applicable taxes, if any</p>
+              </>
+            ) : (
+              <div className="text-sm font-medium text-amber-600 mt-1">To be decided</div>
+            )}
           </>
         )}
 

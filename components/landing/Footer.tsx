@@ -11,7 +11,6 @@ export default function Footer() {
           </div>
           <p className="mt-3 text-sm leading-relaxed">The end-to-end ITR filing management platform for modern CA practices in India.</p>
           <div className="mt-3 space-y-1 text-sm">
-            <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-indigo-400" /> 0712-2524309</p>
             <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-indigo-400" /> info@pgjco.com</p>
           </div>
         </div>
@@ -20,15 +19,15 @@ export default function Footer() {
           <div className="space-y-3 text-xs leading-relaxed">
             <div className="flex gap-2">
               <MapPin className="h-3.5 w-3.5 text-indigo-400 mt-0.5 shrink-0" />
-              <div><span className="font-semibold text-slate-300">NAGPUR</span><br />Dhanwate Chambers, Pt. Malviya Road, Sitabuldi, Nagpur, Maharashtra 440012, India</div>
+              <div><span className="font-semibold text-slate-300">NAGPUR</span><br />Dhanwate Chambers, Pt. Malviya Road, Sitabuldi, Nagpur, Maharashtra 440012, India<br /><span className="flex items-center gap-1 mt-1"><Phone className="h-3 w-3 text-indigo-400" /> 0712 2524309</span></div>
             </div>
             <div className="flex gap-2">
               <MapPin className="h-3.5 w-3.5 text-indigo-400 mt-0.5 shrink-0" />
-              <div><span className="font-semibold text-slate-300">MUMBAI</span><br />C7, Ultra Co-op. Hsg. Society, Lieutenant Dilip Gupte Marg, Mahim West, Mumbai - 400 016</div>
+              <div><span className="font-semibold text-slate-300">MUMBAI</span><br />C7, Ultra Co-op. Hsg. Society, Lieutenant Dilip Gupte Marg, Mahim West, Mumbai - 400 016<br /><span className="flex items-center gap-1 mt-1"><Phone className="h-3 w-3 text-indigo-400" /> +91 98235 24309</span></div>
             </div>
             <div className="flex gap-2">
               <MapPin className="h-3.5 w-3.5 text-indigo-400 mt-0.5 shrink-0" />
-              <div><span className="font-semibold text-slate-300">PUNE</span><br />Flat No.6, Janhavi Apartments, CTS No. 40/22, Shantabai Kalmadi Path, Bhonde Colony, Erandwane, Pune, Maharashtra 411004</div>
+              <div><span className="font-semibold text-slate-300">PUNE</span><br />Flat No.6, Janhavi Apartments, CTS No. 40/22, Shantabai Kalmadi Path, Bhonde Colony, Erandwane, Pune, Maharashtra 411004<br /><span className="flex items-center gap-1 mt-1"><Phone className="h-3 w-3 text-indigo-400" /> +91 92269 37929</span></div>
             </div>
           </div>
         </div>

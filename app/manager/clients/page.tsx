@@ -385,6 +385,7 @@ function ManagerClientsPage() {
                   <SortHeader col="phone">Phone</SortHeader>
                   <SortHeader col="fy">FY</SortHeader>
                   <SortHeader col="account">Account</SortHeader>
+                  <SortHeader col="partner_tag">Partner</SortHeader>
                   <SortHeader col="executive">Executive</SortHeader>
                   <SortHeader col="state">Current State</SortHeader>
                   {filingStatus === 'COMPUTATION' && <SortHeader col="comp_sub">Sub-Status</SortHeader>}
@@ -409,6 +410,7 @@ function ManagerClientsPage() {
                       {c.active_filing_year ? `FY ${c.active_filing_year}` : <span className="text-xs text-slate-400">—</span>}
                     </td>
                     <td className="px-5 py-3"><StatusBadge status={c.account_status} /></td>
+                    <td className="px-5 py-3 text-xs text-slate-700">{c.partner_tag_name || <span className="text-slate-400">—</span>}</td>
                     <td className="px-5 py-3">
                       <Select value={c.assigned_executive_id || ''} onValueChange={(v) => onAssign(c.id, v)}>
                         <SelectTrigger className={`h-8 w-[160px] text-xs ${c.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>

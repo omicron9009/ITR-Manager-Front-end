@@ -9,10 +9,10 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, toggleNoFees } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock, IndianRupee, Pencil } from 'lucide-react';
+import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock, IndianRupee, Pencil, Tag } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,7 @@ export default function ClientDetailPage() {
   const [managers, setManagers] = useState<any[]>([]);
   const [executives, setExecutives] = useState<any[]>([]);
   const [clientManagerId, setClientManagerId] = useState<string | null>(null);
+  const [partnerTags, setPartnerTags] = useState<any[]>([]);
 
   const [onboardingFields, setOnboardingFields] = useState<any[]>([]);
   const [onboardingValues, setOnboardingValues] = useState<Record<string, any>>({});
@@ -117,6 +118,11 @@ export default function ClientDetailPage() {
       getMyTeam().then((r) => setExecutives(r?.executives || [])).catch(() => {});
     }
   }, [isPartner, isManager, client_id]);
+
+  // Load partner tags
+  useEffect(() => {
+    if (isPartner) listTags('PARTNER').then((r) => setPartnerTags(r?.items || r || [])).catch(() => {});
+  }, [isPartner]);
 
   const onAssignManager = async (manager_id: string) => {
     try {
@@ -192,6 +198,28 @@ export default function ClientDetailPage() {
                 </Select>
               </div>
             )}
+            <div>
+              <div className="text-xs uppercase text-slate-400 font-semibold mb-2 flex items-center gap-1"><Tag className="h-3 w-3" /> Partner Tag</div>
+              {isPartner ? (
+                <div className="flex items-center gap-2">
+                  <Select value={client.partner_tag_id || ''} onValueChange={async (v) => { try { await setClientPartnerTag(client_id, v); toast.success('Partner tag updated'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>
+                    <SelectTrigger className="h-9 w-full text-sm border-slate-200">
+                      <SelectValue placeholder="Select Tag" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {partnerTags.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {client.partner_tag_id && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={async () => { try { await removeClientPartnerTag(client_id); toast.success('Partner tag removed'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm font-medium text-slate-800">{client.partner_tag_name || 'None'}</div>
+              )}
+            </div>
             <div>
               <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Executive</div>
               {(isPartner || isManager) ? (
@@ -349,15 +377,20 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                   <TabsTrigger value="computations">Computations</TabsTrigger>
                   <TabsTrigger value="filed-docs">Filed Docs</TabsTrigger>
                 </TabsList>
-                {status === 'PAYMENT' && !isExecutive && !f.no_fees_applicable && (
-                  <Button
-                    size="sm"
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                    onClick={async () => { try { await markPayment(f.id); toast.success('Payment received — filing completed!'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } }}
-                  >
-                    Mark Payment Received
-                  </Button>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {['COMPUTATION', 'FILING', 'PAYMENT'].includes(status) && !isExecutive && !f.no_fees_applicable && (
+                    <SetFilingFeeButton filing={f} onUpdated={load} />
+                  )}
+                  {status === 'PAYMENT' && !isExecutive && !f.no_fees_applicable && (
+                    <Button
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                      onClick={async () => { try { await markPayment(f.id); toast.success('Payment received — filing completed!'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } }}
+                    >
+                      Mark Payment Received
+                    </Button>
+                  )}
+                </div>
               </div>
               <TabsContent value="docs" className="mt-3">
                 <div className="space-y-2">
@@ -1583,6 +1616,78 @@ function ProfessionalFeeSection({ clientId, currentFee, noFeesApplicable, onUpda
   );
 }
 
+function SetFilingFeeButton({ filing, onUpdated }: { filing: any; onUpdated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [fee, setFee] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const doSave = async () => {
+    if (!fee || Number(fee) <= 0) return;
+    setSaving(true);
+    try {
+      await updateFilingFee(filing.id, Number(fee));
+      toast.success('Professional fee set. Revised engagement letter emailed to client.');
+      setOpen(false);
+      setFee('');
+      onUpdated();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Failed to set fee');
+    }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <>
+      <Button
+        size="sm"
+        className="bg-indigo-600 hover:bg-indigo-700"
+        onClick={() => { setOpen(true); setFee(filing.professional_fee ? String(filing.professional_fee) : ''); }}
+      >
+        <IndianRupee className="h-4 w-4 mr-1" />
+        {filing.professional_fee ? 'Update Fee & Send Letter' : 'Set Professional Fee & Send Revised Letter'}
+      </Button>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setFee(''); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <IndianRupee className="h-5 w-5 text-indigo-600" /> Set Professional Fee
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">Set the professional fee for this filing. A revised engagement letter with this fee will be emailed to the client.</p>
+            {filing.professional_fee && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">Current Fee</div>
+                <div className="text-sm font-semibold text-slate-900">₹{Number(filing.professional_fee).toLocaleString('en-IN')}</div>
+              </div>
+            )}
+            <div>
+              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">New Fee (₹) <span className="text-rose-500">*</span></label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+                <Input type="number" min="1" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="5000" className="pl-7" />
+              </div>
+            </div>
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+              <p className="text-xs text-blue-700">The revised engagement letter with the specified fee will be generated and emailed to the client automatically.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!fee || Number(fee) <= 0 || saving}
+              className="bg-indigo-600 hover:bg-indigo-700"
+              onClick={doSave}
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Set Fee & Send Letter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => void }) {
   const pathname = usePathname();
   const isPartner = pathname.startsWith('/partner');
@@ -1598,22 +1703,16 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
     setSaving(true);
     try {
       await updateFilingFee(filing.id, Number(fee));
-      toast.success('Fee change proposed — awaiting client approval');
+      toast.success('Professional fee set. Revised engagement letter emailed to client.');
       setEditing(false);
       setFee('');
       onUpdated();
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
-      if (e?.response?.status === 409) {
-        toast.error('A fee change is already pending client approval');
-      } else {
-        toast.error(typeof detail === 'string' ? detail : 'Failed');
-      }
+      toast.error(typeof detail === 'string' ? detail : 'Failed');
     }
     finally { setSaving(false); }
   };
-
-  const hasPending = !!filing.proposed_fee;
 
   return (
     <div className="mt-4 pt-3 border-t border-slate-100">
@@ -1622,7 +1721,7 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
           <IndianRupee className="h-4 w-4 text-slate-400" />
           <span className="text-xs font-semibold text-slate-500 uppercase">Filing Fee</span>
         </div>
-        {!editing && !hasPending && (
+        {!editing && (
           <Button size="sm" variant="ghost" className="h-6 px-2 text-indigo-600" onClick={() => { setEditing(true); setFee(filing.professional_fee ? String(filing.professional_fee) : ''); }}>
             <Pencil className="h-3 w-3 mr-1" /> {filing.professional_fee ? 'Change' : 'Set'}
           </Button>
@@ -1631,16 +1730,8 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
       {!editing && filing.professional_fee && (
         <div className="text-sm font-semibold text-slate-900 mt-1 ml-6">₹{Number(filing.professional_fee).toLocaleString('en-IN')}</div>
       )}
-      {!editing && !filing.professional_fee && !hasPending && (
-        <div className="text-xs text-amber-600 mt-1 ml-6">Not set for this filing</div>
-      )}
-      {/* Pending fee proposal indicator */}
-      {hasPending && !editing && (
-        <div className="mt-2 ml-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
-          <div className="text-xs font-semibold text-amber-800">Proposed: ₹{Number(filing.proposed_fee).toLocaleString('en-IN')}</div>
-          <div className="text-[10px] text-amber-600 mt-0.5">Awaiting client approval</div>
-          {filing.fee_proposed_at && <div className="text-[10px] text-amber-500">Proposed {new Date(filing.fee_proposed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
-        </div>
+      {!editing && !filing.professional_fee && (
+        <div className="text-xs text-amber-600 mt-1 ml-6">To be decided</div>
       )}
       {editing && (
         <div className="flex items-center gap-2 mt-2">
@@ -1654,7 +1745,7 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
           <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditing(false)}><X className="h-3 w-3" /></Button>
         </div>
       )}
-      {editing && <p className="text-[10px] text-slate-400 mt-1 ml-6">Fee change requires client approval before taking effect.</p>}
+      {editing && <p className="text-[10px] text-slate-400 mt-1 ml-6">Fee will be applied immediately and a revised engagement letter will be emailed to the client.</p>}
     </div>
   );
 }

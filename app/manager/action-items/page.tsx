@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { getActionItems } from '@/lib/api';
-import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { getActionItems, getClient } from '@/lib/api';
+import { CheckCircle2, ArrowRight, Users, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PRIORITY_COLORS = {
@@ -39,6 +39,7 @@ export default function ManagerActionItemsPage() {
   const [countsByType, setCountsByType] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
+  const [clientMap, setClientMap] = useState<Map<string, any>>(new Map());
 
   const load = async () => {
     setLoading(true);
@@ -46,8 +47,16 @@ export default function ManagerActionItemsPage() {
       const params: any = {};
       if (typeFilter) params.type = typeFilter;
       const res = await getActionItems(params);
-      setItems((res?.items || []).reverse());
+      const actionItems = (res?.items || []).reverse();
+      setItems(actionItems);
       setCountsByType(res?.counts_by_type || {});
+
+      const uniqueClientIds = [...new Set(actionItems.map((i: any) => i.related_client_id).filter(Boolean))] as string[];
+      const map = new Map<string, any>();
+      await Promise.all(uniqueClientIds.map(async (cid) => {
+        try { const profile = await getClient(cid); map.set(cid, profile); } catch {}
+      }));
+      setClientMap(map);
     } catch {
       toast.error('Failed to load action items');
       setItems([]);
@@ -95,29 +104,42 @@ export default function ManagerActionItemsPage() {
           <EmptyState icon={CheckCircle2} title="All caught up!" subtitle="No pending action items right now." />
         ) : (
           <div className="divide-y divide-slate-100">
-            {items.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50/60 transition-colors">
-                <div className={`flex-shrink-0 w-2 h-2 rounded-full ${
+            {items.map((item, idx) => {
+              const client = clientMap.get(item.related_client_id);
+              return (
+              <div key={idx} className="flex items-start gap-4 px-5 py-4 hover:bg-slate-50/60 transition-colors">
+                <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
                   item.priority === 'HIGH' ? 'bg-red-500' : item.priority === 'MEDIUM' ? 'bg-amber-500' : 'bg-slate-400'
                 }`} />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  {client && (
+                    <div className="text-base font-bold text-slate-900 mb-1">{client.full_name || client.name}</div>
+                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ring-1 ring-inset ${PRIORITY_COLORS[item.priority] || PRIORITY_COLORS.LOW}`}>
                       {item.priority}
                     </span>
-                    <span className="text-xs text-slate-400 font-medium">{TYPE_LABELS[item.type] || item.type}</span>
+                    <span className="text-xs text-slate-500 font-medium">{TYPE_LABELS[item.type] || item.type}</span>
+                    {item.financial_year && <span className="text-[10px] text-slate-400">FY {item.financial_year}</span>}
                   </div>
-                  <p className="font-medium text-slate-900 mt-1 text-sm">{item.title}</p>
+                  <p className="text-sm text-slate-700 mt-1">{item.title}</p>
                   {item.description && <p className="text-xs text-slate-500 mt-0.5 truncate">{item.description}</p>}
-                  {item.financial_year && <span className="text-[10px] text-slate-400 mt-0.5">FY {item.financial_year}</span>}
+                  {client && (
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      {client.assigned_manager_name && <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold"><Users className="h-3.5 w-3.5" /> {client.assigned_manager_name}</span>}
+                      {client.assigned_executive_name && <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold"><Users className="h-3.5 w-3.5" /> {client.assigned_executive_name}</span>}
+                      {client.partner_tag_name && <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold"><Tag className="h-3.5 w-3.5" /> {client.partner_tag_name}</span>}
+                    </div>
+                  )}
                 </div>
                 <Link href={getActionUrl(item)}>
-                  <Button size="sm" variant="outline" className="text-xs gap-1">
+                  <Button size="sm" variant="outline" className="text-xs gap-1 mt-1">
                     Go <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
