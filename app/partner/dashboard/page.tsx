@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
@@ -73,11 +75,11 @@ export default function PartnerDashboardPage() {
     setFeeForClient(client);
   };
 
-  const onActivateWithFee = async (fee: number) => {
+  const onActivateWithFee = async (fee: number | undefined, noFeesApplicable: boolean) => {
     if (!feeForClient) return;
     setActing(true);
     try {
-      await activateClient(feeForClient.id, fee);
+      await activateClient(feeForClient.id, noFeesApplicable ? undefined : fee, noFeesApplicable || undefined);
       toast.success('Client activated! Now assign a manager.');
       setJustActivated(feeForClient);
       setFeeForClient(null);
@@ -418,10 +420,11 @@ function AssignAfterActivationDialog({ client, managers, executives, acting, onA
 function FeeInputDialog({ client, acting, onSubmit, onCancel }: {
   client: any;
   acting: boolean;
-  onSubmit: (fee: number) => void;
+  onSubmit: (fee: number | undefined, noFeesApplicable: boolean) => void;
   onCancel: () => void;
 }) {
   const [fee, setFee] = useState('');
+  const [noFees, setNoFees] = useState(false);
 
   if (!client) return null;
 
@@ -438,28 +441,41 @@ function FeeInputDialog({ client, acting, onSubmit, onCancel }: {
             <div className="text-sm font-semibold text-slate-900">{client.full_name || client.name}</div>
             <div className="text-xs text-slate-500">{client.email}</div>
           </div>
-          <p className="text-sm text-slate-600">Enter the professional fee for this client. This will be included in their engagement letter.</p>
-          <div>
-            <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Fee (₹) <span className="text-rose-500">*</span></label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
-              <Input
-                type="number"
-                min="1"
-                value={fee}
-                onChange={(e) => setFee(e.target.value)}
-                placeholder="5000"
-                className="pl-7"
-              />
-            </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox id="no-fees" checked={noFees} onCheckedChange={(checked) => setNoFees(checked === true)} />
+            <Label htmlFor="no-fees" className="text-sm font-medium text-slate-700 cursor-pointer">No Fees Applicable</Label>
           </div>
+          {noFees && (
+            <div className="rounded-lg border border-teal-200 bg-teal-50 p-3">
+              <p className="text-xs text-teal-700">This client will not be charged any professional fee. The engagement letter will not include fee/payment sections.</p>
+            </div>
+          )}
+          {!noFees && (
+            <>
+              <p className="text-sm text-slate-600">Enter the professional fee for this client. This will be included in their engagement letter.</p>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Fee (₹) <span className="text-rose-500">*</span></label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={fee}
+                    onChange={(e) => setFee(e.target.value)}
+                    placeholder="5000"
+                    className="pl-7"
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
           <Button
-            disabled={!fee || Number(fee) <= 0 || acting}
+            disabled={(!noFees && (!fee || Number(fee) <= 0)) || acting}
             className="bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => onSubmit(Number(fee))}
+            onClick={() => onSubmit(noFees ? undefined : Number(fee), noFees)}
           >
             {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Activate Client
           </Button>

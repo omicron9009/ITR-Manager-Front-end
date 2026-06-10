@@ -575,6 +575,67 @@
         }
       }
     },
+    "/api/v1/clients/{client_id}/toggle-no-fees": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Toggle No Fees",
+        "description": "Toggle no_fees_applicable for a client. Partner only.",
+        "operationId": "toggle_no_fees_api_v1_clients__client_id__toggle_no_fees_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Client Id"
+            }
+          },
+          {
+            "name": "no_fees",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "description": "Set to true to mark client as no-fees-applicable",
+              "title": "No Fees"
+            },
+            "description": "Set to true to mark client as no-fees-applicable"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Toggle No Fees Api V1 Clients  Client Id  Toggle No Fees Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clients": {
       "get": {
         "tags": [
@@ -7453,6 +7514,12 @@
             ],
             "title": "Professional Fee",
             "description": "Professional fee in rupees (set by Partner)"
+          },
+          "no_fees_applicable": {
+            "type": "boolean",
+            "title": "No Fees Applicable",
+            "description": "If true, no professional fees will be charged to this client",
+            "default": false
           }
         },
         "type": "object",
@@ -8140,6 +8207,11 @@
               }
             ],
             "title": "Professional Fee"
+          },
+          "no_fees_applicable": {
+            "type": "boolean",
+            "title": "No Fees Applicable",
+            "default": false
           },
           "created_at": {
             "type": "string",
@@ -11161,6 +11233,11 @@
               }
             ],
             "title": "Professional Fee"
+          },
+          "no_fees_applicable": {
+            "type": "boolean",
+            "title": "No Fees Applicable",
+            "default": false
           },
           "proposed_fee": {
             "anyOf": [

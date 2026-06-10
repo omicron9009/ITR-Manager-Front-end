@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, toggleNoFees } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock, IndianRupee, Pencil } from 'lucide-react';
@@ -166,9 +166,15 @@ export default function ClientDetailPage() {
             <div className="flex items-center gap-2 text-slate-600"><Mail className="h-4 w-4" /> {client.email}</div>
             {client.phone_number && <div className="flex items-center gap-2 text-slate-600"><Phone className="h-4 w-4" /> {client.phone_number}</div>}
           </div>
+          {/* No Fees Badge */}
+          {client.no_fees_applicable && (
+            <div className="mt-3">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">No Fees Applicable</span>
+            </div>
+          )}
           {/* Professional Fee (Partner only) */}
           {isPartner && (
-            <ProfessionalFeeSection clientId={client_id} currentFee={client.professional_fee} onUpdated={load} />
+            <ProfessionalFeeSection clientId={client_id} currentFee={client.professional_fee} noFeesApplicable={client.no_fees_applicable} onUpdated={load} />
           )}
           <div className="mt-5 pt-5 border-t border-slate-200 space-y-4">
             {isPartner && (
@@ -343,7 +349,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                   <TabsTrigger value="computations">Computations</TabsTrigger>
                   <TabsTrigger value="filed-docs">Filed Docs</TabsTrigger>
                 </TabsList>
-                {status === 'PAYMENT' && !isExecutive && (
+                {status === 'PAYMENT' && !isExecutive && !f.no_fees_applicable && (
                   <Button
                     size="sm"
                     className="bg-emerald-600 hover:bg-emerald-700"
@@ -438,7 +444,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                 <InternalWorkingsSection filingId={f.id} filingStatus={status} />
               </TabsContent>
               <TabsContent value="filed-docs" className="mt-3">
-                <FiledDocsPanel filingId={f.id} filingStatus={status} onMoveToPayment={status === 'FILING' ? async () => { try { await transitionFiling(f.id, { to_status: 'PAYMENT' }); toast.success('Moved to Payment'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } } : undefined} />
+                <FiledDocsPanel filingId={f.id} filingStatus={status} noFeesApplicable={f.no_fees_applicable} onMoveToPayment={status === 'FILING' ? async () => { try { await transitionFiling(f.id, { to_status: 'PAYMENT' }); toast.success('Moved to Payment'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } } : undefined} />
               </TabsContent>
             </Tabs>
 
@@ -556,7 +562,7 @@ function StateActions({ filing, onChange, isExecutive = false }: { filing: any; 
       tooltip: !canMoveToFiling ? 'Client must confirm tax payment before transitioning to Filing' : undefined,
     });
   }
-  if (state === 'PAYMENT' && !isExecutive) items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
+  if (state === 'PAYMENT' && !isExecutive && !filing.no_fees_applicable) items.push({ label: 'Mark Payment Received', target: 'COMPLETED', cls: 'bg-emerald-600 hover:bg-emerald-700', action: doMarkPayment });
 
   return (
     <div className="space-y-3">
@@ -910,11 +916,16 @@ const COMPLETED_DOC_TYPES = [
   { key: 'FINANCIAL_STATEMENT', label: 'Financial Statement', description: 'Financial statement document (optional)', required: false },
 ];
 
-function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId: string; filingStatus: string; onMoveToPayment?: () => Promise<void> }) {
+function FiledDocsPanel({ filingId, filingStatus, noFeesApplicable, onMoveToPayment }: { filingId: string; filingStatus: string; noFeesApplicable?: boolean; onMoveToPayment?: () => Promise<void> }) {
   const pathname = usePathname();
   const isPartner = pathname.startsWith('/partner');
   const isManager = pathname.startsWith('/manager');
   const isExecutive = pathname.startsWith('/executive');
+
+  // Filter out INVOICE for no-fee filings
+  const applicableDocTypes = noFeesApplicable
+    ? COMPLETED_DOC_TYPES.filter(d => d.key !== 'INVOICE')
+    : COMPLETED_DOC_TYPES;
 
   const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -1000,7 +1011,7 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
   const getUploadedDoc = (docType: string) => docs.find((d: any) => d.doc_type === docType);
 
   // Gate Move to Payment: all required docs must be PARTNER_APPROVED
-  const allRequiredApproved = COMPLETED_DOC_TYPES.filter(d => d.required).every(dt => {
+  const allRequiredApproved = applicableDocTypes.filter(d => d.required).every(dt => {
     const doc = getUploadedDoc(dt.key);
     return doc && doc.status === 'PARTNER_APPROVED';
   });
@@ -1028,7 +1039,7 @@ function FiledDocsPanel({ filingId, filingStatus, onMoveToPayment }: { filingId:
         </div>
       ) : (
         <div className="space-y-3">
-          {COMPLETED_DOC_TYPES.map((dt) => {
+          {applicableDocTypes.map((dt) => {
             const uploaded = getUploadedDoc(dt.key);
             const isUploading = uploading === dt.key;
 
@@ -1496,11 +1507,12 @@ function OnboardingFileDisplay({ fileId, fileName }: { fileId: any; fileName?: s
   );
 }
 
-function ProfessionalFeeSection({ clientId, currentFee, onUpdated }: { clientId: string; currentFee?: string | number | null; onUpdated: () => void }) {
+function ProfessionalFeeSection({ clientId, currentFee, noFeesApplicable, onUpdated }: { clientId: string; currentFee?: string | number | null; noFeesApplicable?: boolean; onUpdated: () => void }) {
   const [editing, setEditing] = useState(false);
   const [fee, setFee] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedFee, setSavedFee] = useState<string | number | null>(null);
+  const [togglingNoFees, setTogglingNoFees] = useState(false);
 
   const displayFee = savedFee || currentFee;
 
@@ -1518,17 +1530,37 @@ function ProfessionalFeeSection({ clientId, currentFee, onUpdated }: { clientId:
     finally { setSaving(false); }
   };
 
+  const doToggleNoFees = async () => {
+    setTogglingNoFees(true);
+    try {
+      await toggleNoFees(clientId, !noFeesApplicable);
+      toast.success(noFeesApplicable ? 'No-fees flag removed' : 'Marked as no fees applicable');
+      onUpdated();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to toggle no-fees'); }
+    finally { setTogglingNoFees(false); }
+  };
+
   return (
     <div className="mt-4 pt-4 border-t border-slate-200">
       <div className="flex items-center justify-between">
         <div className="text-xs uppercase text-slate-400 font-semibold">Professional Fee</div>
-        {!editing && (
-          <Button size="sm" variant="ghost" className="h-6 px-2 text-indigo-600" onClick={() => { setEditing(true); setFee(displayFee ? String(displayFee) : ''); }}>
-            <Pencil className="h-3 w-3 mr-1" /> {displayFee ? 'Edit' : 'Set'}
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" className={`h-6 px-2 text-xs ${noFeesApplicable ? 'text-teal-700' : 'text-slate-500'}`} onClick={doToggleNoFees} disabled={togglingNoFees}>
+            {togglingNoFees ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+            {noFeesApplicable ? 'Remove No-Fee' : 'Mark No-Fee'}
           </Button>
-        )}
+          {!editing && !noFeesApplicable && (
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-indigo-600" onClick={() => { setEditing(true); setFee(displayFee ? String(displayFee) : ''); }}>
+              <Pencil className="h-3 w-3 mr-1" /> {displayFee ? 'Edit' : 'Set'}
+            </Button>
+          )}
+        </div>
       </div>
-      {editing ? (
+      {noFeesApplicable ? (
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-sm font-medium text-teal-700">No fees applicable for this client</span>
+        </div>
+      ) : editing ? (
         <div className="flex items-center gap-2 mt-2">
           <div className="relative flex-1">
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
@@ -1559,6 +1591,7 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
   const [saving, setSaving] = useState(false);
 
   if (!isPartner) return null;
+  if (filing.no_fees_applicable) return null;
 
   const doSave = async () => {
     if (!fee || Number(fee) <= 0) return;

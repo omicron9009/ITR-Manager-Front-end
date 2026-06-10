@@ -196,7 +196,14 @@ export default function ClientProfilePage() {
         )}
 
         {/* Professional Fee */}
-        {clientProfile?.professional_fee && (
+        {clientProfile?.no_fees_applicable ? (
+          <>
+            <hr className="my-5 border-slate-100" />
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">No Fees Applicable</span>
+            </div>
+          </>
+        ) : clientProfile?.professional_fee && (
           <>
             <hr className="my-5 border-slate-100" />
             <div className="flex items-center gap-2">

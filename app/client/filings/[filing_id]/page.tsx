@@ -291,7 +291,15 @@ export default function FilingDetailPage() {
       </div>
 
       {/* Professional Fee + Engagement Info */}
-      {filing.professional_fee && (
+      {filing.no_fees_applicable ? (
+        <Card className="rounded-xl p-4 flex items-center gap-3 border-teal-100 bg-teal-50/40">
+          <CheckCircle2 className="h-5 w-5 text-teal-600" />
+          <div>
+            <div className="text-sm font-semibold text-teal-800">No Fees Applicable</div>
+            {filing.engagement_accepted_at && <div className="text-xs text-teal-600">Engagement accepted on {new Date(filing.engagement_accepted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+          </div>
+        </Card>
+      ) : filing.professional_fee && (
         <Card className="rounded-xl p-4 flex items-center gap-3 border-indigo-100 bg-indigo-50/40">
           <IndianRupee className="h-5 w-5 text-indigo-600" />
           <div>
@@ -372,8 +380,8 @@ export default function FilingDetailPage() {
         )}
       </Card>
 
-      {/* Payment QR - shown in PAYMENT state */}
-      {state === 'PAYMENT' && (
+      {/* Payment QR - shown in PAYMENT state (not for no-fee filings) */}
+      {state === 'PAYMENT' && !filing.no_fees_applicable && (
         <Card className="rounded-xl p-5 border-amber-200 bg-amber-50/30">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">

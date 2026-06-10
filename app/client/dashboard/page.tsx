@@ -254,7 +254,8 @@ export default function ClientDashboard() {
               <div className="space-y-3 border-t border-slate-100 pt-4">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2"><FileText className="h-4 w-4 text-indigo-600" /> Engagement Letter</h3>
 
-                {/* Highlighted Professional Fee Box */}
+                {/* Highlighted Professional Fee Box - only shown when fee is set and not a no-fee client */}
+                {!clientProfile?.no_fees_applicable && clientProfile?.professional_fee && (
                 <div className="rounded-xl border-2 border-indigo-300 bg-gradient-to-r from-indigo-50 to-indigo-100 p-4">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-indigo-200 flex items-center justify-center">
@@ -262,11 +263,27 @@ export default function ClientDashboard() {
                     </div>
                     <div>
                       <div className="text-[10px] uppercase font-bold text-indigo-500 tracking-wide">Professional Fee for FY {fy}</div>
-                      <div className="text-lg font-bold text-indigo-900">₹{clientProfile?.professional_fee ? Number(clientProfile.professional_fee).toLocaleString('en-IN') : '—'}</div>
+                      <div className="text-lg font-bold text-indigo-900">₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')}</div>
                       <div className="text-xs text-indigo-600">Plus applicable taxes, if any</div>
                     </div>
                   </div>
                 </div>
+                )}
+
+                {clientProfile?.no_fees_applicable && (
+                <div className="rounded-xl border-2 border-teal-200 bg-teal-50 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-teal-200 flex items-center justify-center">
+                      <CheckCircle2 className="h-5 w-5 text-teal-700" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-teal-500 tracking-wide">Fee Status for FY {fy}</div>
+                      <div className="text-sm font-bold text-teal-800">No Fees Applicable</div>
+                      <div className="text-xs text-teal-600">No professional fees will be charged for this filing</div>
+                    </div>
+                  </div>
+                </div>
+                )}
 
                 <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3 text-xs text-slate-600 leading-relaxed bg-slate-50">
                   <p className="font-semibold text-slate-800 mb-2">Engagement Letter for Income Tax Return Filing Services</p>
@@ -279,11 +296,15 @@ export default function ClientDashboard() {
                   <p className="mb-2">The Firm shall maintain confidentiality of all information and documents shared by the Client. Client data shall be stored securely within the Firm&rsquo;s controlled internal infrastructure.</p>
                   <p className="font-semibold text-slate-700 mb-1">4. Limitation of Responsibility</p>
                   <p className="mb-2">The Firm shall not be responsible for errors, penalties, or consequences arising from incorrect information provided by the Client, or delays caused by technical issues or events beyond reasonable control.</p>
-                  <p className="font-semibold text-slate-700 mb-1">5. Professional Fees</p>
-                  <p className="mb-2 font-semibold text-indigo-800 bg-indigo-50 rounded px-2 py-1 border border-indigo-200">The professional fee for the above services shall be ₹{clientProfile?.professional_fee ? Number(clientProfile.professional_fee).toLocaleString('en-IN') : '___'} plus applicable taxes, if any.</p>
-                  <p className="font-semibold text-slate-700 mb-1">6. Payment Terms</p>
-                  <p className="mb-2">Fees shall be payable upon acceptance of this Engagement Letter and/or prior to filing of the return unless otherwise agreed.</p>
-                  <p className="font-semibold text-slate-700 mb-1">7. Acceptance &amp; Consent</p>
+                  {!clientProfile?.no_fees_applicable && clientProfile?.professional_fee && (
+                    <>
+                      <p className="font-semibold text-slate-700 mb-1">5. Professional Fees</p>
+                      <p className="mb-2 font-semibold text-indigo-800 bg-indigo-50 rounded px-2 py-1 border border-indigo-200">The professional fee for the above services shall be ₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')} plus applicable taxes, if any.</p>
+                      <p className="font-semibold text-slate-700 mb-1">6. Payment Terms</p>
+                      <p className="mb-2">Fees shall be payable upon acceptance of this Engagement Letter and/or prior to filing of the return unless otherwise agreed.</p>
+                    </>
+                  )}
+                  <p className="font-semibold text-slate-700 mb-1">{(!clientProfile?.no_fees_applicable && clientProfile?.professional_fee) ? '7' : '5'}. Acceptance &amp; Consent</p>
                   <p>By proceeding, the Client confirms that the information provided is true and complete, consents to data processing for the agreed services, and agrees to the terms of this Engagement Letter.</p>
                 </div>
 
@@ -293,7 +314,8 @@ export default function ClientDashboard() {
                     <input type="checkbox" checked={engagementAccepted} onChange={(e) => setEngagementAccepted(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                     <div>
                       <span className="text-xs font-semibold text-slate-800 leading-snug block">I have read and understood the Engagement Letter and agree to appoint the Firm for ITR filing services for FY {fy}.</span>
-                      {engagementAccepted && <span className="text-[10px] text-emerald-700 font-medium mt-1 block">✓ Agreement accepted — you will be charged ₹{clientProfile?.professional_fee ? Number(clientProfile.professional_fee).toLocaleString('en-IN') : '—'} for this filing.</span>}
+                      {engagementAccepted && clientProfile?.professional_fee && !clientProfile?.no_fees_applicable && <span className="text-[10px] text-emerald-700 font-medium mt-1 block">✓ Agreement accepted — you will be charged ₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')} for this filing.</span>}
+                      {engagementAccepted && (clientProfile?.no_fees_applicable || !clientProfile?.professional_fee) && <span className="text-[10px] text-emerald-700 font-medium mt-1 block">✓ Agreement accepted — no fees applicable for this filing.</span>}
                     </div>
                   </label>
                 </div>
