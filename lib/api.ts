@@ -52,7 +52,14 @@ api.interceptors.response.use(
         }
       }
     } else if (status === 403) {
-      toast.error('Access denied');
+      // Surface the backend's actual reason instead of a generic message.
+      // Skip toast when caller explicitly opts out via config.suppressGlobal403Toast.
+      const cfg: any = err.config || {};
+      if (!cfg.suppressGlobal403Toast) {
+        const detail = err.response?.data?.detail;
+        const msg = (typeof detail === 'string' && detail) || 'Access denied';
+        toast.error(msg);
+      }
     }
     return Promise.reject(err);
   }
@@ -115,6 +122,8 @@ export const initiateFiling = (data: any) => api.post('/api/v1/filings/initiate'
 export const listFilings = (params: any = {}) => api.get('/api/v1/filings', { params }).then((r) => r.data);
 export const getFiling = (id: string) => api.get(`/api/v1/filings/${id}`).then((r) => r.data);
 export const transitionFiling = (id: string, data: any) => api.post(`/api/v1/filings/${id}/transition`, data).then((r) => r.data);
+export const confirmIncomeHeads = (filing_id: string, data: Record<string, any>) =>
+  api.post(`/api/v1/filings/${filing_id}/confirm-income-heads`, data, { suppressGlobal403Toast: true } as any).then((r) => r.data);
 
 export const submitDocs = (id: string) => api.post(`/api/v1/filings/${id}/submit-documents`).then((r) => r.data);
 export const markPayment = (id: string) => api.post(`/api/v1/filings/${id}/mark-payment`).then((r) => r.data);
@@ -123,9 +132,25 @@ export const myTracking = () => api.get('/api/v1/filings/my/tracking').then((r) 
 export const getFilingHistory = (id: string) => api.get(`/api/v1/filings/${id}/history`).then((r) => r.data);
 
 // ---------- DOCUMENTS ----------
-export const listDocTypes = (includeInactive = false) => api.get('/api/v1/documents/types', { params: { include_inactive: includeInactive } }).then((r) => r.data);
+export const listDocTypes = (
+  opts: boolean | { includeInactive?: boolean; income_head?: string; sub_category?: 'BASE' | 'INCREMENTAL' } = false
+) => {
+  const o = typeof opts === 'boolean' ? { includeInactive: opts } : opts;
+  const params: Record<string, any> = { include_inactive: !!o.includeInactive };
+  if (o.income_head) params.income_head = o.income_head;
+  if (o.sub_category) params.sub_category = o.sub_category;
+  return api.get('/api/v1/documents/types', { params }).then((r) => r.data);
+};
 export const createDocType = (data: any) => api.post('/api/v1/documents/types', data).then((r) => r.data);
 export const updateDocType = (id: string, data: any) => api.put(`/api/v1/documents/types/${id}`, data).then((r) => r.data);
+export const deleteDocType = (id: string) => api.delete(`/api/v1/documents/types/${id}`).then((r) => r.data);
+export const getIncomeHeadsCatalog = () => api.get('/api/v1/documents/income-heads/catalog').then((r) => r.data);
+export const listDocTypesByIncomeHeads = (heads: string[], sub_category?: 'BASE' | 'INCREMENTAL') => {
+  const params = new URLSearchParams();
+  heads.forEach((h) => params.append('heads', h));
+  if (sub_category) params.append('sub_category', sub_category);
+  return api.get(`/api/v1/documents/types/by-income-heads?${params.toString()}`).then((r) => r.data);
+};
 export const assignDocs = (filing_id: string, document_type_ids: string[]) =>
   api.post(`/api/v1/documents/filings/${filing_id}/assign`, { document_type_ids }).then((r) => r.data);
 export const filingDocs = (filing_id: string) => api.get(`/api/v1/documents/filings/${filing_id}`).then((r) => r.data);
@@ -137,6 +162,28 @@ export const deleteDoc = (document_id: string) => api.delete(`/api/v1/documents/
 export const approveDoc = (document_ids: string[]) => api.post('/api/v1/documents/approve', { document_ids }).then((r) => r.data);
 export const rejectDoc = (rejections: { document_id: string; reason: string }[]) =>
   api.post('/api/v1/documents/reject', { rejections }).then((r) => r.data);
+
+// ---------- TEXT FIELDS ----------
+export const listTextFieldTypes = (includeInactive: boolean = false) =>
+  api.get('/api/v1/text-fields/types', { params: { include_inactive: includeInactive } }).then((r) => r.data);
+export const createTextFieldType = (data: { name: string; description?: string | null; max_length?: number; is_active?: boolean; display_order?: number }) =>
+  api.post('/api/v1/text-fields/types', data).then((r) => r.data);
+export const updateTextFieldType = (type_id: string, data: any) =>
+  api.put(`/api/v1/text-fields/types/${type_id}`, data).then((r) => r.data);
+export const deleteTextFieldType = (type_id: string) =>
+  api.delete(`/api/v1/text-fields/types/${type_id}`).then((r) => r.data);
+export const assignTextFields = (filing_id: string, field_type_ids: string[]) =>
+  api.post(`/api/v1/text-fields/filings/${filing_id}/assign`, { field_type_ids }).then((r) => r.data);
+export const listFilingTextFields = (filing_id: string) =>
+  api.get(`/api/v1/text-fields/filings/${filing_id}`).then((r) => r.data);
+export const updateTextFieldValue = (field_id: string, value: string) =>
+  api.put(`/api/v1/text-fields/${field_id}`, { value }).then((r) => r.data);
+export const deleteTextField = (field_id: string) =>
+  api.delete(`/api/v1/text-fields/${field_id}`).then((r) => r.data);
+export const approveTextFields = (field_ids: string[]) =>
+  api.post('/api/v1/text-fields/approve', { field_ids }).then((r) => r.data);
+export const rejectTextFields = (rejections: { field_id: string; reason: string }[]) =>
+  api.post('/api/v1/text-fields/reject', { rejections }).then((r) => r.data);
 
 // ---------- COMPUTATIONS ----------
 export const compUploadUrl = (data: any) => api.post('/api/v1/computations/upload-url', data).then((r) => r.data);

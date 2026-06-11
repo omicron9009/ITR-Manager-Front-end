@@ -12,7 +12,7 @@ import { me, getClient, getOnboardingForm, submitOnboardingForm, onboardingUploa
 import { getUser } from '@/lib/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Loader2, Upload, Eye, FileText, CheckCircle2, Lock, Mail, IndianRupee, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle, Pencil } from 'lucide-react';
+import { Loader2, Upload, Eye, EyeOff, FileText, CheckCircle2, Lock, Mail, IndianRupee, Briefcase, Home, TrendingUp, Building2, Coins, HelpCircle, Pencil } from 'lucide-react';
 
 const REFERRAL_SOURCE_LABELS: Record<string, string> = {
   WEBSITE: 'Website',
@@ -47,6 +47,9 @@ export default function ClientProfilePage() {
   const [incomeHeads, setIncomeHeads] = useState<Record<string, boolean>>({});
   const [anyOtherText, setAnyOtherText] = useState('');
   const [savingIncomeHeads, setSavingIncomeHeads] = useState(false);
+  // Income Sources, Professional Fee, and Onboarding form fields are masked by
+  // default on every page reload. Click "View Docs" to reveal; click again to mask.
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     me().then((p) => {
@@ -141,7 +144,17 @@ export default function ClientProfilePage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Profile</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900">Profile</h1>
+        <Button
+          variant={revealed ? 'outline' : 'default'}
+          size="sm"
+          className={revealed ? '' : 'bg-indigo-600 hover:bg-indigo-700'}
+          onClick={() => setRevealed((v) => !v)}
+        >
+          {revealed ? (<><EyeOff className="h-4 w-4 mr-1.5" /> Mask Details</>) : (<><Eye className="h-4 w-4 mr-1.5" /> View Docs</>)}
+        </Button>
+      </div>
 
       <Card className="rounded-xl p-6">
         {/* Account info */}
@@ -193,34 +206,44 @@ export default function ClientProfilePage() {
             <hr className="my-5 border-slate-100" />
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-bold text-slate-900">Income Sources</h2>
-              <Button size="sm" className="h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-xs" disabled={savingIncomeHeads} onClick={async () => {
-                setSavingIncomeHeads(true);
-                try {
-                  const res = await updateMyIncomeHeads({ ...incomeHeads, any_other_text: incomeHeads.any_other ? anyOtherText.trim() || null : null });
-                  setClientProfile((cp: any) => ({ ...cp, income_heads: res }));
-                  toast.success('Income sources updated');
-                } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to update'); }
-                finally { setSavingIncomeHeads(false); }
-              }}>{savingIncomeHeads ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Save</Button>
+              {revealed ? (
+                <Button size="sm" className="h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-xs" disabled={savingIncomeHeads} onClick={async () => {
+                  setSavingIncomeHeads(true);
+                  try {
+                    const res = await updateMyIncomeHeads({ ...incomeHeads, any_other_text: incomeHeads.any_other ? anyOtherText.trim() || null : null });
+                    setClientProfile((cp: any) => ({ ...cp, income_heads: res }));
+                    toast.success('Income sources updated');
+                  } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to update'); }
+                  finally { setSavingIncomeHeads(false); }
+                }}>{savingIncomeHeads ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Save</Button>
+              ) : null}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {Object.entries(INCOME_HEAD_LABELS).map(([key, label]) => (
-                <button key={key} type="button" onClick={() => setIncomeHeads((prev) => ({ ...prev, [key]: !prev[key] }))} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${incomeHeads[key] ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-100 hover:bg-slate-50'}`}>
-                  <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold ${incomeHeads[key] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
-                    {incomeHeads[key] ? '✓' : '✗'}
-                  </span>
-                  <span className="text-sm text-slate-700">{label}</span>
-                </button>
-              ))}
-            </div>
-            {incomeHeads.any_other && (
-              <div className="mt-3">
-                <Input
-                  value={anyOtherText}
-                  onChange={(e) => setAnyOtherText(e.target.value)}
-                  placeholder="Describe your other income source (e.g. Freelance consulting)"
-                  maxLength={255}
-                />
+            {revealed ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {Object.entries(INCOME_HEAD_LABELS).map(([key, label]) => (
+                    <button key={key} type="button" onClick={() => setIncomeHeads((prev) => ({ ...prev, [key]: !prev[key] }))} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${incomeHeads[key] ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-100 hover:bg-slate-50'}`}>
+                      <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold ${incomeHeads[key] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                        {incomeHeads[key] ? '✓' : '✗'}
+                      </span>
+                      <span className="text-sm text-slate-700">{label}</span>
+                    </button>
+                  ))}
+                </div>
+                {incomeHeads.any_other && (
+                  <div className="mt-3">
+                    <Input
+                      value={anyOtherText}
+                      onChange={(e) => setAnyOtherText(e.target.value)}
+                      placeholder="Describe your other income source (e.g. Freelance consulting)"
+                      maxLength={255}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-3 flex items-center gap-2 text-xs text-slate-500">
+                <Lock className="h-3.5 w-3.5" /> Hidden — click “View Docs” above to reveal.
               </div>
             )}
           </>
@@ -230,9 +253,15 @@ export default function ClientProfilePage() {
         {clientProfile?.no_fees_applicable ? (
           <>
             <hr className="my-5 border-slate-100" />
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">No Fees Applicable</span>
-            </div>
+            {revealed ? (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">No Fees Applicable</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <Lock className="h-3.5 w-3.5" /> Professional fee status hidden
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -241,13 +270,19 @@ export default function ClientProfilePage() {
               <IndianRupee className="h-4 w-4 text-indigo-600" />
               <span className="text-xs uppercase text-slate-500 font-semibold">Professional Fee</span>
             </div>
-            {clientProfile?.professional_fee ? (
-              <>
-                <div className="text-lg font-bold text-slate-900 mt-1">₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')}</div>
-                <p className="text-xs text-slate-500 mt-0.5">Plus applicable taxes, if any</p>
-              </>
+            {revealed ? (
+              clientProfile?.professional_fee ? (
+                <>
+                  <div className="text-lg font-bold text-slate-900 mt-1">₹{Number(clientProfile.professional_fee).toLocaleString('en-IN')}</div>
+                  <p className="text-xs text-slate-500 mt-0.5">Plus applicable taxes, if any</p>
+                </>
+              ) : (
+                <div className="text-sm font-medium text-amber-600 mt-1">To be decided</div>
+              )
             ) : (
-              <div className="text-sm font-medium text-amber-600 mt-1">To be decided</div>
+              <div className="mt-1 inline-flex items-center gap-2 text-xs text-slate-500">
+                <Lock className="h-3.5 w-3.5" /> Hidden
+              </div>
             )}
           </>
         )}
@@ -256,28 +291,38 @@ export default function ClientProfilePage() {
         {fields.length > 0 && (
           <>
             <hr className="my-5 border-slate-100" />
-            <div className="space-y-4">
-              {fields.map((f) => (
-                <div key={f.id}>
-                  <Label className="text-xs text-slate-500">{f.field_label}{f.is_required && <span className="text-rose-500 ml-0.5">*</span>}</Label>
-                  {f.field_type === 'FILE' ? (
-                    <FileField fieldKey={f.field_key} value={values[f.field_key]} fileName={fileNames[f.field_key]} uploading={uploading === f.field_key} onUpload={(file) => handleFileUpload(f.field_key, file)} onView={() => handleFileView(f.field_key)} />
-                  ) : f.field_type === 'DATE' ? (
-                    <Input type="date" value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: e.target.value })} className="mt-1" />
-                  ) : f.field_type === 'NUMBER' ? (
-                    <Input type="number" value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: e.target.value })} className="mt-1" />
-                  ) : f.field_type === 'DROPDOWN' ? (
-                    <Select value={values[f.field_key] || ''} onValueChange={(v) => setValues({ ...values, [f.field_key]: v })}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>{(f.field_options || []).map((opt: string) => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent>
-                    </Select>
-                  ) : (
-                    <Input value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: isPanField(f) ? e.target.value.toUpperCase().slice(0, 10) : e.target.value })} className={`mt-1 ${isPanField(f) ? 'uppercase' : ''}`} placeholder={isPanField(f) ? 'ABCDE1234F' : undefined} maxLength={isPanField(f) ? 10 : undefined} />
-                  )}
+            {revealed ? (
+              <div className="space-y-4">
+                {fields.map((f) => (
+                  <div key={f.id}>
+                    <Label className="text-xs text-slate-500">{f.field_label}{f.is_required && <span className="text-rose-500 ml-0.5">*</span>}</Label>
+                    {f.field_type === 'FILE' ? (
+                      <FileField fieldKey={f.field_key} value={values[f.field_key]} fileName={fileNames[f.field_key]} uploading={uploading === f.field_key} onUpload={(file) => handleFileUpload(f.field_key, file)} onView={() => handleFileView(f.field_key)} />
+                    ) : f.field_type === 'DATE' ? (
+                      <Input type="date" value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: e.target.value })} className="mt-1" />
+                    ) : f.field_type === 'NUMBER' ? (
+                      <Input type="number" value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: e.target.value })} className="mt-1" />
+                    ) : f.field_type === 'DROPDOWN' ? (
+                      <Select value={values[f.field_key] || ''} onValueChange={(v) => setValues({ ...values, [f.field_key]: v })}>
+                        <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                        <SelectContent>{(f.field_options || []).map((opt: string) => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent>
+                      </Select>
+                    ) : (
+                      <Input value={values[f.field_key] || ''} onChange={(e) => setValues({ ...values, [f.field_key]: isPanField(f) ? e.target.value.toUpperCase().slice(0, 10) : e.target.value })} className={`mt-1 ${isPanField(f) ? 'uppercase' : ''}`} placeholder={isPanField(f) ? 'ABCDE1234F' : undefined} maxLength={isPanField(f) ? 10 : undefined} />
+                    )}
+                  </div>
+                ))}
+                <Button onClick={save} disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 mt-2">{saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Save</Button>
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-4 flex items-start gap-2">
+                <Lock className="h-4 w-4 text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Onboarding details hidden</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{fields.length} field{fields.length === 1 ? '' : 's'} including uploaded documents — click “View Docs” above to reveal.</p>
                 </div>
-              ))}
-              <Button onClick={save} disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 mt-2">{saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Save</Button>
-            </div>
+              </div>
+            )}
           </>
         )}
       </Card>

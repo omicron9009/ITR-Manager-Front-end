@@ -70,7 +70,7 @@ function ClientsListPage() {
       const params: any = { page: 1, page_size: 100 };
       if (search) params.search = search;
       if (accountStatus) params.account_status = accountStatus;
-      if (partnerTagFilter) params.partner_tag_id = partnerTagFilter;
+      // partner_tag_id is filtered client-side so we can support an "Unassigned" option.
       const [clientsRes, analyticsRes] = await Promise.all([
         listClients(params),
         (routePrefix === '/executive' ? getExecutiveAnalytics() : getPartnerAnalytics()).catch(() => null),
@@ -157,7 +157,7 @@ function ClientsListPage() {
       listTags('PARTNER').then((r) => setPartnerTags((r?.items || r || []).filter((t: any) => t.is_active !== false))).catch(() => {});
     }
   }, []);
-  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus, filingStatus, partnerTagFilter]);
+  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus, filingStatus]);
 
   const onAssign = async (client_id: string, executive_id: string) => {
     try { await assignExecutive(client_id, executive_id); toast.success('Executive assigned'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
@@ -341,8 +341,14 @@ function ClientsListPage() {
         return name.includes(q) || email.includes(q);
       });
     }
+    // Partner-tag filter (client-side, supports "unassigned")
+    if (partnerTagFilter === '__unassigned__') {
+      result = result.filter((c) => !c.partner_tag_id);
+    } else if (partnerTagFilter) {
+      result = result.filter((c) => c.partner_tag_id === partnerTagFilter);
+    }
     return result;
-  }, [expandedRows, financialYear, filingStatus, awaitingTaxRows, clients, search, computationSubFilter, computationSubStatusMap, filingDocSubFilter, filingDocSubStatusMap]);
+  }, [expandedRows, financialYear, filingStatus, awaitingTaxRows, clients, search, computationSubFilter, computationSubStatusMap, filingDocSubFilter, filingDocSubStatusMap, partnerTagFilter]);
 
   // Build action item lookup by client_id
   const actionItemByClient = useMemo(() => {
@@ -425,6 +431,7 @@ function ClientsListPage() {
         case 'account': va = a.account_status || ''; vb = b.account_status || ''; break;
         case 'manager': va = (mgrs.find((m) => m.id === clientManagerMap.get(a.id))?.full_name || mgrs.find((m) => m.id === clientManagerMap.get(a.id))?.name || 'zzz').toLowerCase(); vb = (mgrs.find((m) => m.id === clientManagerMap.get(b.id))?.full_name || mgrs.find((m) => m.id === clientManagerMap.get(b.id))?.name || 'zzz').toLowerCase(); break;
         case 'executive': va = (a.assigned_executive_name || 'zzz').toLowerCase(); vb = (b.assigned_executive_name || 'zzz').toLowerCase(); break;
+        case 'partner_tag': va = (a.partner_tag_name || 'zzz').toLowerCase(); vb = (b.partner_tag_name || 'zzz').toLowerCase(); break;
         case 'state': va = a.current_state || a.filing_state || ''; vb = b.current_state || b.filing_state || ''; break;
         case 'comp_sub': va = (computationSubStatusMap.get(`${a.id}-${a._fy}`) || 'zzz').toLowerCase(); vb = (computationSubStatusMap.get(`${b.id}-${b._fy}`) || 'zzz').toLowerCase(); break;
         case 'filing_doc_sub': va = (filingDocSubStatusMap.get(a.id) || 'zzz').toLowerCase(); vb = (filingDocSubStatusMap.get(b.id) || 'zzz').toLowerCase(); break;
@@ -521,6 +528,7 @@ function ClientsListPage() {
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Partner Tag" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Partner Tags</SelectItem>
+                <SelectItem value="__unassigned__">Unassigned</SelectItem>
                 {partnerTags.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
               </SelectContent>
             </Select>

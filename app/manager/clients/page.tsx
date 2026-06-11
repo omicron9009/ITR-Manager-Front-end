@@ -269,6 +269,7 @@ function ManagerClientsPage() {
         case 'fy': va = a.active_filing_year || ''; vb = b.active_filing_year || ''; break;
         case 'account': va = a.account_status || ''; vb = b.account_status || ''; break;
         case 'executive': va = (a.assigned_executive_name || 'zzz').toLowerCase(); vb = (b.assigned_executive_name || 'zzz').toLowerCase(); break;
+        case 'partner_tag': va = (a.partner_tag_name || 'zzz').toLowerCase(); vb = (b.partner_tag_name || 'zzz').toLowerCase(); break;
         case 'state': va = a.current_filing_state || ''; vb = b.current_filing_state || ''; break;
         case 'comp_sub': va = (computationSubStatusMap.get(`${a.id}-${a.active_filing_year}`) || 'zzz').toLowerCase(); vb = (computationSubStatusMap.get(`${b.id}-${b.active_filing_year}`) || 'zzz').toLowerCase(); break;
         case 'filing_doc_sub': va = (filingDocSubStatusMap.get(a.id) || 'zzz').toLowerCase(); vb = (filingDocSubStatusMap.get(b.id) || 'zzz').toLowerCase(); break;

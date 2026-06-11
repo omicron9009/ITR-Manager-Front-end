@@ -9,10 +9,10 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag, getIncomeHeadsCatalog, listTextFieldTypes, assignTextFields, listFilingTextFields, deleteTextField, approveTextFields, rejectTextFields } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, Clock, IndianRupee, Pencil, Tag } from 'lucide-react';
+import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -315,11 +315,74 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
   };
   const [rejectDocFor, setRejectDocFor] = useState<any>(null);
   const [rejectDocReason, setRejectDocReason] = useState('');
+  const [rejectFieldFor, setRejectFieldFor] = useState<any>(null);
+  const [rejectFieldReason, setRejectFieldReason] = useState('');
   const [acting, setActing] = useState(false);
+  const [textFields, setTextFields] = useState<any[]>([]);
+  const [textFieldGroups, setTextFieldGroups] = useState<any[]>([]);
   const status = f.status || f.current_state;
   const percent = getFilingPercent(status);
 
+  const loadTextFields = async () => {
+    try {
+      const r = await listFilingTextFields(f.id);
+      setTextFields(r?.items || []);
+      setTextFieldGroups(r?.groups || []);
+    } catch {
+      setTextFields([]);
+      setTextFieldGroups([]);
+    }
+  };
+
+  // Fetch text fields when accordion opens (and after parent reloads)
+  useEffect(() => {
+    if (open) loadTextFields();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, f.id]);
+
+  // Refresh text fields when parent reloads
+  const reloadAll = () => {
+    load();
+    loadTextFields();
+  };
+
+  // Placeholder delete (Manager / Executive / Partner only, PENDING_UPLOAD only,
+  // and only while filing is in DOCUMENT_UPLOAD / PROCESSING / HALTED)
+  const canDeletePlaceholder = ['DOCUMENT_UPLOAD', 'PROCESSING', 'HALTED'].includes(status);
+  const onDeletePlaceholder = async (d: any) => {
+    if (d.status !== 'PENDING_UPLOAD') return;
+    if (!canDeletePlaceholder) return;
+    if (!confirm(`Remove the "${d.document_type_name || 'document'}" placeholder from this filing? The client will no longer be asked to upload it.`)) return;
+    try {
+      await deleteDoc(d.id);
+      toast.success('Placeholder removed');
+      reloadAll();
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail;
+      if (e?.response?.status === 409) toast.error(msg || 'Cannot remove this placeholder.');
+      else toast.error(msg || 'Failed to remove');
+    }
+  };
+
+  const onDeleteTextField = async (tf: any) => {
+    if (tf.status !== 'PENDING') return;
+    if (!canDeletePlaceholder) return;
+    if (!confirm(`Remove the "${tf.field_type_name || 'text field'}" placeholder from this filing? The client will no longer be asked to fill it.`)) return;
+    try {
+      await deleteTextField(tf.id);
+      toast.success('Text-field placeholder removed');
+      reloadAll();
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail;
+      if (e?.response?.status === 409) toast.error(msg || 'Cannot remove this placeholder.');
+      else toast.error(msg || 'Failed to remove');
+    }
+  };
+
   const statusColor = status === 'COMPLETED' ? 'bg-emerald-500' : status === 'HALTED' ? 'bg-rose-500' : 'bg-indigo-500';
+
+  // Existing assigned text-field type IDs (so we don't duplicate when sending checklist)
+  const existingTextFieldTypeIds = Array.from(new Set(textFields.map((tf) => tf.field_type_id)));
 
   return (
     <>
@@ -397,19 +460,28 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-slate-500 uppercase">Assigned Documents</span>
                     {f.status !== 'COMPLETED' && f.status !== 'HALTED' && (
-                      <AssignChecklistButton filingId={f.id} existingDocTypeNames={(docs[f.id] || []).map((d: any) => d.document_type_name)} onAssigned={load} />
+                      <AssignChecklistButton filingId={f.id} existingDocTypeNames={(docs[f.id] || []).map((d: any) => d.document_type_name)} existingTextFieldTypeIds={existingTextFieldTypeIds} onAssigned={reloadAll} />
                     )}
                   </div>
                   {(docs[f.id] || []).length === 0 ? (
                     <p className="text-sm text-slate-500 py-4 text-center">No documents assigned yet. Send a checklist to the client.</p>
                   ) : (docGroups[f.id] || []).length > 0 ? (
                     <div className="space-y-3">
-                      {(docGroups[f.id]).map((group: any) => (
+                      {(docGroups[f.id]).map((group: any) => {
+                        const groupDescription = group.document_type_description || (group.files || []).find((x: any) => x?.document_type_description)?.document_type_description || null;
+                        return (
                         <div key={group.document_type_id} className="rounded-lg border border-slate-200 bg-white overflow-hidden">
-                          <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100">
-                            <FileText className="h-3.5 w-3.5 text-indigo-500" />
-                            <span className="text-xs font-semibold text-slate-700">{group.document_type_name}</span>
-                            <span className="text-[10px] text-slate-400">({group.files.length} file{group.files.length !== 1 ? 's' : ''})</span>
+                          <div className="flex items-start gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100">
+                            <FileText className="h-3.5 w-3.5 text-indigo-500 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-slate-700">{group.document_type_name}</span>
+                                <span className="text-[10px] text-slate-400">({group.files.length} file{group.files.length !== 1 ? 's' : ''})</span>
+                              </div>
+                              {groupDescription && (
+                                <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{groupDescription}</div>
+                              )}
+                            </div>
                           </div>
                           <div className="divide-y divide-slate-100">
                             {group.files.map((d: any) => (
@@ -434,20 +506,35 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                                       <Button size="sm" variant="outline" className="h-7 text-rose-700 border-rose-200" onClick={() => { setRejectDocFor(d); setRejectDocReason(''); }}><X className="h-3 w-3" /></Button>
                                     </>
                                   )}
+                                  {d.status === 'PENDING_UPLOAD' && canDeletePlaceholder && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 px-2 text-rose-700 border-rose-200 hover:bg-rose-50"
+                                      onClick={() => onDeletePlaceholder(d)}
+                                      title="Remove this placeholder"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             ))}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (docs[f.id] || []).map((d: any) => (
                     <div key={d.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 bg-white">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <div className="flex items-start gap-3 min-w-0">
+                        <FileText className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
                         <div className="min-w-0">
                           <div className="text-sm font-medium text-slate-800 truncate">{d.document_type_name || d.original_filename}</div>
                           {d.original_filename && <div className="text-xs text-slate-500 truncate">{d.original_filename}</div>}
+                          {d.document_type_description && (
+                            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{d.document_type_description}</div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -463,9 +550,90 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                             <Button size="sm" variant="outline" className="h-7 text-rose-700 border-rose-200" onClick={() => { setRejectDocFor(d); setRejectDocReason(''); }}><X className="h-3 w-3" /></Button>
                           </>
                         )}
+                        {d.status === 'PENDING_UPLOAD' && canDeletePlaceholder && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-rose-700 border-rose-200 hover:bg-rose-50"
+                            onClick={() => onDeletePlaceholder(d)}
+                            title="Remove this placeholder"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
+                  {/* Text Fields section */}
+                  {textFields.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                      <div className="text-xs font-semibold text-slate-500 uppercase mb-2 flex items-center gap-1.5">
+                        <Type className="h-3.5 w-3.5 text-amber-500" /> Text Fields
+                      </div>
+                      <div className="space-y-3">
+                        {(textFieldGroups.length > 0 ? textFieldGroups : [{ field_type_id: '__all__', field_type_name: '', fields: textFields }]).map((g: any) => {
+                          const description = g.fields?.[0]?.field_type_description;
+                          return (
+                            <div key={g.field_type_id} className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+                              {g.field_type_name && (
+                                <div className="flex items-start gap-2 px-3 py-2 bg-amber-50/40 border-b border-slate-100">
+                                  <Type className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-semibold text-slate-700">{g.field_type_name}</span>
+                                      <span className="text-[10px] text-slate-400">({g.fields.length} value{g.fields.length !== 1 ? 's' : ''})</span>
+                                    </div>
+                                    {description && (
+                                      <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{description}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="divide-y divide-slate-100">
+                                {g.fields.map((tf: any) => (
+                                  <div key={tf.id} className="flex items-start justify-between gap-3 p-3">
+                                    <div className="flex-1 min-w-0">
+                                      {tf.value ? (
+                                        <div className="text-sm text-slate-800 whitespace-pre-wrap break-words">{tf.value}</div>
+                                      ) : (
+                                        <div className="text-sm italic text-slate-400">— not yet filled —</div>
+                                      )}
+                                      {tf.status === 'REJECTED' && tf.rejection_reason && (
+                                        <div className="text-[11px] text-rose-600 mt-1">Rejection: {tf.rejection_reason}</div>
+                                      )}
+                                      {tf.filled_at && (
+                                        <div className="text-[10px] text-slate-400 mt-1">Filled {new Date(tf.filled_at).toLocaleDateString()}</div>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      <StatusBadge status={tf.status} size="sm" />
+                                      {tf.status === 'FILLED' && (
+                                        <>
+                                          <Button size="sm" variant="outline" className="h-7 text-emerald-700 border-emerald-200" onClick={async () => { try { await approveTextFields([tf.id]); toast.success('Approved'); reloadAll(); } catch { toast.error('Failed'); } }}><Check className="h-3 w-3" /></Button>
+                                          <Button size="sm" variant="outline" className="h-7 text-rose-700 border-rose-200" onClick={() => { setRejectFieldFor(tf); setRejectFieldReason(''); }}><X className="h-3 w-3" /></Button>
+                                        </>
+                                      )}
+                                      {tf.status === 'PENDING' && canDeletePlaceholder && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 px-2 text-rose-700 border-rose-200 hover:bg-rose-50"
+                                          onClick={() => onDeleteTextField(tf)}
+                                          title="Remove this placeholder"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   {/* Move to Computation — shown when all docs are uploaded/approved */}
                   {(docs[f.id] || []).length > 0 && (docs[f.id] || []).every((d: any) => d.status === 'APPROVED') && (status === 'PROCESSING' || status === 'DOCUMENT_UPLOAD') && (
                     <MoveToComputationButton filingId={f.id} onMoved={load} />
@@ -520,6 +688,42 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
               }}
             >
               {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Reject Document
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Text Field Dialog */}
+      <Dialog open={!!rejectFieldFor} onOpenChange={(o) => { if (!o) { setRejectFieldFor(null); setRejectFieldReason(''); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="text-rose-700">Reject Text Field</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs text-slate-500">Text Field</div>
+              <div className="text-sm font-medium text-slate-900 mt-0.5">{rejectFieldFor?.field_type_name || 'Text Field'}</div>
+              {rejectFieldFor?.value && <div className="text-xs text-slate-600 mt-1 italic break-words">"{rejectFieldFor.value}"</div>}
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-slate-700">Reason for rejection <span className="text-rose-500">*</span></Label>
+              <Textarea value={rejectFieldReason} onChange={(e) => setRejectFieldReason(e.target.value)} placeholder="Describe why this value is being rejected…" rows={4} className="mt-1.5" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRejectFieldFor(null); setRejectFieldReason(''); }}>Cancel</Button>
+            <Button
+              disabled={acting || !rejectFieldReason.trim()}
+              className="bg-rose-600 hover:bg-rose-700"
+              onClick={async () => {
+                setActing(true);
+                try {
+                  await rejectTextFields([{ field_id: rejectFieldFor.id, reason: rejectFieldReason.trim() }]);
+                  toast.success('Text field rejected');
+                  setRejectFieldFor(null); setRejectFieldReason(''); reloadAll();
+                } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+                finally { setActing(false); }
+              }}
+            >
+              {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Reject Text Field
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -644,40 +848,148 @@ function StateActions({ filing, onChange, isExecutive = false }: { filing: any; 
   );
 }
 
-function AssignChecklistButton({ filingId, existingDocTypeNames, onAssigned }: { filingId: string; existingDocTypeNames: string[]; onAssigned: () => void }) {
+function AssignChecklistButton({ filingId, existingDocTypeNames, existingTextFieldTypeIds, onAssigned }: { filingId: string; existingDocTypeNames: string[]; existingTextFieldTypeIds: string[]; onAssigned: () => void }) {
   const [open, setOpen] = useState(false);
   const [docTypes, setDocTypes] = useState<any[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [textFieldTypes, setTextFieldTypes] = useState<any[]>([]);
+  const [catalog, setCatalog] = useState<{ value: string; label: string }[]>([]);
+  const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [sending, setSending] = useState(false);
 
   const openDialog = async () => {
     setOpen(true);
+    setSearch('');
+    setCollapsed({});
     try {
-      const r = await listDocTypes(false);
+      const [r, tf, cat] = await Promise.all([
+        listDocTypes(false),
+        listTextFieldTypes(false).catch(() => ({ items: [] })),
+        catalog.length ? Promise.resolve({ items: catalog }) : getIncomeHeadsCatalog().catch(() => ({ items: [] })),
+      ]);
       const types = r?.items ?? r ?? [];
       setDocTypes(types);
-      // Pre-select mandatory ones that aren't already assigned
-      const mandatory = types.filter((t: any) => t.is_mandatory && !existingDocTypeNames.includes(t.name)).map((t: any) => t.id);
-      setSelected(mandatory);
-    } catch { toast.error('Failed to load document types'); }
+      setTextFieldTypes(tf?.items ?? tf ?? []);
+      if (cat?.items?.length) setCatalog(cat.items);
+      setSelectedDocs([]);
+      setSelectedFields([]);
+    } catch { toast.error('Failed to load checklist items'); }
   };
 
-  const toggle = (id: string) => {
-    setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const toggleDoc = (id: string) => {
+    setSelectedDocs((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
+  const toggleField = (id: string) => {
+    setSelectedFields((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
   const send = async () => {
-    if (selected.length === 0) { toast.error('Select at least one document type'); return; }
+    if (selectedDocs.length === 0 && selectedFields.length === 0) { toast.error('Select at least one item'); return; }
     setSending(true);
     try {
-      await assignDocs(filingId, selected);
-      toast.success('Document checklist sent to client');
+      if (selectedDocs.length > 0) await assignDocs(filingId, selectedDocs);
+      if (selectedFields.length > 0) await assignTextFields(filingId, selectedFields);
+      toast.success('Checklist sent to client');
       setOpen(false);
-      setSelected([]);
+      setSelectedDocs([]);
+      setSelectedFields([]);
       onAssigned();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to assign'); }
     finally { setSending(false); }
   };
+
+  // Build a label map and grouped structure
+  const labelFor = (() => {
+    const m: Record<string, string> = {};
+    catalog.forEach((c) => { m[c.value] = c.label; });
+    m.OTHERS = 'Others';
+    return m;
+  })();
+
+  // Filter by search
+  const q = search.trim().toLowerCase();
+  const matchesSearch = (t: any) =>
+    !q ||
+    (t.name || '').toLowerCase().includes(q) ||
+    (t.description || '').toLowerCase().includes(q);
+
+  // Group docs by income head. A doc with multiple mappings appears in multiple groups.
+  // A doc with no mappings goes under OTHERS. Text fields always go under OTHERS.
+  type Row =
+    | { kind: 'DOC'; doc: any; sub_category: 'BASE' | 'INCREMENTAL' | null }
+    | { kind: 'TEXT'; field: any };
+  const groups: { head: string; label: string; rows: Row[] }[] = [];
+  const groupIndex: Record<string, number> = {};
+
+  const ensureGroup = (head: string) => {
+    if (groupIndex[head] == null) {
+      groupIndex[head] = groups.length;
+      groups.push({ head, label: labelFor[head] || head, rows: [] });
+    }
+    return groups[groupIndex[head]];
+  };
+
+  // Seed the order from the catalog (so Salary, ESOP, … show in the canonical order)
+  catalog.forEach((c) => { if (c.value !== 'OTHERS') ensureGroup(c.value); });
+
+  docTypes.filter(matchesSearch).forEach((t: any) => {
+    const mappings = Array.isArray(t.income_head_mappings) ? t.income_head_mappings : [];
+    if (mappings.length === 0) {
+      ensureGroup('OTHERS').rows.push({ kind: 'DOC', doc: t, sub_category: null });
+    } else {
+      mappings.forEach((m: any) => {
+        ensureGroup(m.income_head).rows.push({ kind: 'DOC', doc: t, sub_category: (m.sub_category as any) || 'INCREMENTAL' });
+      });
+    }
+  });
+
+  // Append text-field types under OTHERS
+  textFieldTypes.filter(matchesSearch).forEach((tf: any) => {
+    ensureGroup('OTHERS').rows.push({ kind: 'TEXT', field: tf });
+  });
+
+  // Drop empty groups
+  const visibleGroups = groups.filter((g) => g.rows.length > 0);
+
+  // Build set of selectable doc/field IDs in a group (i.e. not already-assigned)
+  const selectableInGroup = (g: typeof visibleGroups[number]) => {
+    const docIds = new Set<string>();
+    const fieldIds = new Set<string>();
+    g.rows.forEach((r) => {
+      if (r.kind === 'DOC') {
+        if (!existingDocTypeNames.includes(r.doc.name)) docIds.add(r.doc.id);
+      } else {
+        if (!existingTextFieldTypeIds.includes(r.field.id)) fieldIds.add(r.field.id);
+      }
+    });
+    return { docIds: Array.from(docIds), fieldIds: Array.from(fieldIds) };
+  };
+
+  const groupAllSelected = (g: typeof visibleGroups[number]) => {
+    const { docIds, fieldIds } = selectableInGroup(g);
+    if (docIds.length === 0 && fieldIds.length === 0) return false;
+    return (
+      docIds.every((id) => selectedDocs.includes(id)) &&
+      fieldIds.every((id) => selectedFields.includes(id))
+    );
+  };
+
+  const toggleGroup = (g: typeof visibleGroups[number]) => {
+    const { docIds, fieldIds } = selectableInGroup(g);
+    if (docIds.length === 0 && fieldIds.length === 0) return;
+    const allSelected = groupAllSelected(g);
+    if (allSelected) {
+      setSelectedDocs((prev) => prev.filter((id) => !docIds.includes(id)));
+      setSelectedFields((prev) => prev.filter((id) => !fieldIds.includes(id)));
+    } else {
+      setSelectedDocs((prev) => Array.from(new Set([...prev, ...docIds])));
+      setSelectedFields((prev) => Array.from(new Set([...prev, ...fieldIds])));
+    }
+  };
+
+  const totalSelected = selectedDocs.length + selectedFields.length;
 
   return (
     <>
@@ -685,41 +997,145 @@ function AssignChecklistButton({ filingId, existingDocTypeNames, onAssigned }: {
         <Send className="h-3.5 w-3.5 mr-1" /> Send Checklist
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><FileCheck className="h-5 w-5 text-indigo-600" /> Send Document Checklist</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><FileCheck className="h-5 w-5 text-indigo-600" /> Send Checklist</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-slate-500">Select document types to assign to this filing. The client will be notified to upload these.</p>
-          {docTypes.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">No document types available. Create them in Document Checklist page first.</p>
+          <p className="text-sm text-slate-500">Select documents and text fields to assign to this filing. The client will be notified.</p>
+
+          {/* Search */}
+          <div className="relative mt-2">
+            <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search documents and text fields…"
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+
+          {docTypes.length === 0 && textFieldTypes.length === 0 ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No items available. Create them in Checklist Master first.</p>
+          ) : visibleGroups.length === 0 ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No items match your search.</p>
           ) : (
-            <div className="space-y-2 mt-2">
-              {docTypes.map((t: any) => {
-                const alreadyAssigned = existingDocTypeNames.includes(t.name);
+            <div className="space-y-3 mt-2">
+              {visibleGroups.map((g) => {
+                const { docIds, fieldIds } = selectableInGroup(g);
+                const selectableCount = docIds.length + fieldIds.length;
+                const allSelected = groupAllSelected(g);
+                const isCollapsed = !!collapsed[g.head];
                 return (
-                  <label key={t.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${alreadyAssigned ? 'border-slate-100 bg-slate-50 opacity-50' : selected.includes(t.id) ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-200 hover:bg-slate-50'}`}>
-                    <Checkbox
-                      checked={selected.includes(t.id)}
-                      onCheckedChange={() => toggle(t.id)}
-                      disabled={alreadyAssigned}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-slate-900">{t.name}</div>
-                      {t.description && <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">{t.description}</div>}
+                  <div key={g.head} className="rounded-lg border border-slate-200">
+                    {/* Group header */}
+                    <div className={`flex items-center gap-3 p-2.5 ${selectableCount === 0 ? 'bg-slate-50' : 'bg-slate-50/60'} rounded-t-lg`}>
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={() => toggleGroup(g)}
+                        disabled={selectableCount === 0}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCollapsed((p) => ({ ...p, [g.head]: !p[g.head] }))}
+                        className="flex items-center gap-1 flex-1 min-w-0 text-left"
+                      >
+                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                        <span className="text-sm font-semibold text-slate-800 truncate">{g.label}</span>
+                        <span className="text-[11px] text-slate-500 ml-1">({g.rows.length})</span>
+                      </button>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      {t.is_mandatory && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-bold">REQUIRED</span>}
-                      {alreadyAssigned && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">ASSIGNED</span>}
-                    </div>
-                  </label>
+                    {/* Group rows */}
+                    {!isCollapsed && (
+                      <div className="p-2 space-y-1.5">
+                        {g.rows.map((row, idx) => {
+                          if (row.kind === 'DOC') {
+                            const t = row.doc;
+                            const alreadyAssigned = existingDocTypeNames.includes(t.name);
+                            const isSelected = selectedDocs.includes(t.id);
+                            return (
+                              <label
+                                key={`${g.head}-doc-${t.id}-${idx}`}
+                                className={`flex items-center gap-3 pl-7 pr-3 py-2 rounded-md border cursor-pointer transition-colors ${
+                                  alreadyAssigned
+                                    ? 'border-slate-100 bg-slate-50 opacity-50'
+                                    : isSelected
+                                    ? 'border-indigo-300 bg-indigo-50/50'
+                                    : 'border-slate-100 hover:bg-slate-50'
+                                }`}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleDoc(t.id)}
+                                  disabled={alreadyAssigned}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-slate-900 truncate">{t.name}</div>
+                                  {t.description && <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">{t.description}</div>}
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  {row.sub_category && (
+                                    <span
+                                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                        row.sub_category === 'BASE'
+                                          ? 'bg-indigo-100 text-indigo-700'
+                                          : 'bg-white text-indigo-700 border border-indigo-200'
+                                      }`}
+                                    >
+                                      {row.sub_category === 'BASE' ? 'Base' : 'Incr.'}
+                                    </span>
+                                  )}
+                                  {alreadyAssigned && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">ASSIGNED</span>}
+                                </div>
+                              </label>
+                            );
+                          }
+                          // TEXT field row
+                          const tf = row.field;
+                          const alreadyAssigned = existingTextFieldTypeIds.includes(tf.id);
+                          const isSelected = selectedFields.includes(tf.id);
+                          return (
+                            <label
+                              key={`${g.head}-text-${tf.id}-${idx}`}
+                              className={`flex items-center gap-3 pl-7 pr-3 py-2 rounded-md border cursor-pointer transition-colors ${
+                                alreadyAssigned
+                                  ? 'border-slate-100 bg-slate-50 opacity-50'
+                                  : isSelected
+                                  ? 'border-amber-300 bg-amber-50/50'
+                                  : 'border-slate-100 hover:bg-slate-50'
+                              }`}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleField(tf.id)}
+                                disabled={alreadyAssigned}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-slate-900 truncate flex items-center gap-1.5">
+                                  <Type className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                                  {tf.name}
+                                </div>
+                                {tf.description && <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">{tf.description}</div>}
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase bg-amber-100 text-amber-700">
+                                  Text
+                                </span>
+                                {alreadyAssigned && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">ASSIGNED</span>}
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
           )}
           <DialogFooter className="mt-3">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={send} disabled={sending || selected.length === 0} className="bg-indigo-600 hover:bg-indigo-700">
-              {sending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Send {selected.length > 0 ? `(${selected.length})` : ''}
+            <Button onClick={send} disabled={sending || totalSelected === 0} className="bg-indigo-600 hover:bg-indigo-700">
+              {sending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Send {totalSelected > 0 ? `(${totalSelected})` : ''}
             </Button>
           </DialogFooter>
         </DialogContent>

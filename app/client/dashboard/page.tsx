@@ -8,10 +8,44 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getClientDashboard, initiateFiling, getOnboardingForm, getActionItems, getClient, me, getMyFeedbackStats } from '@/lib/api';
-import { getUser } from '@/lib/auth';
+import { getClientDashboard, initiateFiling, getOnboardingForm, getActionItems, getClient, me, getMyFeedbackStats, confirmIncomeHeads, listDocTypesByIncomeHeads } from '@/lib/api';
+import { getUser, setUser as persistUser } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload, ArrowRight, FileText, IndianRupee, Star } from 'lucide-react';
+import { Plus, FolderOpen, AlertTriangle, Loader2, ClipboardList, CheckCircle2, Upload, ArrowRight, FileText, IndianRupee, Star, ListChecks } from 'lucide-react';
+
+const INCOME_HEAD_LABELS: Record<string, string> = {
+  salary: 'Salary / Pension',
+  esop: 'ESOP / RSU',
+  rental_income: 'Rental Income',
+  more_than_2_properties: 'More than 2 Properties',
+  capital_gain_shares: 'Capital Gain – Shares / MF',
+  capital_gain_land: 'Capital Gain – Land / Property',
+  business_profession: 'Business / Profession',
+  interest_dividend: 'Interest / Dividend',
+  foreign_assets: 'Foreign Assets / Income',
+  any_other: 'Any Other Income',
+};
+
+const INCOME_HEAD_ENUM: Record<string, string> = {
+  salary: 'SALARY',
+  esop: 'ESOP',
+  rental_income: 'RENTAL_INCOME',
+  more_than_2_properties: 'MORE_THAN_2_PROPERTIES',
+  capital_gain_shares: 'CAPITAL_GAIN_SHARES',
+  capital_gain_land: 'CAPITAL_GAIN_LAND',
+  business_profession: 'BUSINESS_PROFESSION',
+  interest_dividend: 'INTEREST_DIVIDEND',
+  foreign_assets: 'FOREIGN_ASSETS',
+  any_other: 'ANY_OTHER',
+};
+
+const INCOME_HEAD_GROUPS: { title: string; keys: string[] }[] = [
+  { title: 'Salary', keys: ['salary', 'esop'] },
+  { title: 'House Property', keys: ['rental_income', 'more_than_2_properties'] },
+  { title: 'Capital Gains', keys: ['capital_gain_shares', 'capital_gain_land'] },
+  { title: 'Business / Profession', keys: ['business_profession'] },
+  { title: 'Other Sources', keys: ['interest_dividend', 'foreign_assets', 'any_other'] },
+];
 
 function getFYOptions() {
   const d = new Date();
@@ -33,8 +67,17 @@ export default function ClientDashboard() {
   const [engagementAccepted, setEngagementAccepted] = useState(false);
   const [clientProfile, setClientProfile] = useState<any>(null);
 
+  // Confirm-income-heads (post-initiation) state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmFilingId, setConfirmFilingId] = useState<string | null>(null);
+  const [incomeHeads, setIncomeHeads] = useState<Record<string, boolean>>({});
+  const [anyOtherText, setAnyOtherText] = useState('');
+  const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [confirmSaving, setConfirmSaving] = useState(false);
+
   const [onboardingComplete, setOnboardingComplete] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showInitiateReminder, setShowInitiateReminder] = useState(false);
   const [actionItems, setActionItems] = useState<any[]>([]);
   const [feedbackStats, setFeedbackStats] = useState<any>(null);
 
@@ -72,6 +115,23 @@ export default function ClientDashboard() {
     } catch { setOnboardingComplete(true); }
   };
 
+  // Always refresh identity from backend (overwrites stale localStorage user).
+  // Used on mount, on tab focus/visibility, and after a 403 to detect activation.
+  const refreshIdentity = async () => {
+    try {
+      const fresh = await me();
+      if (fresh) {
+        const stored = getUser() || {};
+        const merged = { ...stored, ...fresh };
+        persistUser(merged);
+        setClientUser(merged);
+      }
+      return fresh;
+    } catch {
+      return null;
+    }
+  };
+
   const loadActionItems = async () => {
     try {
       const r = await getActionItems();
@@ -86,7 +146,27 @@ export default function ClientDashboard() {
     } catch { /* endpoint may not exist yet — silently ignore */ }
   };
 
-  useEffect(() => { load(); checkOnboarding(); loadActionItems(); loadFeedbackStats(); }, []);
+  useEffect(() => { load(); checkOnboarding(); loadActionItems(); loadFeedbackStats(); refreshIdentity(); }, []);
+
+  // Refresh on tab focus / visibility so activation done in another tab/window
+  // is reflected immediately without a manual reload.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshIdentity();
+        load();
+        loadActionItems();
+      }
+    };
+    const onFocus = () => { refreshIdentity(); load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
 
   const [clientUser, setClientUser] = useState<any>(null);
   useEffect(() => {
@@ -104,15 +184,91 @@ export default function ClientDashboard() {
   const accountStatus = dashData?.account_status || clientUser?.account_status || '';
   const pendingVerification = accountStatus === 'PENDING_VERIFICATION';
 
+  // Show "Initiate Filing" reminder on every reload once onboarding is complete
+  // and the user has not yet initiated a filing for the latest FY.
+  useEffect(() => {
+    if (loading) return;
+    if (pendingVerification) return;
+    if (!onboardingComplete) return;
+    const latestFY = getFYOptions()[0];
+    const hasFilingForLatestFY = (filings || []).some((f: any) => f.financial_year === latestFY);
+    if (!hasFilingForLatestFY) setShowInitiateReminder(true);
+  }, [loading, pendingVerification, onboardingComplete, filings]);
+
   const doInitiate = async () => {
     if (!fy || !engagementAccepted) return;
     setSubmitting(true);
     try {
-      await initiateFiling({ financial_year: fy, engagement_accepted: true });
+      const filing = await initiateFiling({ financial_year: fy, engagement_accepted: true });
       toast.success('Filing initiated');
-      setOpenInit(false); setFy(''); setEngagementAccepted(false); load();
+      setOpenInit(false); setFy(''); setEngagementAccepted(false);
+      // Pre-fill income heads from client profile, then open confirm dialog
+      const baseHeads: Record<string, boolean> = {};
+      Object.keys(INCOME_HEAD_LABELS).forEach((k) => {
+        baseHeads[k] = !!(clientProfile?.income_heads?.[k]);
+      });
+      setIncomeHeads(baseHeads);
+      setAnyOtherText(clientProfile?.income_heads?.any_other_text || '');
+      setPreviewCount(null);
+      setConfirmFilingId(filing?.id || filing?.filing_id || null);
+      setConfirmOpen(true);
+      load();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
     finally { setSubmitting(false); }
+  };
+
+  // Live BASE-doc preview — debounced
+  useEffect(() => {
+    if (!confirmOpen) return;
+    const selectedHeads = Object.keys(incomeHeads)
+      .filter((k) => incomeHeads[k] && INCOME_HEAD_ENUM[k])
+      .map((k) => INCOME_HEAD_ENUM[k]);
+    if (selectedHeads.length === 0) { setPreviewCount(0); return; }
+    const t = setTimeout(() => {
+      listDocTypesByIncomeHeads(selectedHeads, 'BASE')
+        .then((r) => setPreviewCount((r?.items || []).length))
+        .catch(() => setPreviewCount(null));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [incomeHeads, confirmOpen]);
+
+  const submitIncomeHeads = async () => {
+    if (!confirmFilingId) return;
+    setConfirmSaving(true);
+    try {
+      const payload: Record<string, any> = { ...incomeHeads };
+      payload.any_other_text = incomeHeads.any_other ? (anyOtherText.trim() || null) : null;
+      const res = await confirmIncomeHeads(confirmFilingId, payload);
+      const assigned = res?.base_documents_assigned ?? 0;
+      const transitioned = res?.transitioned_to;
+      if (transitioned === 'DOCUMENT_UPLOAD') {
+        toast.success(`Confirmed. ${assigned} document${assigned === 1 ? '' : 's'} requested — you can start uploading.`);
+        setConfirmOpen(false);
+        router.push(`/client/filings/${confirmFilingId}`);
+      } else {
+        toast.success(`Confirmed. ${assigned} document${assigned === 1 ? '' : 's'} queued. Awaiting team assignment before uploads can start.`);
+        setConfirmOpen(false);
+        load();
+      }
+    } catch (e: any) {
+      const status = e?.response?.status;
+      if (status === 409) {
+        toast.error('Income heads can only be confirmed before document upload starts.');
+        setConfirmOpen(false);
+      } else if (status === 403) {
+        // Possible stale account_status / token. Refresh identity + dashboard,
+        // then guide the user based on the freshly-fetched status.
+        const fresh = await refreshIdentity();
+        await load();
+        if (fresh?.account_status === 'ACTIVE') {
+          toast.error('Your session looks out of date. Please sign out and sign back in to refresh permissions, then try again.');
+        } else {
+          toast.error(e?.response?.data?.detail || 'Access denied. Your account may not be active yet.');
+        }
+      } else {
+        toast.error(e?.response?.data?.detail || 'Failed to confirm income heads');
+      }
+    } finally { setConfirmSaving(false); }
   };
 
 
@@ -316,6 +472,35 @@ export default function ClientDashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Initiate Filing Reminder — shows on every reload until a filing exists for the latest FY */}
+      <Dialog open={showInitiateReminder} onOpenChange={(o) => setShowInitiateReminder(o)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-indigo-600" /> Time to start your ITR filing</DialogTitle></DialogHeader>
+          <div className="py-4 text-center space-y-3">
+            <div className="inline-flex h-14 w-14 rounded-full bg-indigo-50 text-indigo-600 items-center justify-center mx-auto">
+              <FileText className="h-7 w-7" />
+            </div>
+            <p className="text-sm text-slate-600">
+              Your onboarding is complete. Initiate your filing for FY {getFYOptions()[0]} to begin sharing documents.
+            </p>
+          </div>
+          <DialogFooter className="mt-2">
+            <Button variant="outline" onClick={() => setShowInitiateReminder(false)}>Later</Button>
+            <Button
+              onClick={() => {
+                setShowInitiateReminder(false);
+                setEngagementAccepted(false);
+                setFy(getFYOptions()[0]);
+                setOpenInit(true);
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              Initiate Filing <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Onboarding Dialog */}
       <Dialog open={showOnboarding} onOpenChange={(o) => setShowOnboarding(o)}>
         <DialogContent className="sm:max-w-md">
@@ -330,6 +515,73 @@ export default function ClientDashboard() {
             <Button variant="outline" onClick={() => setShowOnboarding(false)}>Later</Button>
             <Button onClick={() => { setShowOnboarding(false); router.push('/client/onboarding'); }} className="bg-indigo-600 hover:bg-indigo-700">
               Fill Onboarding Form <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Income Heads Dialog (post-initiation) */}
+      <Dialog open={confirmOpen} onOpenChange={(o) => { if (!o) setConfirmOpen(false); }}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ListChecks className="h-5 w-5 text-indigo-600" /> Confirm Your Income Heads
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Tell us which sources of income apply to you for this filing. We&rsquo;ll pre-load the documents you&rsquo;ll need.
+            </p>
+
+            {INCOME_HEAD_GROUPS.map((group) => (
+              <div key={group.title} className="rounded-xl border border-slate-100 p-3">
+                <div className="text-[11px] uppercase tracking-wide font-semibold text-slate-500 mb-2">{group.title}</div>
+                <div className="space-y-1.5">
+                  {group.keys.map((key) => (
+                    <label key={key} className={`flex items-center gap-3 rounded-md px-2.5 py-2 cursor-pointer transition-colors ${incomeHeads[key] ? 'bg-emerald-50/60' : 'hover:bg-slate-50'}`}>
+                      <input
+                        type="checkbox"
+                        checked={!!incomeHeads[key]}
+                        onChange={(e) => setIncomeHeads((prev) => ({ ...prev, [key]: e.target.checked }))}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-slate-700 flex-1">{INCOME_HEAD_LABELS[key]}</span>
+                    </label>
+                  ))}
+                  {group.keys.includes('any_other') && incomeHeads.any_other && (
+                    <Input
+                      value={anyOtherText}
+                      onChange={(e) => setAnyOtherText(e.target.value)}
+                      placeholder="Describe the other income source"
+                      className="mt-1.5 text-sm"
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {previewCount !== null && (
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 flex items-center gap-2 text-sm text-indigo-800">
+                <FileText className="h-4 w-4 text-indigo-600" />
+                {previewCount === 0 ? (
+                  <span>Select at least one head to see required documents.</span>
+                ) : (
+                  <span><strong>{previewCount}</strong> document{previewCount === 1 ? '' : 's'} will be requested based on your selection.</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>Skip for now</Button>
+            <Button
+              onClick={submitIncomeHeads}
+              disabled={confirmSaving}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {confirmSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Confirm
             </Button>
           </DialogFooter>
         </DialogContent>

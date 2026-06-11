@@ -2104,6 +2104,65 @@
         ]
       }
     },
+    "/api/v1/filings/{filing_id}/confirm-income-heads": {
+      "post": {
+        "tags": [
+          "Filings"
+        ],
+        "summary": "Confirm Income Heads",
+        "description": "Client re-confirms their income heads at the start of a filing.\n\n- Updates the client's master `ClientIncomeHeads` row.\n- Snapshots the values onto the filing (`income_heads_snapshot`).\n- Auto-assigns BASE document placeholders for the selected heads.\n- Auto-transitions INITIATED -\u003E DOCUMENT_UPLOAD if a manager+executive are assigned.",
+        "operationId": "confirm_income_heads_api_v1_filings__filing_id__confirm_income_heads_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmIncomeHeadsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmIncomeHeadsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/filings/{filing_id}/update-fee": {
       "post": {
         "tags": [
@@ -2776,13 +2835,40 @@
         ]
       }
     },
+    "/api/v1/documents/income-heads/catalog": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Income Head Catalog",
+        "description": "Static catalog of all income head categories (11 values incl. OTHERS).",
+        "operationId": "income_head_catalog_api_v1_documents_income_heads_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeHeadCatalogResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/documents/types": {
       "get": {
         "tags": [
           "Documents"
         ],
         "summary": "List Document Types",
-        "description": "List all document types from master list.",
+        "description": "List all document types from master list, with optional income-head/sub-category filters.",
         "operationId": "list_document_types_api_v1_documents_types_get",
         "security": [
           {
@@ -2799,6 +2885,42 @@
               "default": false,
               "title": "Include Inactive"
             }
+          },
+          {
+            "name": "income_head",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/IncomeHeadCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by income head",
+              "title": "Income Head"
+            },
+            "description": "Filter by income head"
+          },
+          {
+            "name": "sub_category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DocSubCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by sub-category",
+              "title": "Sub Category"
+            },
+            "description": "Filter by sub-category"
           }
         ],
         "responses": {
@@ -2870,13 +2992,92 @@
         }
       }
     },
+    "/api/v1/documents/types/by-income-heads": {
+      "get": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "List Document Types By Income Heads",
+        "description": "List doc types that map to ANY of the given income heads (optionally filtered by sub-category).",
+        "operationId": "list_document_types_by_income_heads_api_v1_documents_types_by_income_heads_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "heads",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/IncomeHeadCategory"
+              },
+              "description": "Income heads to match",
+              "title": "Heads"
+            },
+            "description": "Income heads to match"
+          },
+          {
+            "name": "sub_category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DocSubCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sub Category"
+            }
+          },
+          {
+            "name": "include_inactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Inactive"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasterDocTypeListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/documents/types/{type_id}": {
       "put": {
         "tags": [
           "Documents"
         ],
         "summary": "Update Document Type",
-        "description": "Update a document type (Manager/Partner).",
+        "description": "Update a document type (Manager/Partner). Pass `income_head_mappings: []` to clear.",
         "operationId": "update_document_type_api_v1_documents_types__type_id__put",
         "security": [
           {
@@ -2915,6 +3116,46 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Delete Document Type",
+        "description": "Soft-delete a document type by marking it inactive (Manager/Partner).\n\nExisting FilingDocument rows referencing this type are preserved.",
+        "operationId": "delete_document_type_api_v1_documents_types__type_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Type Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -3226,7 +3467,7 @@
           "Documents"
         ],
         "summary": "Delete Document",
-        "description": "Delete a document placeholder. Only allowed for PENDING_UPLOAD or UPLOADED status.",
+        "description": "Remove a document placeholder.\n\nAllowed only when the filing is in DOCUMENT_UPLOAD, PROCESSING, or HALTED.\n\nPermissions:\n- **Manager / Executive / Partner**: may remove a placeholder only if it\n  is still PENDING_UPLOAD (empty). Once any file is attached, the\n  placeholder is preserved as a record.\n- **Client (own filing)**: may remove their own UPLOADED or REJECTED\n  placeholder only — never APPROVED, never an empty PENDING_UPLOAD slot.\n  At least one *other* placeholder of the same document type must still\n  have a file attached (UPLOADED / REJECTED / APPROVED).",
         "operationId": "delete_document_api_v1_documents__document_id__delete",
         "security": [
           {
@@ -7279,6 +7520,510 @@
         }
       }
     },
+    "/api/v1/text-fields/types": {
+      "get": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "List Text Field Types",
+        "description": "List all master text-field types.",
+        "operationId": "list_text_field_types_api_v1_text_fields_types_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "include_inactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Inactive"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasterTextFieldTypeListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "Create Text Field Type",
+        "description": "Create a master text-field type (Manager/Partner).",
+        "operationId": "create_text_field_type_api_v1_text_fields_types_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MasterTextFieldTypeCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasterTextFieldTypeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/text-fields/types/{type_id}": {
+      "put": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "Update Text Field Type",
+        "description": "Update a master text-field type (Manager/Partner).",
+        "operationId": "update_text_field_type_api_v1_text_fields_types__type_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Type Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MasterTextFieldTypeUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasterTextFieldTypeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "Delete Text Field Type",
+        "description": "Soft-delete a master text-field type (Manager/Partner).",
+        "operationId": "delete_text_field_type_api_v1_text_fields_types__type_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Type Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/text-fields/filings/{filing_id}/assign": {
+      "post": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "Assign Text Fields To Filing",
+        "description": "Assign text-field placeholders to a filing (Manager/Executive/Partner).",
+        "operationId": "assign_text_fields_to_filing_api_v1_text_fields_filings__filing_id__assign_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextFieldAssignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Assign Text Fields To Filing Api V1 Text Fields Filings  Filing Id  Assign Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/text-fields/filings/{filing_id}": {
+      "get": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "List Filing Text Fields",
+        "description": "List all text-field placeholders for a filing.",
+        "operationId": "list_filing_text_fields_api_v1_text_fields_filings__filing_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Filing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilingTextFieldListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/text-fields/{field_id}": {
+      "put": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "Update Text Field Value",
+        "description": "Submit or update the value on a text-field placeholder.\n\n- Allowed for Client (own filing) and Manager/Executive/Partner.\n- Sets status -\u003E FILLED.\n- If currently APPROVED, the edit reverts it to FILLED for re-approval.\n- Value length must be \u003C= the field's max_length.",
+        "operationId": "update_text_field_value_api_v1_text_fields__field_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "field_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Field Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextFieldValueRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilingTextFieldResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "Delete Filing Text Field",
+        "description": "Remove a text-field placeholder.\n\n- Allowed only when filing is in DOCUMENT_UPLOAD/PROCESSING/HALTED.\n- Manager/Executive/Partner: only PENDING placeholders.\n- Client: only their own FILLED or REJECTED placeholders, never APPROVED, never PENDING.\n  At least one *other* placeholder of the same field type must remain with a value\n  (FILLED / REJECTED / APPROVED).",
+        "operationId": "delete_filing_text_field_api_v1_text_fields__field_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "field_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Field Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/text-fields/approve": {
+      "post": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "Approve Filing Text Fields",
+        "description": "Approve one or more FILLED text fields (Manager/Executive/Partner).",
+        "operationId": "approve_filing_text_fields_api_v1_text_fields_approve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextFieldApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Approve Filing Text Fields Api V1 Text Fields Approve Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/text-fields/reject": {
+      "post": {
+        "tags": [
+          "Text Fields"
+        ],
+        "summary": "Reject Filing Text Fields",
+        "description": "Reject one or more FILLED text fields with a reason (Manager/Executive/Partner).",
+        "operationId": "reject_filing_text_fields_api_v1_text_fields_reject_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextFieldRejectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Reject Filing Text Fields Api V1 Text Fields Reject Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/my-tax-filings": {
       "get": {
         "summary": "Read Filings",
@@ -7489,6 +8234,7 @@
           "FILING_STATE_CHANGED",
           "FILING_HALTED",
           "DOCUMENT_PLACEHOLDER_CREATED",
+          "DOCUMENT_PLACEHOLDER_REMOVED",
           "DOCUMENT_UPLOADED",
           "DOCUMENT_APPROVED",
           "DOCUMENT_REJECTED",
@@ -7513,7 +8259,16 @@
           "FORM_FIELD_REMOVED",
           "MASTER_DOC_TYPE_ADDED",
           "MASTER_DOC_TYPE_UPDATED",
-          "MASTER_DOC_TYPE_REMOVED"
+          "MASTER_DOC_TYPE_REMOVED",
+          "INCOME_HEADS_CONFIRMED",
+          "TEXT_FIELD_TYPE_ADDED",
+          "TEXT_FIELD_TYPE_UPDATED",
+          "TEXT_FIELD_TYPE_REMOVED",
+          "TEXT_FIELD_PLACEHOLDER_CREATED",
+          "TEXT_FIELD_PLACEHOLDER_REMOVED",
+          "TEXT_FIELD_FILLED",
+          "TEXT_FIELD_APPROVED",
+          "TEXT_FIELD_REJECTED"
         ],
         "title": "AuditEventType"
       },
@@ -8788,6 +9543,19 @@
             "title": "Any Other",
             "default": false
           },
+          "any_other_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Any Other Text",
+            "description": "Description of 'Any Other' income source"
+          },
           "referral_source": {
             "type": "string",
             "title": "Referral Source",
@@ -9557,6 +10325,115 @@
         ],
         "title": "ComputationUploadURLResponse"
       },
+      "ConfirmIncomeHeadsRequest": {
+        "properties": {
+          "salary": {
+            "type": "boolean",
+            "title": "Salary",
+            "default": false
+          },
+          "esop": {
+            "type": "boolean",
+            "title": "Esop",
+            "default": false
+          },
+          "rental_income": {
+            "type": "boolean",
+            "title": "Rental Income",
+            "default": false
+          },
+          "more_than_2_properties": {
+            "type": "boolean",
+            "title": "More Than 2 Properties",
+            "default": false
+          },
+          "capital_gain_shares": {
+            "type": "boolean",
+            "title": "Capital Gain Shares",
+            "default": false
+          },
+          "capital_gain_land": {
+            "type": "boolean",
+            "title": "Capital Gain Land",
+            "default": false
+          },
+          "business_profession": {
+            "type": "boolean",
+            "title": "Business Profession",
+            "default": false
+          },
+          "interest_dividend": {
+            "type": "boolean",
+            "title": "Interest Dividend",
+            "default": false
+          },
+          "foreign_assets": {
+            "type": "boolean",
+            "title": "Foreign Assets",
+            "default": false
+          },
+          "any_other": {
+            "type": "boolean",
+            "title": "Any Other",
+            "default": false
+          },
+          "any_other_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Any Other Text"
+          }
+        },
+        "type": "object",
+        "title": "ConfirmIncomeHeadsRequest",
+        "description": "Body for POST /filings/{filing_id}/confirm-income-heads.\n\nAll booleans default False if omitted. Updates the client's master\n`ClientIncomeHeads` row AND snapshots the values onto the filing."
+      },
+      "ConfirmIncomeHeadsResponse": {
+        "properties": {
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "income_heads_snapshot": {
+            "type": "object",
+            "title": "Income Heads Snapshot"
+          },
+          "income_heads_confirmed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Income Heads Confirmed At"
+          },
+          "base_documents_assigned": {
+            "type": "integer",
+            "title": "Base Documents Assigned"
+          },
+          "transitioned_to": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FilingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "filing_id",
+          "income_heads_snapshot",
+          "income_heads_confirmed_at",
+          "base_documents_assigned"
+        ],
+        "title": "ConfirmIncomeHeadsResponse"
+      },
       "DashboardSummaryResponse": {
         "properties": {
           "counters": {
@@ -9806,6 +10683,15 @@
           "queue_id"
         ],
         "title": "DismissQueueRequest"
+      },
+      "DocSubCategory": {
+        "type": "string",
+        "enum": [
+          "BASE",
+          "INCREMENTAL"
+        ],
+        "title": "DocSubCategory",
+        "description": "Sub-category of a MasterDocumentType under a given income head."
       },
       "DocumentApproveRequest": {
         "properties": {
@@ -11141,6 +12027,17 @@
             "type": "string",
             "title": "Document Type Name"
           },
+          "document_type_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Type Description"
+          },
           "files": {
             "items": {
               "$ref": "#/components/schemas/FilingDocumentResponse"
@@ -11239,6 +12136,17 @@
               }
             ],
             "title": "Document Type Name"
+          },
+          "document_type_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Type Description"
           },
           "status": {
             "$ref": "#/components/schemas/DocumentStatus"
@@ -11944,6 +12852,227 @@
         ],
         "title": "FilingStatusCounter"
       },
+      "FilingTextFieldGroupResponse": {
+        "properties": {
+          "field_type_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Field Type Id"
+          },
+          "field_type_name": {
+            "type": "string",
+            "title": "Field Type Name"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/FilingTextFieldResponse"
+            },
+            "type": "array",
+            "title": "Fields"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field_type_id",
+          "field_type_name",
+          "fields"
+        ],
+        "title": "FilingTextFieldGroupResponse",
+        "description": "Text fields grouped by type — multiple values per type allowed."
+      },
+      "FilingTextFieldListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FilingTextFieldResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/FilingTextFieldGroupResponse"
+            },
+            "type": "array",
+            "title": "Groups",
+            "default": []
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pending_count": {
+            "type": "integer",
+            "title": "Pending Count",
+            "default": 0
+          },
+          "filled_count": {
+            "type": "integer",
+            "title": "Filled Count",
+            "default": 0
+          },
+          "rejected_count": {
+            "type": "integer",
+            "title": "Rejected Count",
+            "default": 0
+          },
+          "approved_count": {
+            "type": "integer",
+            "title": "Approved Count",
+            "default": 0
+          },
+          "all_approved": {
+            "type": "boolean",
+            "title": "All Approved",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "FilingTextFieldListResponse"
+      },
+      "FilingTextFieldResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "filing_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Filing Id"
+          },
+          "field_type_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Field Type Id"
+          },
+          "field_type_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Type Name"
+          },
+          "field_type_max_length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Type Max Length"
+          },
+          "field_type_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Type Description"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TextFieldStatus"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "filled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filled At"
+          },
+          "filled_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filled By"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Assigned At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filing_id",
+          "field_type_id",
+          "status",
+          "assigned_at"
+        ],
+        "title": "FilingTextFieldResponse"
+      },
       "FilingTrackingItem": {
         "properties": {
           "id": {
@@ -12241,6 +13370,77 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "IncomeHeadCatalogItem": {
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/IncomeHeadCategory"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "IncomeHeadCatalogItem"
+      },
+      "IncomeHeadCatalogResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IncomeHeadCatalogItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "IncomeHeadCatalogResponse"
+      },
+      "IncomeHeadCategory": {
+        "type": "string",
+        "enum": [
+          "SALARY",
+          "ESOP",
+          "RENTAL_INCOME",
+          "MORE_THAN_2_PROPERTIES",
+          "CAPITAL_GAIN_SHARES",
+          "CAPITAL_GAIN_LAND",
+          "BUSINESS_PROFESSION",
+          "INTEREST_DIVIDEND",
+          "FOREIGN_ASSETS",
+          "ANY_OTHER",
+          "OTHERS"
+        ],
+        "title": "IncomeHeadCategory",
+        "description": "Categories used to tag MasterDocumentType to client income heads.\n\nThe first 10 values mirror the boolean flags on `client_income_heads`.\n`OTHERS` is a doc-side catch-all bucket — clients never select it."
+      },
+      "IncomeHeadMappingItem": {
+        "properties": {
+          "income_head": {
+            "$ref": "#/components/schemas/IncomeHeadCategory"
+          },
+          "sub_category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocSubCategory"
+              }
+            ],
+            "default": "INCREMENTAL"
+          }
+        },
+        "type": "object",
+        "required": [
+          "income_head"
+        ],
+        "title": "IncomeHeadMappingItem"
+      },
       "IncomeHeadsResponse": {
         "properties": {
           "salary": {
@@ -12292,6 +13492,17 @@
             "type": "boolean",
             "title": "Any Other",
             "default": false
+          },
+          "any_other_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Any Other Text"
           }
         },
         "type": "object",
@@ -12408,6 +13619,18 @@
               }
             ],
             "title": "Any Other"
+          },
+          "any_other_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Any Other Text"
           }
         },
         "type": "object",
@@ -13380,6 +14603,13 @@
             "type": "integer",
             "title": "Display Order",
             "default": 0
+          },
+          "income_head_mappings": {
+            "items": {
+              "$ref": "#/components/schemas/IncomeHeadMappingItem"
+            },
+            "type": "array",
+            "title": "Income Head Mappings"
           }
         },
         "type": "object",
@@ -13443,6 +14673,13 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "income_head_mappings": {
+            "items": {
+              "$ref": "#/components/schemas/IncomeHeadMappingItem"
+            },
+            "type": "array",
+            "title": "Income Head Mappings"
           }
         },
         "type": "object",
@@ -13502,10 +14739,199 @@
               }
             ],
             "title": "Is Active"
+          },
+          "income_head_mappings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/IncomeHeadMappingItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Income Head Mappings"
           }
         },
         "type": "object",
         "title": "MasterDocTypeUpdateRequest"
+      },
+      "MasterTextFieldTypeCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "max_length": {
+            "type": "integer",
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Max Length",
+            "default": 200
+          },
+          "display_order": {
+            "type": "integer",
+            "title": "Display Order",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "MasterTextFieldTypeCreateRequest"
+      },
+      "MasterTextFieldTypeListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MasterTextFieldTypeResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "MasterTextFieldTypeListResponse"
+      },
+      "MasterTextFieldTypeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "max_length": {
+            "type": "integer",
+            "title": "Max Length"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "display_order": {
+            "type": "integer",
+            "title": "Display Order"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "max_length",
+          "is_active",
+          "display_order",
+          "created_at"
+        ],
+        "title": "MasterTextFieldTypeResponse"
+      },
+      "MasterTextFieldTypeUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "max_length": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2000,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Length"
+          },
+          "display_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Order"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "MasterTextFieldTypeUpdateRequest"
       },
       "NotificationListResponse": {
         "properties": {
@@ -14488,6 +15914,105 @@
         },
         "type": "object",
         "title": "TagUpdateRequest"
+      },
+      "TextFieldApproveRequest": {
+        "properties": {
+          "field_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Field Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field_ids"
+        ],
+        "title": "TextFieldApproveRequest"
+      },
+      "TextFieldAssignRequest": {
+        "properties": {
+          "field_type_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Field Type Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field_type_ids"
+        ],
+        "title": "TextFieldAssignRequest"
+      },
+      "TextFieldRejectRequest": {
+        "properties": {
+          "rejections": {
+            "items": {
+              "$ref": "#/components/schemas/TextFieldRejectionItem"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Rejections"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rejections"
+        ],
+        "title": "TextFieldRejectRequest"
+      },
+      "TextFieldRejectionItem": {
+        "properties": {
+          "field_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Field Id"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field_id",
+          "reason"
+        ],
+        "title": "TextFieldRejectionItem"
+      },
+      "TextFieldStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "FILLED",
+          "APPROVED",
+          "REJECTED"
+        ],
+        "title": "TextFieldStatus",
+        "description": "Lifecycle status for a per-filing text-field placeholder."
+      },
+      "TextFieldValueRequest": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "TextFieldValueRequest"
       },
       "TokenResponse": {
         "properties": {

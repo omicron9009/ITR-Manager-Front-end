@@ -77,6 +77,10 @@ export default function RegisterPage() {
       setErr('Please select at least one income source to continue.');
       return;
     }
+    if (incomeHeads.any_other && !anyOtherText.trim()) {
+      setErr('Please specify the other income / deduction.');
+      return;
+    }
     if (!declarationAccepted) return;
     setStep(3);
   };
@@ -290,13 +294,21 @@ export default function RegisterPage() {
                       <div className="pl-6 space-y-2">
                         <IncomeToggle label="Any other income / deduction" checked={incomeHeads.any_other} onChange={() => toggleHead('any_other')} />
                         {incomeHeads.any_other && (
-                          <Input
-                            value={anyOtherText}
-                            onChange={(e) => setAnyOtherText(e.target.value)}
-                            placeholder="e.g. Freelance consulting income"
-                            maxLength={255}
-                            className="mt-1"
-                          />
+                          <div>
+                            <Input
+                              value={anyOtherText}
+                              onChange={(e) => setAnyOtherText(e.target.value)}
+                              placeholder="e.g. Freelance consulting income"
+                              maxLength={255}
+                              required
+                              aria-required="true"
+                              aria-invalid={!anyOtherText.trim()}
+                              className={`mt-1 ${!anyOtherText.trim() ? 'border-rose-300 focus-visible:ring-rose-400' : ''}`}
+                            />
+                            {!anyOtherText.trim() && (
+                              <p className="text-xs text-rose-600 mt-1">Please specify the other income / deduction.</p>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -339,7 +351,7 @@ export default function RegisterPage() {
                     </Button>
                     <Button
                       type="button"
-                      disabled={!declarationAccepted}
+                      disabled={!declarationAccepted || (incomeHeads.any_other && !anyOtherText.trim())}
                       onClick={onStep2Next}
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 font-semibold disabled:opacity-50"
                     >

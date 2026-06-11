@@ -9,10 +9,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, getClient, submitFeedback, getFilingFeedback, listOtherDocs } from '@/lib/api';
+import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, getClient, submitFeedback, getFilingFeedback, listOtherDocs, listFilingTextFields, updateTextFieldValue, deleteTextField } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee, Plus, Trash2, Star } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee, Plus, Trash2, Star, Type, Save, Pencil } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function FilingDetailPage() {
   const params = useParams();
@@ -23,6 +25,9 @@ export default function FilingDetailPage() {
   const [docs, setDocs] = useState<any[]>([]);
   const [docGroups, setDocGroups] = useState<any[]>([]);
   const [docsMeta, setDocsMeta] = useState<any>({});
+  const [textFields, setTextFields] = useState<any[]>([]);
+  const [textFieldGroups, setTextFieldGroups] = useState<any[]>([]);
+  const [textFieldsMeta, setTextFieldsMeta] = useState<any>({});
   const [computations, setComputations] = useState<any[]>([]);
   const [currentComp, setCurrentComp] = useState<any>(null);
   const [hasInternalWorkings, setHasInternalWorkings] = useState(false);
@@ -59,6 +64,18 @@ export default function FilingDetailPage() {
       setDocs(d?.items || []);
       setDocGroups(d?.groups || []);
       setDocsMeta({ all_approved: d?.all_approved, pending: d?.pending_count, uploaded: d?.uploaded_count, rejected: d?.rejected_count, approved: d?.approved_count, total: d?.total });
+
+      // Load text fields
+      try {
+        const tf = await listFilingTextFields(filingId);
+        setTextFields(tf?.items || []);
+        setTextFieldGroups(tf?.groups || []);
+        setTextFieldsMeta({ all_approved: tf?.all_approved, pending: tf?.pending_count, filled: tf?.filled_count, rejected: tf?.rejected_count, approved: tf?.approved_count, total: tf?.total });
+      } catch {
+        setTextFields([]);
+        setTextFieldGroups([]);
+        setTextFieldsMeta({});
+      }
 
       const state = f?.status;
       if (state === 'COMPUTATION' || state === 'FILING' || state === 'PAYMENT' || state === 'COMPLETED') {
@@ -144,6 +161,29 @@ export default function FilingDetailPage() {
         ...g,
         files: (g.files || []).filter((d: any) => d.id !== docId),
       })));
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to delete'); }
+  };
+
+  const onSaveTextField = async (fieldId: string, value: string) => {
+    try {
+      const r = await updateTextFieldValue(fieldId, value);
+      // Update in-place
+      const updater = (tf: any) => tf.id === fieldId ? { ...tf, ...(r || {}), value, status: r?.status || 'FILLED' } : tf;
+      setTextFields((prev) => prev.map(updater));
+      setTextFieldGroups((prev) => prev.map((g) => ({ ...g, fields: (g.fields || []).map(updater) })));
+      toast.success('Saved');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Failed to save');
+      throw e;
+    }
+  };
+
+  const onDeleteTextField = async (fieldId: string) => {
+    try {
+      await deleteTextField(fieldId);
+      toast.success('Removed');
+      setTextFields((prev) => prev.filter((tf) => tf.id !== fieldId));
+      setTextFieldGroups((prev) => prev.map((g) => ({ ...g, fields: (g.fields || []).filter((tf: any) => tf.id !== fieldId) })));
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to delete'); }
   };
 
@@ -431,12 +471,44 @@ export default function FilingDetailPage() {
                 uploading={uploading === doc.id}
                 onUpload={(file) => onUpload(doc.id, file)}
                 onView={() => onDownloadDoc(doc.id)}
-                onDelete={() => onDeleteDoc(doc.id)}
               />
             ))}
           </div>
         )}
       </Card>
+
+      {/* Text Fields Section */}
+      {textFields.length > 0 && (
+        <Card className="rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Type className="h-5 w-5 text-amber-600" />
+            <h2 className="font-bold text-slate-900">Information Fields</h2>
+            {textFieldsMeta.total > 0 && (
+              <span className="text-xs text-slate-500 ml-1">
+                ({textFieldsMeta.filled || 0}/{textFieldsMeta.total} filled)
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mb-4">Please fill in the details requested below. You can edit them anytime until they are approved.</p>
+          <div className="space-y-4">
+            {(textFieldGroups.length > 0 ? textFieldGroups : [{ field_type_id: '__all__', field_type_name: '', fields: textFields }]).map((g: any) => {
+              const description = g.fields?.[0]?.field_type_description;
+              const maxLength = g.fields?.[0]?.field_type_max_length;
+              return (
+                <TextFieldGroup
+                  key={g.field_type_id}
+                  group={g}
+                  description={description}
+                  maxLength={maxLength}
+                  filingState={state}
+                  onSave={onSaveTextField}
+                  onDelete={onDeleteTextField}
+                />
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Computation Section */}
       {(state === 'COMPUTATION' || computations.length > 0) && (
@@ -726,6 +798,9 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onView, onDelete }: { d
           <p className="font-medium text-sm text-slate-900 truncate">{doc.original_filename || doc.document_type_name || 'Document'}</p>
           <StatusBadge status={status} size="sm" />
         </div>
+        {doc.document_type_description && (
+          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{doc.document_type_description}</p>
+        )}
         {pendingFile && (
           <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-700 bg-amber-50 rounded px-2 py-0.5 border border-amber-200 w-fit">
             <Upload className="h-3 w-3" />
@@ -761,8 +836,8 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onView, onDelete }: { d
             <Eye className="h-3 w-3 mr-1" /> View
           </Button>
         )}
-        {onDelete && (status === 'PENDING_UPLOAD' || status === 'UPLOADED') && (
-          <Button size="sm" variant="outline" className="text-xs h-7 text-rose-600 border-rose-200 hover:bg-rose-50 px-1.5" onClick={onDelete}>
+        {onDelete && (
+          <Button size="sm" variant="outline" className="text-xs h-7 text-rose-600 border-rose-200 hover:bg-rose-50 px-1.5" onClick={onDelete} title="Remove this row">
             <Trash2 className="h-3 w-3" />
           </Button>
         )}
@@ -780,21 +855,32 @@ function DocumentTypeGroup({ group, filingId, filingState, uploading, onUpload, 
   onUpload: (docId: string, file: File) => void;
   onUploadAdditional: (typeId: string, file: File) => void;
   onView: (docId: string) => void;
-  onDelete: (docId: string) => void;
+  onDelete?: (docId: string) => void;
 }) {
   const files = group.files || [];
   const canUploadMore = ['INITIATED', 'DOCUMENT_UPLOAD', 'PROCESSING'].includes(filingState);
+  const canRemove = ['DOCUMENT_UPLOAD', 'PROCESSING', 'HALTED'].includes(filingState);
+  const hasSiblingWithFile = files.some((f: any) => ['UPLOADED', 'REJECTED', 'APPROVED'].includes(f.status));
+  // Description may live on the group OR on individual files — fall back to the first file with one.
+  const groupDescription = group.document_type_description || files.find((f: any) => f?.document_type_description)?.document_type_description || null;
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden w-96 flex-shrink-0">
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-indigo-500" />
-          <h4 className="text-sm font-semibold text-slate-800 truncate">{group.document_type_name}</h4>
-          <span className="text-xs text-slate-500 flex-shrink-0">({files.length})</span>
+      <div className="flex items-start justify-between px-4 py-3 bg-slate-50 border-b border-slate-100 gap-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <FileText className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-semibold text-slate-800 truncate">{group.document_type_name}</h4>
+              <span className="text-xs text-slate-500 flex-shrink-0">({files.length})</span>
+            </div>
+            {groupDescription && (
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{groupDescription}</p>
+            )}
+          </div>
         </div>
         {canUploadMore && (
-          <label>
+          <label className="flex-shrink-0">
             <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadAdditional(group.document_type_id, f); e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 cursor-pointer transition-colors">
               <Plus className="h-3 w-3" /> Add
@@ -803,16 +889,211 @@ function DocumentTypeGroup({ group, filingId, filingState, uploading, onUpload, 
         )}
       </div>
       <div className="divide-y divide-slate-100 px-4 py-1">
-        {files.map((doc: any) => (
-          <DocumentPlaceholder
-            key={doc.id}
-            doc={doc}
-            uploading={uploading === doc.id}
-            onUpload={(file) => onUpload(doc.id, file)}
-            onView={() => onView(doc.id)}
-            onDelete={files.length > 1 || doc.status === 'PENDING_UPLOAD' ? () => onDelete(doc.id) : undefined}
-          />
-        ))}
+        {files.map((doc: any) => {
+          // Client may remove a row only if: filing is DOCUMENT_UPLOAD/PROCESSING/HALTED,
+          // this row has an attached file (UPLOADED or REJECTED), and at least one sibling
+          // in this same document_type group also has a file (UPLOADED/REJECTED/APPROVED).
+          const isRemovableStatus = doc.status === 'UPLOADED' || doc.status === 'REJECTED';
+          const showDelete = !!onDelete && canRemove && isRemovableStatus && hasSiblingWithFile;
+          return (
+            <DocumentPlaceholder
+              key={doc.id}
+              doc={doc}
+              uploading={uploading === doc.id}
+              onUpload={(file) => onUpload(doc.id, file)}
+              onView={() => onView(doc.id)}
+              onDelete={showDelete ? () => onDelete!(doc.id) : undefined}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Text-field group: groups multiple values for the same field type. */
+function TextFieldGroup({ group, description, maxLength, filingState, onSave, onDelete }: {
+  group: any;
+  description?: string | null;
+  maxLength?: number | null;
+  filingState: string;
+  onSave: (fieldId: string, value: string) => Promise<void>;
+  onDelete: (fieldId: string) => void;
+}) {
+  const fields = group.fields || [];
+  const canRemove = ['DOCUMENT_UPLOAD', 'PROCESSING', 'HALTED'].includes(filingState);
+  const hasSiblingWithValue = fields.some((tf: any) => ['FILLED', 'REJECTED', 'APPROVED'].includes(tf.status));
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      {group.field_type_name && (
+        <div className="flex items-start gap-2 px-4 py-3 bg-amber-50/40 border-b border-slate-100">
+          <Type className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-semibold text-slate-800 truncate">{group.field_type_name}</h4>
+              <span className="text-xs text-slate-500 flex-shrink-0">({fields.length})</span>
+            </div>
+            {description && (
+              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{description}</p>
+            )}
+          </div>
+        </div>
+      )}
+      <div className="divide-y divide-slate-100 px-4 py-1">
+        {fields.map((tf: any) => {
+          // Client may remove a row only if filing in DOCUMENT_UPLOAD/PROCESSING/HALTED,
+          // this row has a value (FILLED or REJECTED), and at least one sibling has a value.
+          const isRemovableStatus = tf.status === 'FILLED' || tf.status === 'REJECTED';
+          const showDelete = canRemove && isRemovableStatus && hasSiblingWithValue;
+          return (
+            <TextFieldPlaceholder
+              key={tf.id}
+              field={tf}
+              maxLength={maxLength || tf.field_type_max_length || 200}
+              onSave={onSave}
+              onDelete={showDelete ? () => onDelete(tf.id) : undefined}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TextFieldPlaceholder({ field, maxLength, onSave, onDelete }: {
+  field: any;
+  maxLength: number;
+  onSave: (fieldId: string, value: string) => Promise<void>;
+  onDelete?: () => void;
+}) {
+  const [editing, setEditing] = useState(field.status === 'PENDING');
+  const [value, setValue] = useState(field.value || '');
+  const [saving, setSaving] = useState(false);
+
+  // Keep local state in sync if parent updates field
+  useEffect(() => {
+    setValue(field.value || '');
+    if (field.status === 'PENDING') setEditing(true);
+    if (field.status === 'APPROVED') setEditing(false);
+  }, [field.value, field.status]);
+
+  const status = field.status;
+  const readOnly = status === 'APPROVED';
+  const useTextarea = maxLength > 100;
+  const trimmed = value.trim();
+  const tooLong = value.length > maxLength;
+
+  const statusConfig: Record<string, { iconColor: string; icon: any }> = {
+    PENDING: { icon: Clock, iconColor: 'text-slate-400' },
+    FILLED: { icon: Clock, iconColor: 'text-blue-500' },
+    APPROVED: { icon: CheckCircle2, iconColor: 'text-emerald-500' },
+    REJECTED: { icon: XCircle, iconColor: 'text-rose-500' },
+  };
+  const config = statusConfig[status] || statusConfig.PENDING;
+  const Icon = config.icon;
+
+  const handleSave = async () => {
+    if (!trimmed) { toast.error('Please enter a value'); return; }
+    if (tooLong) { toast.error(`Max ${maxLength} characters`); return; }
+    setSaving(true);
+    try {
+      await onSave(field.id, trimmed);
+      setEditing(false);
+    } catch {} finally { setSaving(false); }
+  };
+
+  return (
+    <div className="py-3">
+      <div className="flex items-start gap-3">
+        <div className={`h-7 w-7 rounded-md flex items-center justify-center bg-slate-50 ${config.iconColor} flex-shrink-0`}>
+          {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+        </div>
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-600">{field.field_type_name || 'Text Field'}</span>
+            <StatusBadge status={status} size="sm" />
+            <span className="text-[10px] text-slate-400 ml-auto">{value.length}/{maxLength}</span>
+          </div>
+          {readOnly ? (
+            <div className="text-sm text-slate-800 whitespace-pre-wrap break-words bg-emerald-50/50 rounded-md border border-emerald-200 px-3 py-2">
+              {field.value || <span className="italic text-slate-400">— empty —</span>}
+            </div>
+          ) : editing ? (
+            <>
+              {useTextarea ? (
+                <Textarea
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  rows={3}
+                  maxLength={maxLength}
+                  placeholder="Enter your response…"
+                  className="text-sm"
+                />
+              ) : (
+                <Input
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  maxLength={maxLength}
+                  placeholder="Enter your response…"
+                  className="text-sm h-9"
+                />
+              )}
+              {tooLong && (
+                <p className="text-[11px] text-rose-600">Value exceeds the {maxLength}-character limit.</p>
+              )}
+            </>
+          ) : (
+            <div className="text-sm text-slate-800 whitespace-pre-wrap break-words bg-slate-50 rounded-md border border-slate-200 px-3 py-2">
+              {field.value || <span className="italic text-slate-400">— not yet filled —</span>}
+            </div>
+          )}
+          {status === 'REJECTED' && field.rejection_reason && (
+            <p className="text-xs text-rose-600">Rejection reason: {field.rejection_reason}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
+          {editing && !readOnly && (
+            <>
+              <Button
+                size="sm"
+                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
+                disabled={saving || !trimmed || tooLong}
+                onClick={handleSave}
+              >
+                {saving ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                Save
+              </Button>
+              {(field.value || '').length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={saving}
+                  onClick={() => { setValue(field.value || ''); setEditing(false); }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </>
+          )}
+          {!editing && !readOnly && (status === 'FILLED' || status === 'REJECTED') && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditing(true)}>
+              <Pencil className="h-3 w-3 mr-1" /> Edit
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 px-1.5"
+              onClick={onDelete}
+              title="Remove this row"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
