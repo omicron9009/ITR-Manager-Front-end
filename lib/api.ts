@@ -78,7 +78,7 @@ export const changeEmail = (data: { new_email: string; password: string }) =>
   api.post('/api/v1/auth/change-email', data).then((r) => r.data);
 export const updateMyName = (full_name: string) =>
   api.patch('/api/v1/auth/me/profile', { full_name }).then((r) => r.data);
-export const updateMyIncomeHeads = (data: Record<string, boolean>) =>
+export const updateMyIncomeHeads = (data: Record<string, any>) =>
   api.put('/api/v1/clients/me/income-heads', data).then((r) => r.data);
 export const adminGenerateRecoveryCodes = (data: { email: string }) =>
   api.post('/api/v1/auth/admin/generate-recovery-codes', data).then((r) => r.data);

@@ -1763,7 +1763,7 @@ const INCOME_HEAD_LABELS: Record<string, string> = {
   any_other: 'Any Other Income',
 };
 
-function IncomeHeadsDisplay({ incomeHeads }: { incomeHeads: Record<string, boolean> }) {
+function IncomeHeadsDisplay({ incomeHeads }: { incomeHeads: Record<string, any> }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {Object.entries(INCOME_HEAD_LABELS).map(([key, label]) => {
@@ -1774,6 +1774,9 @@ function IncomeHeadsDisplay({ incomeHeads }: { incomeHeads: Record<string, boole
               {val ? '✓' : '✗'}
             </span>
             <span className="text-sm text-slate-700">{label}</span>
+            {key === 'any_other' && val && incomeHeads.any_other_text && (
+              <span className="text-xs text-slate-500 ml-1">— {incomeHeads.any_other_text}</span>
+            )}
           </div>
         );
       })}

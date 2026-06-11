@@ -45,6 +45,7 @@ export default function ClientProfilePage() {
   const [nameValue, setNameValue] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [incomeHeads, setIncomeHeads] = useState<Record<string, boolean>>({});
+  const [anyOtherText, setAnyOtherText] = useState('');
   const [savingIncomeHeads, setSavingIncomeHeads] = useState(false);
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function ClientProfilePage() {
       if (userId) getClient(userId).then((cp) => {
         setClientProfile(cp);
         if (cp?.income_heads) setIncomeHeads({ ...cp.income_heads });
+        if (cp?.income_heads?.any_other_text) setAnyOtherText(cp.income_heads.any_other_text);
       }).catch(() => {});
     }).catch(() => {});
     const loadForm = async () => {
@@ -194,7 +196,7 @@ export default function ClientProfilePage() {
               <Button size="sm" className="h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-xs" disabled={savingIncomeHeads} onClick={async () => {
                 setSavingIncomeHeads(true);
                 try {
-                  const res = await updateMyIncomeHeads(incomeHeads);
+                  const res = await updateMyIncomeHeads({ ...incomeHeads, any_other_text: incomeHeads.any_other ? anyOtherText.trim() || null : null });
                   setClientProfile((cp: any) => ({ ...cp, income_heads: res }));
                   toast.success('Income sources updated');
                 } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to update'); }
@@ -211,6 +213,16 @@ export default function ClientProfilePage() {
                 </button>
               ))}
             </div>
+            {incomeHeads.any_other && (
+              <div className="mt-3">
+                <Input
+                  value={anyOtherText}
+                  onChange={(e) => setAnyOtherText(e.target.value)}
+                  placeholder="Describe your other income source (e.g. Freelance consulting)"
+                  maxLength={255}
+                />
+              </div>
+            )}
           </>
         )}
 

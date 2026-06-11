@@ -54,6 +54,7 @@ export default function RegisterPage() {
     foreign_assets: false,
     any_other: false,
   });
+  const [anyOtherText, setAnyOtherText] = useState('');
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
 
   /* Step 3 state — referral source */
@@ -101,6 +102,7 @@ export default function RegisterPage() {
         phone_number: vals.phone_number || undefined,
         declaration_accepted: true,
         ...incomeHeads,
+        any_other_text: incomeHeads.any_other ? anyOtherText.trim() || null : null,
         referral_source: referralSource,
         referral_source_other: referralSource === 'OTHER' ? referralSourceOther.trim() : null,
       });
@@ -285,8 +287,17 @@ export default function RegisterPage() {
                       <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                         <HelpCircle className="h-4 w-4 text-indigo-500" /> Any Other
                       </div>
-                      <div className="pl-6">
+                      <div className="pl-6 space-y-2">
                         <IncomeToggle label="Any other income / deduction" checked={incomeHeads.any_other} onChange={() => toggleHead('any_other')} />
+                        {incomeHeads.any_other && (
+                          <Input
+                            value={anyOtherText}
+                            onChange={(e) => setAnyOtherText(e.target.value)}
+                            placeholder="e.g. Freelance consulting income"
+                            maxLength={255}
+                            className="mt-1"
+                          />
+                        )}
                       </div>
                     </div>
 
