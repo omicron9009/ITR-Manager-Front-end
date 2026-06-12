@@ -164,9 +164,23 @@ export const rejectDoc = (rejections: { document_id: string; reason: string }[])
   api.post('/api/v1/documents/reject', { rejections }).then((r) => r.data);
 
 // ---------- TEXT FIELDS ----------
-export const listTextFieldTypes = (includeInactive: boolean = false) =>
-  api.get('/api/v1/text-fields/types', { params: { include_inactive: includeInactive } }).then((r) => r.data);
-export const createTextFieldType = (data: { name: string; description?: string | null; max_length?: number; is_active?: boolean; display_order?: number }) =>
+export const listTextFieldTypes = (
+  opts: boolean | { includeInactive?: boolean; income_head?: string; sub_category?: 'BASE' | 'INCREMENTAL' } = false
+) => {
+  const o = typeof opts === 'boolean' ? { includeInactive: opts } : (opts || {});
+  const params: Record<string, any> = { include_inactive: !!o.includeInactive };
+  if (o.income_head) params.income_head = o.income_head;
+  if (o.sub_category) params.sub_category = o.sub_category;
+  return api.get('/api/v1/text-fields/types', { params }).then((r) => r.data);
+};
+export const createTextFieldType = (data: {
+  name: string;
+  description?: string | null;
+  max_length?: number;
+  is_active?: boolean;
+  display_order?: number;
+  income_head_mappings?: { income_head: string; sub_category: 'BASE' | 'INCREMENTAL' }[];
+}) =>
   api.post('/api/v1/text-fields/types', data).then((r) => r.data);
 export const updateTextFieldType = (type_id: string, data: any) =>
   api.put(`/api/v1/text-fields/types/${type_id}`, data).then((r) => r.data);

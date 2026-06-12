@@ -851,6 +851,18 @@
               "title": "Partner Tag Id"
             },
             "description": "Filter by partner tag"
+          },
+          {
+            "name": "onboarded_pending_filing",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only ACTIVE clients who submitted onboarding but have not initiated any filing",
+              "default": false,
+              "title": "Onboarded Pending Filing"
+            },
+            "description": "Only ACTIVE clients who submitted onboarding but have not initiated any filing"
           }
         ],
         "responses": {
@@ -7526,7 +7538,7 @@
           "Text Fields"
         ],
         "summary": "List Text Field Types",
-        "description": "List all master text-field types.",
+        "description": "List all master text-field types, with optional income-head/sub-category filters.",
         "operationId": "list_text_field_types_api_v1_text_fields_types_get",
         "security": [
           {
@@ -7543,6 +7555,42 @@
               "default": false,
               "title": "Include Inactive"
             }
+          },
+          {
+            "name": "income_head",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/IncomeHeadCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by income head",
+              "title": "Income Head"
+            },
+            "description": "Filter by income head"
+          },
+          {
+            "name": "sub_category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DocSubCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by sub-category",
+              "title": "Sub Category"
+            },
+            "description": "Filter by sub-category"
           }
         ],
         "responses": {
@@ -7573,7 +7621,7 @@
           "Text Fields"
         ],
         "summary": "Create Text Field Type",
-        "description": "Create a master text-field type (Manager/Partner).",
+        "description": "Create a master text-field type (Manager/Partner). Accepts optional income-head mappings.",
         "operationId": "create_text_field_type_api_v1_text_fields_types_post",
         "security": [
           {
@@ -7620,7 +7668,7 @@
           "Text Fields"
         ],
         "summary": "Update Text Field Type",
-        "description": "Update a master text-field type (Manager/Partner).",
+        "description": "Update a master text-field type (Manager/Partner). Pass `income_head_mappings: []` to clear.",
         "operationId": "update_text_field_type_api_v1_text_fields_types__type_id__put",
         "security": [
           {
@@ -14788,6 +14836,13 @@
             "type": "integer",
             "title": "Display Order",
             "default": 0
+          },
+          "income_head_mappings": {
+            "items": {
+              "$ref": "#/components/schemas/IncomeHeadMappingItem"
+            },
+            "type": "array",
+            "title": "Income Head Mappings"
           }
         },
         "type": "object",
@@ -14855,6 +14910,13 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "income_head_mappings": {
+            "items": {
+              "$ref": "#/components/schemas/IncomeHeadMappingItem"
+            },
+            "type": "array",
+            "title": "Income Head Mappings"
           }
         },
         "type": "object",
@@ -14928,6 +14990,20 @@
               }
             ],
             "title": "Is Active"
+          },
+          "income_head_mappings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/IncomeHeadMappingItem"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Income Head Mappings"
           }
         },
         "type": "object",

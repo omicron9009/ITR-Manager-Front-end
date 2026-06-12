@@ -6,9 +6,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { getSummary, getMyTeam, listFilings, getMyClients } from '@/lib/api';
+import { getSummary, getMyTeam, listFilings, getMyClients, listClients } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Users, ArrowRight, Shield, TrendingUp, IndianRupee, AlertTriangle } from 'lucide-react';
+import { Users, ArrowRight, Shield, TrendingUp, IndianRupee, AlertTriangle, UserCheck } from 'lucide-react';
 
 const CARDS = [
   { key: 'INITIATED', label: 'Initiated', color: 'border-l-slate-400 bg-slate-50', text: 'text-slate-700' },
@@ -27,6 +27,7 @@ export default function ManagerDashboard() {
   const [team, setTeam] = useState<any>(null);
   const [awaitingTaxPayment, setAwaitingTaxPayment] = useState<any[]>([]);
   const [myClientIds, setMyClientIds] = useState<Set<string>>(new Set());
+  const [onboardedPendingCount, setOnboardedPendingCount] = useState<number | null>(null);
 
   useEffect(() => {
     getSummary().then(setSummary).catch(() => {});
@@ -42,6 +43,11 @@ export default function ManagerDashboard() {
       const items = r?.items || r?.filings || [];
       setAwaitingTaxPayment(items.filter((f: any) => f.is_tax_paid === false));
     }).catch(() => {});
+
+    // Server-side scopes listClients to the manager's team clients
+    listClients({ onboarded_pending_filing: true, page: 1, page_size: 1 })
+      .then((r) => setOnboardedPendingCount(r?.total ?? 0))
+      .catch(() => setOnboardedPendingCount(0));
   }, []);
 
   // Filter awaiting tax payment to only manager's clients
@@ -62,14 +68,36 @@ export default function ManagerDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Manager Dashboard</h1>
           <p className="text-sm text-slate-500 mt-1">Your team&rsquo;s filings &middot; {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <Shield className="h-4 w-4 text-indigo-600" />
-          <span className="font-medium">{teamExecs.length} executive{teamExecs.length !== 1 ? 's' : ''} in team</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Card
+            className="rounded-lg border-l-4 border-l-indigo-500 bg-indigo-50 px-3 py-2 cursor-pointer hover:shadow-md transition-all"
+            onClick={() => router.push('/manager/clients')}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-indigo-600" />
+              <span className="text-lg font-bold text-indigo-700">{summary?.total_clients ?? '—'}</span>
+              <span className="text-xs font-medium text-slate-600">Total Clients</span>
+            </div>
+          </Card>
+          <Card
+            className={`rounded-lg border-l-4 px-3 py-2 cursor-pointer hover:shadow-md transition-all ${onboardedPendingCount && onboardedPendingCount > 0 ? 'border-l-amber-500 bg-amber-50' : 'border-l-slate-300 bg-slate-50'}`}
+            onClick={() => router.push('/manager/clients?status=ONBOARDED_PENDING_FILING')}
+          >
+            <div className="flex items-center gap-2">
+              <UserCheck className={`h-4 w-4 ${onboardedPendingCount && onboardedPendingCount > 0 ? 'text-amber-600' : 'text-slate-500'}`} />
+              <span className={`text-lg font-bold ${onboardedPendingCount && onboardedPendingCount > 0 ? 'text-amber-700' : 'text-slate-600'}`}>{onboardedPendingCount ?? '—'}</span>
+              <span className="text-xs font-medium text-slate-600">Onboarded — Filing Not Initiated</span>
+            </div>
+          </Card>
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Shield className="h-4 w-4 text-indigo-600" />
+            <span className="font-medium">{teamExecs.length} executive{teamExecs.length !== 1 ? 's' : ''} in team</span>
+          </div>
         </div>
       </div>
 

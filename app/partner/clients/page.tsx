@@ -70,10 +70,12 @@ function ClientsListPage() {
       const params: any = { page: 1, page_size: 100 };
       if (search) params.search = search;
       if (accountStatus) params.account_status = accountStatus;
+      if (filingStatus === 'ONBOARDED_PENDING_FILING') params.onboarded_pending_filing = true;
       // partner_tag_id is filtered client-side so we can support an "Unassigned" option.
+      const skipAnalytics = filingStatus === 'ONBOARDED_PENDING_FILING';
       const [clientsRes, analyticsRes] = await Promise.all([
         listClients(params),
-        (routePrefix === '/executive' ? getExecutiveAnalytics() : getPartnerAnalytics()).catch(() => null),
+        skipAnalytics ? Promise.resolve(null) : (routePrefix === '/executive' ? getExecutiveAnalytics() : getPartnerAnalytics()).catch(() => null),
       ]);
       const clientList = clientsRes?.items || clientsRes?.clients || clientsRes || [];
 
@@ -285,6 +287,31 @@ function ClientsListPage() {
 
   // Apply filters
   const filtered = useMemo(() => {
+    // Special case: ONBOARDED_PENDING_FILING uses server-filtered clients list directly.
+    // These clients by definition have no filings, so we skip the analytics merge entirely.
+    if (filingStatus === 'ONBOARDED_PENDING_FILING') {
+      let result = clients.map((c: any) => ({
+        ...c,
+        _fy: null,
+        _rowKey: `${c.id}-onboarded-pending`,
+        current_state: null,
+      }));
+      if (search) {
+        const q = search.toLowerCase();
+        result = result.filter((c: any) => {
+          const name = (c.full_name || c.name || '').toLowerCase();
+          const email = (c.email || '').toLowerCase();
+          return name.includes(q) || email.includes(q);
+        });
+      }
+      if (partnerTagFilter === '__unassigned__') {
+        result = result.filter((c: any) => !c.partner_tag_id);
+      } else if (partnerTagFilter) {
+        result = result.filter((c: any) => c.partner_tag_id === partnerTagFilter);
+      }
+      return result;
+    }
+
     // Special case: AWAITING_TAX_PAYMENT uses data from getFilingsByStatus
     if (filingStatus === 'AWAITING_TAX_PAYMENT') {
       const clientMap = new Map<string, any>();
@@ -494,6 +521,7 @@ function ClientsListPage() {
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filing State" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Filing States</SelectItem>
+              <SelectItem value="ONBOARDED_PENDING_FILING">Filing Not Initiated</SelectItem>
               <SelectItem value="AWAITING_TAX_PAYMENT">Awaiting Tax Payment</SelectItem>
               {['INITIATED','DOCUMENT_UPLOAD','PROCESSING','COMPUTATION','FILING','PAYMENT','COMPLETED','HALTED'].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
@@ -540,7 +568,9 @@ function ClientsListPage() {
         {loading ? (
           <div className="p-10 text-center text-sm text-slate-500">Loading clients…</div>
         ) : filtered.length === 0 ? (
-          <EmptyState icon={Users} title="No clients yet" subtitle="Clients will appear here once they register." />
+          filingStatus === 'ONBOARDED_PENDING_FILING'
+            ? <EmptyState icon={Users} title="No clients pending filing initiation" subtitle="All onboarded clients have started their filings." />
+            : <EmptyState icon={Users} title="No clients yet" subtitle="Clients will appear here once they register." />
         ) : (
           <>
             <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100">

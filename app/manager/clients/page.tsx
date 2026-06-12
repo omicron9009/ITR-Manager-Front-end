@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { getMyClients, getMyTeam, listFilings, assignExecutive, getActionItems, getFilingsByStatus } from '@/lib/api';
+import { getMyClients, getMyTeam, listFilings, assignExecutive, getActionItems, getFilingsByStatus, listClients } from '@/lib/api';
 import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot, ArrowUpDown, ArrowUp, ArrowDown, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,8 +46,16 @@ function ManagerClientsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await getMyClients({ page: 1, page_size: 100 });
-      setClients(r?.items || []);
+      // The manager-scoped /managers/me/clients endpoint does not support
+      // the onboarded_pending_filing filter, so fall back to /clients which
+      // is RBAC-scoped server-side to the manager's team.
+      if (filingStatus === 'ONBOARDED_PENDING_FILING') {
+        const r = await listClients({ page: 1, page_size: 100, onboarded_pending_filing: true, ...(search ? { search } : {}) });
+        setClients(r?.items || []);
+      } else {
+        const r = await getMyClients({ page: 1, page_size: 100 });
+        setClients(r?.items || []);
+      }
 
       if (filingStatus === 'AWAITING_TAX_PAYMENT' || initialStatus === 'AWAITING_TAX_PAYMENT') {
         try {
@@ -136,6 +144,21 @@ function ManagerClientsPage() {
   // Build filtered rows
   const filtered = useMemo(() => {
     let result = clients;
+
+    // Special case: ONBOARDED_PENDING_FILING comes pre-filtered from the server.
+    // These clients have no filings, so skip the current_filing_state filter.
+    if (filingStatus === 'ONBOARDED_PENDING_FILING') {
+      result = clients.map((c: any) => ({ ...c, _rowKey: `${c.id}-onboarded-pending` }));
+      if (search) {
+        const q = search.toLowerCase();
+        result = result.filter((c: any) => {
+          const name = (c.full_name || '').toLowerCase();
+          const email = (c.email || '').toLowerCase();
+          return name.includes(q) || email.includes(q);
+        });
+      }
+      return result;
+    }
 
     // Special case: AWAITING_TAX_PAYMENT uses data from getFilingsByStatus
     if (filingStatus === 'AWAITING_TAX_PAYMENT') {
@@ -321,6 +344,7 @@ function ManagerClientsPage() {
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filing State" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Filing States</SelectItem>
+              <SelectItem value="ONBOARDED_PENDING_FILING">Filing Not Initiated</SelectItem>
               <SelectItem value="AWAITING_TAX_PAYMENT">Awaiting Tax Payment</SelectItem>
               {FILING_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
@@ -350,7 +374,9 @@ function ManagerClientsPage() {
         {loading ? (
           <div className="p-10 text-center text-sm text-slate-500">Loading clients…</div>
         ) : filtered.length === 0 ? (
-          <EmptyState icon={Users} title="No clients found" subtitle={search ? 'Try a different search term.' : 'No clients have been assigned to you yet.'} />
+          filingStatus === 'ONBOARDED_PENDING_FILING'
+            ? <EmptyState icon={Users} title="No clients pending filing initiation" subtitle="All your onboarded clients have started their filings." />
+            : <EmptyState icon={Users} title="No clients found" subtitle={search ? 'Try a different search term.' : 'No clients have been assigned to you yet.'} />
         ) : (
           <>
             <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-100">

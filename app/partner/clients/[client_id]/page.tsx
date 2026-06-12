@@ -915,11 +915,11 @@ function AssignChecklistButton({ filingId, existingDocTypeNames, existingTextFie
     (t.name || '').toLowerCase().includes(q) ||
     (t.description || '').toLowerCase().includes(q);
 
-  // Group docs by income head. A doc with multiple mappings appears in multiple groups.
-  // A doc with no mappings goes under OTHERS. Text fields always go under OTHERS.
+  // Group docs and text fields by income head. Items with multiple mappings appear in multiple groups.
+  // Items with no mappings go under OTHERS.
   type Row =
     | { kind: 'DOC'; doc: any; sub_category: 'BASE' | 'INCREMENTAL' | null }
-    | { kind: 'TEXT'; field: any };
+    | { kind: 'TEXT'; field: any; sub_category: 'BASE' | 'INCREMENTAL' | null };
   const groups: { head: string; label: string; rows: Row[] }[] = [];
   const groupIndex: Record<string, number> = {};
 
@@ -945,9 +945,16 @@ function AssignChecklistButton({ filingId, existingDocTypeNames, existingTextFie
     }
   });
 
-  // Append text-field types under OTHERS
+  // Text fields participate in income-head groups just like docs.
   textFieldTypes.filter(matchesSearch).forEach((tf: any) => {
-    ensureGroup('OTHERS').rows.push({ kind: 'TEXT', field: tf });
+    const mappings = Array.isArray(tf.income_head_mappings) ? tf.income_head_mappings : [];
+    if (mappings.length === 0) {
+      ensureGroup('OTHERS').rows.push({ kind: 'TEXT', field: tf, sub_category: null });
+    } else {
+      mappings.forEach((m: any) => {
+        ensureGroup(m.income_head).rows.push({ kind: 'TEXT', field: tf, sub_category: (m.sub_category as any) || 'INCREMENTAL' });
+      });
+    }
   });
 
   // Drop empty groups
@@ -997,7 +1004,7 @@ function AssignChecklistButton({ filingId, existingDocTypeNames, existingTextFie
         <Send className="h-3.5 w-3.5 mr-1" /> Send Checklist
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><FileCheck className="h-5 w-5 text-indigo-600" /> Send Checklist</DialogTitle>
           </DialogHeader>
@@ -1040,7 +1047,7 @@ function AssignChecklistButton({ filingId, existingDocTypeNames, existingTextFie
                         className="flex items-center gap-1 flex-1 min-w-0 text-left"
                       >
                         {isCollapsed ? <ChevronRight className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-                        <span className="text-sm font-semibold text-slate-800 truncate">{g.label}</span>
+                        <span className="text-sm font-semibold text-slate-800 break-words">{g.label}</span>
                         <span className="text-[11px] text-slate-500 ml-1">({g.rows.length})</span>
                       </button>
                     </div>
@@ -1069,8 +1076,8 @@ function AssignChecklistButton({ filingId, existingDocTypeNames, existingTextFie
                                   disabled={alreadyAssigned}
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-slate-900 truncate">{t.name}</div>
-                                  {t.description && <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">{t.description}</div>}
+                                  <div className="text-sm font-medium text-slate-900 break-words">{t.name}</div>
+                                  {t.description && <div className="text-xs text-slate-500 mt-0.5 break-words">{t.description}</div>}
                                 </div>
                                 <div className="flex items-center gap-1.5 flex-shrink-0">
                                   {row.sub_category && (
@@ -1110,16 +1117,27 @@ function AssignChecklistButton({ filingId, existingDocTypeNames, existingTextFie
                                 disabled={alreadyAssigned}
                               />
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-slate-900 truncate flex items-center gap-1.5">
-                                  <Type className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-                                  {tf.name}
+                                <div className="text-sm font-medium text-slate-900 break-words flex items-start gap-1.5">
+                                  <Type className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                  <span className="break-words">{tf.name}</span>
                                 </div>
-                                {tf.description && <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">{tf.description}</div>}
+                                {tf.description && <div className="text-xs text-slate-500 mt-0.5 break-words">{tf.description}</div>}
                               </div>
                               <div className="flex items-center gap-1.5 flex-shrink-0">
                                 <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase bg-amber-100 text-amber-700">
                                   Text
                                 </span>
+                                {row.sub_category && (
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                      row.sub_category === 'BASE'
+                                        ? 'bg-indigo-100 text-indigo-700'
+                                        : 'bg-white text-indigo-700 border border-indigo-200'
+                                    }`}
+                                  >
+                                    {row.sub_category === 'BASE' ? 'Base' : 'Incr.'}
+                                  </span>
+                                )}
                                 {alreadyAssigned && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold">ASSIGNED</span>}
                               </div>
                             </label>

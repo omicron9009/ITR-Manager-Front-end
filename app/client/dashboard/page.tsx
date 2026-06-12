@@ -520,9 +520,14 @@ export default function ClientDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirm Income Heads Dialog (post-initiation) */}
-      <Dialog open={confirmOpen} onOpenChange={(o) => { if (!o) setConfirmOpen(false); }}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      {/* Confirm Income Heads Dialog (post-initiation) — mandatory: cannot be dismissed without confirming */}
+      <Dialog open={confirmOpen} onOpenChange={() => { /* dismissal locked until Confirm */ }}>
+        <DialogContent
+          className="sm:max-w-lg max-h-[85vh] overflow-y-auto [&>button]:hidden"
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ListChecks className="h-5 w-5 text-indigo-600" /> Confirm Your Income Heads
@@ -574,7 +579,6 @@ export default function ClientDashboard() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmOpen(false)}>Skip for now</Button>
             <Button
               onClick={submitIncomeHeads}
               disabled={confirmSaving}

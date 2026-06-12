@@ -12,10 +12,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, listFilings, listManagers, listExecutives, assignClientToManager, assignExecutive, listTags, setClientPartnerTag, getManagerTeam } from '@/lib/api';
+import { getSummary, getPendingVerification, getPartnerAnalytics, activateClient, rejectClient, listFilings, listManagers, listExecutives, assignClientToManager, assignExecutive, listTags, setClientPartnerTag, getManagerTeam, listClients } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
-import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader2, FileText, IndianRupee, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Hourglass, CheckCircle2, XCircle, TrendingUp, Users, Loader2, FileText, IndianRupee, AlertTriangle, UserCheck } from 'lucide-react';
 
 const CARDS = [
   { key: 'INITIATED', label: 'Initiated', color: 'border-l-slate-400 bg-slate-50', text: 'text-slate-700' },
@@ -43,17 +43,27 @@ export default function PartnerDashboardPage() {
   const [partnerTags, setPartnerTags] = useState<any[]>([]);
   const [justActivated, setJustActivated] = useState<any>(null); // client that was just activated, needs assignment
   const [feeForClient, setFeeForClient] = useState<any>(null); // client pending fee input before activation
+  const [onboardedPendingCount, setOnboardedPendingCount] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [s, p, a, paymentFilings] = await Promise.allSettled([getSummary(), getPendingVerification(), getPartnerAnalytics(), listFilings({ status: 'COMPUTATION', page_size: 100 })]);
+      const [s, p, a, paymentFilings, onboardedPending] = await Promise.allSettled([
+        getSummary(),
+        getPendingVerification(),
+        getPartnerAnalytics(),
+        listFilings({ status: 'COMPUTATION', page_size: 100 }),
+        listClients({ onboarded_pending_filing: true, page: 1, page_size: 1 }),
+      ]);
       if (s.status === 'fulfilled') setSummary(s.value || {});
       if (p.status === 'fulfilled') setPending(p.value?.items || []);
       if (a.status === 'fulfilled') setAnalytics(a.value);
       if (paymentFilings.status === 'fulfilled') {
         const items = paymentFilings.value?.items || paymentFilings.value?.filings || [];
         setAwaitingTaxPayment(items.filter((f: any) => f.is_tax_paid === false));
+      }
+      if (onboardedPending.status === 'fulfilled') {
+        setOnboardedPendingCount(onboardedPending.value?.total ?? 0);
       }
     } finally { setLoading(false); }
   };
@@ -135,7 +145,27 @@ export default function PartnerDashboardPage() {
           <h1 className="text-2xl font-bold text-slate-900">Partner Dashboard</h1>
           <p className="text-sm text-slate-500 mt-1">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Card
+            className="rounded-lg border-l-4 border-l-indigo-500 bg-indigo-50 px-3 py-2 cursor-pointer hover:shadow-md transition-all"
+            onClick={() => router.push('/partner/clients')}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-indigo-600" />
+              <span className="text-lg font-bold text-indigo-700">{summary?.total_clients ?? '—'}</span>
+              <span className="text-xs font-medium text-slate-600">Total Clients</span>
+            </div>
+          </Card>
+          <Card
+            className={`rounded-lg border-l-4 px-3 py-2 cursor-pointer hover:shadow-md transition-all ${onboardedPendingCount && onboardedPendingCount > 0 ? 'border-l-amber-500 bg-amber-50' : 'border-l-slate-300 bg-slate-50'}`}
+            onClick={() => router.push('/partner/clients?status=ONBOARDED_PENDING_FILING')}
+          >
+            <div className="flex items-center gap-2">
+              <UserCheck className={`h-4 w-4 ${onboardedPendingCount && onboardedPendingCount > 0 ? 'text-amber-600' : 'text-slate-500'}`} />
+              <span className={`text-lg font-bold ${onboardedPendingCount && onboardedPendingCount > 0 ? 'text-amber-700' : 'text-slate-600'}`}>{onboardedPendingCount ?? '—'}</span>
+              <span className="text-xs font-medium text-slate-600">Onboarded — Filing Not Initiated</span>
+            </div>
+          </Card>
           {pending.length > 0 && (
             <a href="#activation-queue">
               <Card className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 px-3 py-2 cursor-pointer hover:shadow-md transition-all">
