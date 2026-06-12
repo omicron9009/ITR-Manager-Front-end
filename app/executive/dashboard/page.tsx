@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { getSummary, getExecutiveAnalytics, listFilings, listClients } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
-import { TrendingUp, Users, ArrowRight, IndianRupee, AlertTriangle, UserCheck } from 'lucide-react';
+import { TrendingUp, Users, ArrowRight, IndianRupee, AlertTriangle, UserCheck, UserX } from 'lucide-react';
 
 const CARDS = [
   { key: 'INITIATED', label: 'Initiated', color: 'border-l-slate-400 bg-slate-50', text: 'text-slate-700' },
@@ -27,6 +27,7 @@ export default function ExecutiveDashboard() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [awaitingTaxPayment, setAwaitingTaxPayment] = useState<any[]>([]);
   const [onboardedPendingCount, setOnboardedPendingCount] = useState<number | null>(null);
+  const [activatedNotOnboardedCount, setActivatedNotOnboardedCount] = useState<number | null>(null);
 
   useEffect(() => {
     getSummary().then(setSummary).catch(() => {});
@@ -39,6 +40,9 @@ export default function ExecutiveDashboard() {
     listClients({ onboarded_pending_filing: true, page: 1, page_size: 1 })
       .then((r) => setOnboardedPendingCount(r?.total ?? 0))
       .catch(() => setOnboardedPendingCount(0));
+    listClients({ activated_not_onboarded: true, page: 1, page_size: 1 })
+      .then((r) => setActivatedNotOnboardedCount(r?.total ?? 0))
+      .catch(() => setActivatedNotOnboardedCount(0));
   }, []);
 
   const getCount = (k: string) => {
@@ -62,6 +66,16 @@ export default function ExecutiveDashboard() {
               <Users className="h-4 w-4 text-indigo-600" />
               <span className="text-lg font-bold text-indigo-700">{summary?.total_clients ?? '—'}</span>
               <span className="text-xs font-medium text-slate-600">Total Clients</span>
+            </div>
+          </Card>
+          <Card
+            className={`rounded-lg border-l-4 px-3 py-2 cursor-pointer hover:shadow-md transition-all ${activatedNotOnboardedCount && activatedNotOnboardedCount > 0 ? 'border-l-rose-500 bg-rose-50' : 'border-l-slate-300 bg-slate-50'}`}
+            onClick={() => router.push('/executive/clients?status=ACTIVATED_NOT_ONBOARDED')}
+          >
+            <div className="flex items-center gap-2">
+              <UserX className={`h-4 w-4 ${activatedNotOnboardedCount && activatedNotOnboardedCount > 0 ? 'text-rose-600' : 'text-slate-500'}`} />
+              <span className={`text-lg font-bold ${activatedNotOnboardedCount && activatedNotOnboardedCount > 0 ? 'text-rose-700' : 'text-slate-600'}`}>{activatedNotOnboardedCount ?? '—'}</span>
+              <span className="text-xs font-medium text-slate-600">Activated — Not Onboarded</span>
             </div>
           </Card>
           <Card

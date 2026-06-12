@@ -47,10 +47,13 @@ function ManagerClientsPage() {
     setLoading(true);
     try {
       // The manager-scoped /managers/me/clients endpoint does not support
-      // the onboarded_pending_filing filter, so fall back to /clients which
-      // is RBAC-scoped server-side to the manager's team.
+      // the onboarded_pending_filing / activated_not_onboarded filters, so fall
+      // back to /clients which is RBAC-scoped server-side to the manager's team.
       if (filingStatus === 'ONBOARDED_PENDING_FILING') {
         const r = await listClients({ page: 1, page_size: 100, onboarded_pending_filing: true, ...(search ? { search } : {}) });
+        setClients(r?.items || []);
+      } else if (filingStatus === 'ACTIVATED_NOT_ONBOARDED') {
+        const r = await listClients({ page: 1, page_size: 100, activated_not_onboarded: true, ...(search ? { search } : {}) });
         setClients(r?.items || []);
       } else {
         const r = await getMyClients({ page: 1, page_size: 100 });
@@ -145,10 +148,11 @@ function ManagerClientsPage() {
   const filtered = useMemo(() => {
     let result = clients;
 
-    // Special case: ONBOARDED_PENDING_FILING comes pre-filtered from the server.
-    // These clients have no filings, so skip the current_filing_state filter.
-    if (filingStatus === 'ONBOARDED_PENDING_FILING') {
-      result = clients.map((c: any) => ({ ...c, _rowKey: `${c.id}-onboarded-pending` }));
+    // Special case: ONBOARDED_PENDING_FILING / ACTIVATED_NOT_ONBOARDED come pre-filtered
+    // from the server. These clients have no filings, so skip the current_filing_state filter.
+    if (filingStatus === 'ONBOARDED_PENDING_FILING' || filingStatus === 'ACTIVATED_NOT_ONBOARDED') {
+      const suffix = filingStatus === 'ONBOARDED_PENDING_FILING' ? 'onboarded-pending' : 'activated-not-onboarded';
+      result = clients.map((c: any) => ({ ...c, _rowKey: `${c.id}-${suffix}` }));
       if (search) {
         const q = search.toLowerCase();
         result = result.filter((c: any) => {
@@ -344,6 +348,7 @@ function ManagerClientsPage() {
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filing State" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Filing States</SelectItem>
+              <SelectItem value="ACTIVATED_NOT_ONBOARDED">Activated — Not Onboarded</SelectItem>
               <SelectItem value="ONBOARDED_PENDING_FILING">Filing Not Initiated</SelectItem>
               <SelectItem value="AWAITING_TAX_PAYMENT">Awaiting Tax Payment</SelectItem>
               {FILING_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -376,6 +381,8 @@ function ManagerClientsPage() {
         ) : filtered.length === 0 ? (
           filingStatus === 'ONBOARDED_PENDING_FILING'
             ? <EmptyState icon={Users} title="No clients pending filing initiation" subtitle="All your onboarded clients have started their filings." />
+            : filingStatus === 'ACTIVATED_NOT_ONBOARDED'
+            ? <EmptyState icon={Users} title="No clients with incomplete onboarding" subtitle="All your activated clients have submitted their onboarding form." />
             : <EmptyState icon={Users} title="No clients found" subtitle={search ? 'Try a different search term.' : 'No clients have been assigned to you yet.'} />
         ) : (
           <>

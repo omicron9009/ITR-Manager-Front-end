@@ -71,8 +71,9 @@ function ClientsListPage() {
       if (search) params.search = search;
       if (accountStatus) params.account_status = accountStatus;
       if (filingStatus === 'ONBOARDED_PENDING_FILING') params.onboarded_pending_filing = true;
+      if (filingStatus === 'ACTIVATED_NOT_ONBOARDED') params.activated_not_onboarded = true;
       // partner_tag_id is filtered client-side so we can support an "Unassigned" option.
-      const skipAnalytics = filingStatus === 'ONBOARDED_PENDING_FILING';
+      const skipAnalytics = filingStatus === 'ONBOARDED_PENDING_FILING' || filingStatus === 'ACTIVATED_NOT_ONBOARDED';
       const [clientsRes, analyticsRes] = await Promise.all([
         listClients(params),
         skipAnalytics ? Promise.resolve(null) : (routePrefix === '/executive' ? getExecutiveAnalytics() : getPartnerAnalytics()).catch(() => null),
@@ -287,13 +288,15 @@ function ClientsListPage() {
 
   // Apply filters
   const filtered = useMemo(() => {
-    // Special case: ONBOARDED_PENDING_FILING uses server-filtered clients list directly.
-    // These clients by definition have no filings, so we skip the analytics merge entirely.
-    if (filingStatus === 'ONBOARDED_PENDING_FILING') {
+    // Special case: ONBOARDED_PENDING_FILING / ACTIVATED_NOT_ONBOARDED use server-filtered
+    // clients list directly. These clients by definition have no filings, so we skip the
+    // analytics merge entirely.
+    if (filingStatus === 'ONBOARDED_PENDING_FILING' || filingStatus === 'ACTIVATED_NOT_ONBOARDED') {
+      const suffix = filingStatus === 'ONBOARDED_PENDING_FILING' ? 'onboarded-pending' : 'activated-not-onboarded';
       let result = clients.map((c: any) => ({
         ...c,
         _fy: null,
-        _rowKey: `${c.id}-onboarded-pending`,
+        _rowKey: `${c.id}-${suffix}`,
         current_state: null,
       }));
       if (search) {
@@ -521,6 +524,7 @@ function ClientsListPage() {
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filing State" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Filing States</SelectItem>
+              <SelectItem value="ACTIVATED_NOT_ONBOARDED">Activated — Not Onboarded</SelectItem>
               <SelectItem value="ONBOARDED_PENDING_FILING">Filing Not Initiated</SelectItem>
               <SelectItem value="AWAITING_TAX_PAYMENT">Awaiting Tax Payment</SelectItem>
               {['INITIATED','DOCUMENT_UPLOAD','PROCESSING','COMPUTATION','FILING','PAYMENT','COMPLETED','HALTED'].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -570,6 +574,8 @@ function ClientsListPage() {
         ) : filtered.length === 0 ? (
           filingStatus === 'ONBOARDED_PENDING_FILING'
             ? <EmptyState icon={Users} title="No clients pending filing initiation" subtitle="All onboarded clients have started their filings." />
+            : filingStatus === 'ACTIVATED_NOT_ONBOARDED'
+            ? <EmptyState icon={Users} title="No clients with incomplete onboarding" subtitle="All activated clients have submitted their onboarding form." />
             : <EmptyState icon={Users} title="No clients yet" subtitle="Clients will appear here once they register." />
         ) : (
           <>

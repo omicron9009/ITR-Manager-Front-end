@@ -76,6 +76,10 @@ export default function ClientDashboard() {
   const [confirmSaving, setConfirmSaving] = useState(false);
 
   const [onboardingComplete, setOnboardingComplete] = useState(true);
+  // Strict flag for the "Initiate Filing" reminder popup: only true once the
+  // client's onboarding form has been positively confirmed as submitted.
+  // null = unknown (initial mount, API error, or no form to fill).
+  const [onboardingFormSubmitted, setOnboardingFormSubmitted] = useState<boolean | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showInitiateReminder, setShowInitiateReminder] = useState(false);
   const [actionItems, setActionItems] = useState<any[]>([]);
@@ -112,6 +116,8 @@ export default function ClientDashboard() {
       } else {
         setOnboardingComplete(true);
       }
+      // Strict popup gate: only mark submitted when backend confirms it.
+      setOnboardingFormSubmitted(!!r?.submitted);
     } catch { setOnboardingComplete(true); }
   };
 
@@ -189,11 +195,13 @@ export default function ClientDashboard() {
   useEffect(() => {
     if (loading) return;
     if (pendingVerification) return;
-    if (!onboardingComplete) return;
+    // Strict: require the onboarding form to be positively confirmed as submitted.
+    // null = unknown (mount race / API error / no form configured) → don't fire.
+    if (onboardingFormSubmitted !== true) return;
     const latestFY = getFYOptions()[0];
     const hasFilingForLatestFY = (filings || []).some((f: any) => f.financial_year === latestFY);
     if (!hasFilingForLatestFY) setShowInitiateReminder(true);
-  }, [loading, pendingVerification, onboardingComplete, filings]);
+  }, [loading, pendingVerification, onboardingFormSubmitted, filings]);
 
   const doInitiate = async () => {
     if (!fy || !engagementAccepted) return;
