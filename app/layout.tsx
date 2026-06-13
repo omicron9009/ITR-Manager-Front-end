@@ -5,6 +5,11 @@ import { Toaster } from '@/components/ui/sonner';
 export const metadata: Metadata = {
   title: 'AIकर — The Smartest Way to Manage ITR Filings',
   description: 'A SaaS-grade platform for Chartered Accountants to manage the end-to-end ITR filing lifecycle for up to 2,000 clients.',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
