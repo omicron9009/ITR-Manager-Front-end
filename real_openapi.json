@@ -863,6 +863,18 @@
               "title": "Onboarded Pending Filing"
             },
             "description": "Only ACTIVE clients who submitted onboarding but have not initiated any filing"
+          },
+          {
+            "name": "activated_not_onboarded",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only ACTIVE clients who have NOT yet submitted the onboarding form",
+              "default": false,
+              "title": "Activated Not Onboarded"
+            },
+            "description": "Only ACTIVE clients who have NOT yet submitted the onboarding form"
           }
         ],
         "responses": {
@@ -2122,7 +2134,7 @@
           "Filings"
         ],
         "summary": "Confirm Income Heads",
-        "description": "Client re-confirms their income heads at the start of a filing.\n\n- Updates the client's master `ClientIncomeHeads` row.\n- Snapshots the values onto the filing (`income_heads_snapshot`).\n- Auto-assigns BASE document placeholders for the selected heads.\n- Auto-transitions INITIATED -\u003E DOCUMENT_UPLOAD if a manager+executive are assigned.",
+        "description": "Client re-confirms their income heads at the start of a filing.\n\n- Updates the client's master `ClientIncomeHeads` row.\n- Snapshots the values onto the filing (`income_heads_snapshot`).\n- Auto-assigns BASE document placeholders for the selected heads.\n- Auto-transitions INITIATED -\u003E DOCUMENT_UPLOAD unconditionally so the\n  client can begin uploading documents. The Manager / Executive\n  assignment is enforced later at `move-to-computation` instead.",
         "operationId": "confirm_income_heads_api_v1_filings__filing_id__confirm_income_heads_post",
         "security": [
           {
@@ -7392,13 +7404,131 @@
         }
       }
     },
+    "/api/v1/internal-workings/{doc_id}/replace-upload-url": {
+      "post": {
+        "tags": [
+          "Internal Workings"
+        ],
+        "summary": "Get Internal Working Replace Upload Url",
+        "description": "Get a pre-signed URL to upload a replacement file for an existing internal working doc.\n\nThe original MinIO object is NEVER deleted — version history is preserved.",
+        "operationId": "get_internal_working_replace_upload_url_api_v1_internal_workings__doc_id__replace_upload_url_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalWorkingReplaceUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalWorkingUploadURLResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal-workings/{doc_id}/replace-confirm": {
+      "post": {
+        "tags": [
+          "Internal Workings"
+        ],
+        "summary": "Confirm Internal Working Replace",
+        "description": "Confirm a replacement upload. Marks old row as superseded and creates a new active row.\n\nThe old row's MinIO object is preserved (no S3 delete) so prior versions remain recoverable.\nThe new row inherits the old row's ``label`` (label is not editable on replace).",
+        "operationId": "confirm_internal_working_replace_api_v1_internal_workings__doc_id__replace_confirm_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Doc Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalWorkingReplaceConfirmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalWorkingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/internal-workings/filing/{filing_id}": {
       "get": {
         "tags": [
           "Internal Workings"
         ],
         "summary": "List Internal Workings",
-        "description": "List all internal working documents for a filing. Not visible to clients.",
+        "description": "List internal working documents for a filing. Not visible to clients.\n\nBy default returns only active (non-superseded) docs. Pass\n``?include_history=true`` to include all prior (replaced) versions as well.",
         "operationId": "list_internal_workings_api_v1_internal_workings_filing__filing_id__get",
         "security": [
           {
@@ -7414,6 +7544,16 @@
               "type": "string",
               "format": "uuid",
               "title": "Filing Id"
+            }
+          },
+          {
+            "name": "include_history",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include History"
             }
           }
         ],
@@ -9085,6 +9225,18 @@
               }
             ],
             "title": "Last Updated"
+          },
+          "form_submitted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Form Submitted At"
           }
         },
         "type": "object",
@@ -12683,6 +12835,11 @@
             "title": "Has Internal Workings",
             "default": false
           },
+          "pending_executive_assignment": {
+            "type": "boolean",
+            "title": "Pending Executive Assignment",
+            "default": false
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -13706,6 +13863,54 @@
         ],
         "title": "InternalWorkingListResponse"
       },
+      "InternalWorkingReplaceConfirmRequest": {
+        "properties": {
+          "object_key": {
+            "type": "string",
+            "title": "Object Key"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "file_size": {
+            "type": "integer",
+            "title": "File Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "object_key",
+          "filename",
+          "content_type",
+          "file_size"
+        ],
+        "title": "InternalWorkingReplaceConfirmRequest",
+        "description": "Request body to finalize the replacement after the new file is in MinIO."
+      },
+      "InternalWorkingReplaceUploadRequest": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "content_type"
+        ],
+        "title": "InternalWorkingReplaceUploadRequest",
+        "description": "Request body for getting a presigned URL when replacing an existing IW doc."
+      },
       "InternalWorkingResponse": {
         "properties": {
           "id": {
@@ -13765,6 +13970,30 @@
             "type": "string",
             "format": "date-time",
             "title": "Uploaded At"
+          },
+          "replaces_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replaces Id"
+          },
+          "superseded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Superseded At"
           }
         },
         "type": "object",

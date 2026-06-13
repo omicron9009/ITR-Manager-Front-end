@@ -352,12 +352,24 @@ export const internalWorkingUploadUrl = (data: { filing_id: string; filename: st
   api.post('/api/v1/internal-workings/upload-url', data).then((r) => r.data);
 export const internalWorkingConfirm = (params: { filing_id: string; object_key: string; filename: string; content_type: string; file_size: number; label?: string }) =>
   api.post('/api/v1/internal-workings/confirm-upload', null, { params }).then((r) => r.data);
-export const listInternalWorkings = (filing_id: string) =>
-  api.get(`/api/v1/internal-workings/filing/${filing_id}`).then((r) => r.data);
+export const listInternalWorkings = (filing_id: string, include_history?: boolean) =>
+  api
+    .get(`/api/v1/internal-workings/filing/${filing_id}`, {
+      params: include_history ? { include_history: true } : undefined,
+    })
+    .then((r) => r.data);
 export const internalWorkingDownloadUrl = (doc_id: string) =>
   api.get(`/api/v1/internal-workings/${doc_id}/download`).then((r) => r.data);
 export const deleteInternalWorking = (doc_id: string) =>
   api.delete(`/api/v1/internal-workings/${doc_id}`).then((r) => r.data);
+export const internalWorkingReplaceUploadUrl = (
+  doc_id: string,
+  data: { filename: string; content_type: string }
+) => api.post(`/api/v1/internal-workings/${doc_id}/replace-upload-url`, data).then((r) => r.data);
+export const internalWorkingReplaceConfirm = (
+  doc_id: string,
+  data: { object_key: string; filename: string; content_type: string; file_size: number }
+) => api.post(`/api/v1/internal-workings/${doc_id}/replace-confirm`, data).then((r) => r.data);
 
 // ---------- COMPUTATION MULTI-STEP APPROVAL ----------
 export const managerApproveComp = (computation_id: string) =>

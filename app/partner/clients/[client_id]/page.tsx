@@ -9,10 +9,10 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag, getIncomeHeadsCatalog, listTextFieldTypes, assignTextFields, listFilingTextFields, deleteTextField, approveTextFields, rejectTextFields } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, internalWorkingReplaceUploadUrl, internalWorkingReplaceConfirm, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag, getIncomeHeadsCatalog, listTextFieldTypes, assignTextFields, listFilingTextFields, deleteTextField, approveTextFields, rejectTextFields } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save } from 'lucide-react';
+import { Mail, Phone, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save, Replace, History } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -1686,18 +1686,47 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
   const [pendingLabel, setPendingLabel] = useState('');
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [replacingId, setReplacingId] = useState<string | null>(null);
+  const [expandedHistory, setExpandedHistory] = useState<Record<string, boolean>>({});
 
   const canUpload = ['COMPUTATION', 'FILING'].includes(filingStatus);
 
-  const load = async () => {
+  const load = async (history?: boolean) => {
     setLoading(true);
     try {
-      const r = await listInternalWorkings(filingId);
+      const r = await listInternalWorkings(filingId, history ?? showHistory);
       setDocs(r?.items || []);
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [filingId]);
+  useEffect(() => { load(showHistory); }, [filingId]);
+
+  const toggleHistory = async () => {
+    const next = !showHistory;
+    setShowHistory(next);
+    if (!next) setExpandedHistory({});
+    await load(next);
+  };
+
+  const activeDocs = docs.filter((d: any) => !d.superseded_at);
+  const supersededById = (() => {
+    const map = new Map<string, any>();
+    for (const d of docs) map.set(d.id, d);
+    return map;
+  })();
+
+  const getHistoryChain = (active: any): any[] => {
+    const chain: any[] = [];
+    let cur = active.replaces_id ? supersededById.get(active.replaces_id) : null;
+    const seen = new Set<string>();
+    while (cur && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      chain.push(cur);
+      cur = cur.replaces_id ? supersededById.get(cur.replaces_id) : null;
+    }
+    return chain;
+  };
 
   const handleUpload = async () => {
     if (!pendingFile) return;
@@ -1718,6 +1747,24 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
     finally { setUploading(false); }
   };
 
+  const handleReplacePick = (docId: string) => {
+    document.getElementById(`iw-replace-${filingId}-${docId}`)?.click();
+  };
+
+  const handleReplaceFile = async (docId: string, file: File) => {
+    if (file.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
+    setReplacingId(docId);
+    try {
+      const urlRes = await internalWorkingReplaceUploadUrl(docId, { filename: file.name, content_type: file.type });
+      const axios = (await import('axios')).default;
+      await axios.put(urlRes.upload_url, file, { headers: { 'Content-Type': file.type } });
+      await internalWorkingReplaceConfirm(docId, { object_key: urlRes.object_key, filename: file.name, content_type: file.type, file_size: file.size });
+      toast.success('Document replaced');
+      load();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Replace failed'); }
+    finally { setReplacingId(null); }
+  };
+
   const handleDelete = async (docId: string) => {
     try {
       await deleteInternalWorking(docId);
@@ -1734,47 +1781,131 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
     } catch { toast.error('Could not load file'); }
   };
 
+  const renderDocRow = (doc: any, opts: { active: boolean }) => {
+    const isLastActive = opts.active && activeDocs.length === 1;
+    const blockDelete = isLastActive && filingStatus === 'COMPUTATION';
+    const isReplacing = replacingId === doc.id;
+    return (
+      <div
+        key={doc.id}
+        className={`flex items-center gap-3 p-3 rounded-lg border ${opts.active ? 'border-slate-200 bg-white' : 'border-slate-200 bg-slate-50/60 opacity-75'}`}
+      >
+        <FileArchive className={`h-4 w-4 flex-shrink-0 ${opts.active ? 'text-violet-500' : 'text-slate-400'}`} />
+        <div className="flex-1 min-w-0">
+          <div className={`text-sm font-medium truncate ${opts.active ? 'text-slate-900' : 'text-slate-500 line-through'}`}>
+            {doc.original_filename || doc.filename || doc.label || 'Document'}
+          </div>
+          {doc.label && (doc.original_filename || doc.filename) && <div className="text-xs text-slate-400 truncate">{doc.label}</div>}
+          <div className="text-[10px] text-slate-400">
+            {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('en-IN') : ''}
+            {doc.uploaded_by_name ? ` · ${doc.uploaded_by_name}` : ''}
+            {!opts.active && doc.superseded_at ? ` · replaced ${new Date(doc.superseded_at).toLocaleDateString('en-IN')}` : ''}
+          </div>
+        </div>
+        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => handleView(doc.id)} title="View">
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+        {opts.active && canUpload && (
+          <>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-violet-600 hover:text-violet-700"
+              onClick={() => handleReplacePick(doc.id)}
+              disabled={isReplacing}
+              title="Replace with a new version"
+            >
+              {isReplacing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Replace className="h-3.5 w-3.5" />}
+            </Button>
+            <input
+              id={`iw-replace-${filingId}-${doc.id}`}
+              type="file"
+              hidden
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleReplaceFile(doc.id, f);
+                e.target.value = '';
+              }}
+            />
+          </>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-rose-500 hover:text-rose-700 disabled:opacity-40"
+          onClick={() => !blockDelete && handleDelete(doc.id)}
+          disabled={blockDelete}
+          title={blockDelete ? 'At least one internal working document is required while in COMPUTATION' : 'Remove'}
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <div className="mt-6 pt-5 border-t border-slate-200 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-slate-500 uppercase">Internal Working Documents</span>
-        <Button size="sm" variant="ghost" onClick={load} disabled={loading}><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /></Button>
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={toggleHistory}
+            disabled={loading}
+            className={showHistory ? 'text-violet-600' : ''}
+            title={showHistory ? 'Hide previous versions' : 'Show previous versions'}
+          >
+            <History className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => load()} disabled={loading} title="Refresh">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
-      {/* Warning if no docs and in COMPUTATION state */}
-      {docs.length === 0 && filingStatus === 'COMPUTATION' && !loading && (
+      {/* Warning if no active docs and in COMPUTATION state */}
+      {activeDocs.length === 0 && filingStatus === 'COMPUTATION' && !loading && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-center gap-2">
           <Clock className="h-4 w-4 flex-shrink-0" />
           <span>At least one internal working document must be uploaded before the filing can advance to FILING state.</span>
         </div>
       )}
 
-      {/* List existing docs */}
-      {docs.length > 0 && (
+      {/* List active docs (with optional history chain underneath) */}
+      {activeDocs.length > 0 && (
         <div className="space-y-2">
-          {docs.map((doc: any) => (
-            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white">
-              <FileArchive className="h-4 w-4 text-violet-500 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-900 truncate">{doc.filename || doc.label || 'Document'}</div>
-                {doc.label && doc.filename && <div className="text-xs text-slate-400 truncate">{doc.label}</div>}
-                <div className="text-[10px] text-slate-400">
-                  {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('en-IN') : ''}
-                  {doc.uploaded_by_name ? ` · ${doc.uploaded_by_name}` : ''}
-                </div>
+          {activeDocs.map((doc: any) => {
+            const chain = showHistory ? getHistoryChain(doc) : [];
+            const expanded = !!expandedHistory[doc.id];
+            return (
+              <div key={doc.id} className="space-y-1">
+                {renderDocRow(doc, { active: true })}
+                {chain.length > 0 && (
+                  <div className="ml-6 space-y-1">
+                    <button
+                      type="button"
+                      className="text-[11px] text-slate-500 hover:text-slate-700 inline-flex items-center gap-1"
+                      onClick={() => setExpandedHistory((s) => ({ ...s, [doc.id]: !s[doc.id] }))}
+                    >
+                      {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      {chain.length} previous version{chain.length === 1 ? '' : 's'}
+                    </button>
+                    {expanded && (
+                      <div className="space-y-1">
+                        {chain.map((old: any) => renderDocRow(old, { active: false }))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => handleView(doc.id)}>
-                <Eye className="h-3.5 w-3.5" />
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7 px-2 text-rose-500 hover:text-rose-700" onClick={() => handleDelete(doc.id)}>
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {docs.length === 0 && !loading && filingStatus !== 'COMPUTATION' && (
+      {activeDocs.length === 0 && !loading && filingStatus !== 'COMPUTATION' && (
         <p className="text-xs text-slate-400 italic">No internal working documents uploaded yet.</p>
       )}
 
@@ -1784,7 +1915,7 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
           {!pendingFile ? (
             <div className="flex items-center gap-3">
               <Button size="sm" variant="outline" onClick={() => document.getElementById(`iw-upload-${filingId}`)?.click()}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add Internal Working
+                <Plus className="h-3.5 w-3.5 mr-1" /> {activeDocs.length > 0 ? 'Add another internal working' : 'Add Internal Working'}
               </Button>
               <span className="text-xs text-slate-400">PDF, Word, Excel, Images (max 10 MB)</span>
               <input id={`iw-upload-${filingId}`} type="file" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} />
