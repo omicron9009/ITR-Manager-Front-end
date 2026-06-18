@@ -157,6 +157,8 @@ export const filingDocs = (filing_id: string) => api.get(`/api/v1/documents/fili
 export const docUploadUrl = (data: { document_id?: string; filing_id?: string; document_type_id?: string; filename: string; content_type: string }) =>
   api.post('/api/v1/documents/upload-url', data).then((r) => r.data);
 export const docConfirmUpload = (params: any) => api.post('/api/v1/documents/confirm-upload', null, { params }).then((r) => r.data);
+export const docReplaceUrl = (document_id: string, data: { filename: string; content_type: string }) =>
+  api.post(`/api/v1/documents/${document_id}/replace-url`, null, { params: data }).then((r) => r.data);
 export const docDownloadUrl = (id: string) => api.get(`/api/v1/documents/${id}/download-url`).then((r) => r.data);
 export const deleteDoc = (document_id: string) => api.delete(`/api/v1/documents/${document_id}`).then((r) => r.data);
 export const approveDoc = (document_ids: string[]) => api.post('/api/v1/documents/approve', { document_ids }).then((r) => r.data);

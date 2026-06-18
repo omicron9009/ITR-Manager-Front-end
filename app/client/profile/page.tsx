@@ -186,6 +186,9 @@ export default function ClientProfilePage() {
           </div>
           <div><div className="text-xs text-slate-500">Email</div><div className="font-medium text-slate-900">{profile.email || '—'}</div></div>
           <div><div className="text-xs text-slate-500">Phone</div><div className="font-medium text-slate-900">{profile.phone_number || profile.phone || profile.mobile || values['phone'] || values['mobile'] || values['phone_number'] || '—'}</div></div>
+          {clientProfile?.city && (
+            <div><div className="text-xs text-slate-500">City</div><div className="font-medium text-slate-900">{clientProfile.city}</div></div>
+          )}
           <div><div className="text-xs text-slate-500">Status</div><StatusBadge status={profile.account_status} /></div>
           {clientProfile?.referral_source && (
             <div>

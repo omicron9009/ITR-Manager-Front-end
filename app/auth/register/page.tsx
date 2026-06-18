@@ -57,6 +57,9 @@ export default function RegisterPage() {
   const [anyOtherText, setAnyOtherText] = useState('');
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
 
+  /* City */
+  const [city, setCity] = useState('');
+
   /* Step 3 state — referral source */
   const [referralSource, setReferralSource] = useState('');
   const [referralSourceOther, setReferralSourceOther] = useState('');
@@ -107,6 +110,7 @@ export default function RegisterPage() {
         declaration_accepted: true,
         ...incomeHeads,
         any_other_text: incomeHeads.any_other ? anyOtherText.trim() || null : null,
+        city: city.trim() || null,
         referral_source: referralSource,
         referral_source_other: referralSource === 'OTHER' ? referralSourceOther.trim() : null,
       });
@@ -202,6 +206,10 @@ export default function RegisterPage() {
                         <Input {...register('phone_number')} placeholder="9876543210" maxLength={10} className="mt-1.5" />
                         {errors.phone_number && <p className="text-xs text-rose-600 mt-1">{errors.phone_number.message as string}</p>}
                       </div>
+                    </div>
+                    <div>
+                      <Label>City</Label>
+                      <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Nagpur" maxLength={100} className="mt-1.5" />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>

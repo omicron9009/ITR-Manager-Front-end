@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "ITR Filing Platform",
+    "title": "AIकर",
     "description": "ITR Filing Management Platform API — manages end-to-end ITR filing lifecycle for CA practices.",
     "version": "1.0.0"
   },
@@ -3348,6 +3348,73 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/documents/{document_id}/replace-url": {
+      "post": {
+        "tags": [
+          "Documents"
+        ],
+        "summary": "Get Document Replace Url",
+        "description": "Return a pre-signed PUT URL so a client can replace an existing document.\n\nAvailable for any document that has not yet been approved (PENDING_UPLOAD,\nUPLOADED, or REJECTED). Once approved the slot is locked — 403 is returned.\nWorks in both DOCUMENT_UPLOAD and PROCESSING filing phases.\nClient role only.",
+        "operationId": "get_document_replace_url_api_v1_documents__document_id__replace_url_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          },
+          {
+            "name": "content_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Content Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentUploadURLResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/documents/confirm-upload": {
@@ -9698,6 +9765,17 @@
             ],
             "title": "Address"
           },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
           "income_type": {
             "anyOf": [
               {
@@ -9937,6 +10015,18 @@
             ],
             "title": "Address"
           },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
           "income_type": {
             "anyOf": [
               {
@@ -10073,6 +10163,19 @@
             ],
             "title": "Any Other Text",
             "description": "Description of 'Any Other' income source"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City",
+            "description": "City the client belongs to"
           },
           "referral_source": {
             "type": "string",
@@ -16272,6 +16375,39 @@
             "type": "string",
             "format": "date-time",
             "title": "Registered At"
+          },
+          "referral_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Source"
+          },
+          "referral_source_other": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Source Other"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
           }
         },
         "type": "object",

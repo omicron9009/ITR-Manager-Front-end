@@ -322,6 +322,8 @@ export default function PartnerDashboardPage() {
                   <th className="text-left px-5 py-3 font-semibold">Client Name</th>
                   <th className="text-left px-5 py-3 font-semibold">Email</th>
                   <th className="text-left px-5 py-3 font-semibold">Phone</th>
+                  <th className="text-left px-5 py-3 font-semibold">City</th>
+                  <th className="text-left px-5 py-3 font-semibold">Referral</th>
                   <th className="text-left px-5 py-3 font-semibold">Registered</th>
                   <th className="text-left px-5 py-3 font-semibold">Waiting</th>
                   <th className="text-right px-5 py-3 font-semibold">Actions</th>
@@ -333,6 +335,24 @@ export default function PartnerDashboardPage() {
                     <td className="px-5 py-3 font-medium text-slate-900">{c.full_name || c.name}</td>
                     <td className="px-5 py-3 text-slate-600">{c.email}</td>
                     <td className="px-5 py-3 text-slate-600">{c.phone_number || '—'}</td>
+                    <td className="px-5 py-3 text-slate-600">{c.city || <span className="text-slate-400">—</span>}</td>
+                    <td className="px-5 py-3 text-slate-600 text-xs">
+                      {(() => {
+                        const labels: Record<string, string> = {
+                          WEBSITE: 'Website',
+                          FRIEND_RELATIVE: 'Friend / Relative',
+                          PROFESSIONAL_REFERRAL: 'Professional Referral',
+                          DIRECTED_BY_FIRM: 'Directed by Firm',
+                          OTHER: 'Other',
+                        };
+                        if (!c.referral_source) return <span className="text-slate-400">—</span>;
+                        const label = labels[c.referral_source] || c.referral_source;
+                        if (c.referral_source === 'OTHER' && c.referral_source_other) {
+                          return <span title={c.referral_source_other}>{label}: <span className="text-slate-400 italic">{c.referral_source_other}</span></span>;
+                        }
+                        return label;
+                      })()}
+                    </td>
                     <td className="px-5 py-3 text-slate-500 text-xs">{c.registered_at ? new Date(c.registered_at).toLocaleDateString() : '—'}</td>
                     <td className="px-5 py-3 text-xs">{(() => {
                       if (!c.registered_at) return '—';

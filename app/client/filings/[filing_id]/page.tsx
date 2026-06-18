@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getFiling, filingDocs, docUploadUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, getClient, submitFeedback, getFilingFeedback, listOtherDocs, listFilingTextFields, updateTextFieldValue, deleteTextField } from '@/lib/api';
+import { getFiling, filingDocs, docUploadUrl, docReplaceUrl, docConfirmUpload, docDownloadUrl, deleteDoc, compForFiling, compDownloadUrl, approveComp, rejectComp, confirmTaxPaid, completedDocs, storageDownloadUrl, submitDocs, getClient, submitFeedback, getFilingFeedback, listOtherDocs, listFilingTextFields, updateTextFieldValue, deleteTextField } from '@/lib/api';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { ArrowLeft, Upload, FileText, Download, Eye, CheckCircle2, XCircle, Clock, RefreshCw, Loader2, FolderOpen, Calculator, Send, X, IndianRupee, Plus, Trash2, Star, Type, Save, Pencil } from 'lucide-react';
@@ -131,6 +131,29 @@ export default function FilingDetailPage() {
       })));
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
     finally { setUploading(null); }
+  };
+
+  const onReplace = async (docId: string, file: File) => {
+    if (file.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf','doc','docx','xls','xlsx','csv','png','jpg','jpeg'].includes(ext)) { toast.error('Allowed types: PDF, Word, Excel, CSV, PNG, JPG'); return; }
+    setUploading(docId);
+    try {
+      const url = await docReplaceUrl(docId, { filename: file.name, content_type: file.type });
+      await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type } });
+      await docConfirmUpload({ document_id: url.document_id || docId, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
+      toast.success('Document replaced');
+      setDocs((prev) => prev.map((d) => d.id === docId ? { ...d, status: 'UPLOADED', original_filename: file.name } : d));
+      setDocGroups((prev) => prev.map((g) => ({
+        ...g,
+        files: (g.files || []).map((d: any) => d.id === docId ? { ...d, status: 'UPLOADED', original_filename: file.name } : d),
+      })));
+    } catch (e: any) {
+      const s = e?.response?.status;
+      if (s === 403) toast.error('This document is already approved and cannot be replaced.');
+      else if (s === 409) toast.error('Document replacement is not allowed at this filing stage.');
+      else toast.error(e?.response?.data?.detail || 'Replace failed');
+    } finally { setUploading(null); }
   };
 
   const onUploadAdditional = async (documentTypeId: string, file: File) => {
@@ -456,6 +479,7 @@ export default function FilingDetailPage() {
                 filingState={state}
                 uploading={uploading}
                 onUpload={onUpload}
+                onReplace={onReplace}
                 onUploadAdditional={onUploadAdditional}
                 onView={onDownloadDoc}
                 onDelete={onDeleteDoc}
@@ -470,6 +494,7 @@ export default function FilingDetailPage() {
                 doc={doc}
                 uploading={uploading === doc.id}
                 onUpload={(file) => onUpload(doc.id, file)}
+                onReplace={(file) => onReplace(doc.id, file)}
                 onView={() => onDownloadDoc(doc.id)}
               />
             ))}
@@ -774,8 +799,9 @@ function CelebrationOverlay({ onClose }: { onClose: () => void }) {
 }
 
 /** Document placeholder - Windows file system style */
-function DocumentPlaceholder({ doc, uploading, onUpload, onView, onDelete }: { doc: any; uploading: boolean; onUpload: (f: File) => void; onView: () => void; onDelete?: () => void }) {
+function DocumentPlaceholder({ doc, uploading, onUpload, onReplace, onView, onDelete }: { doc: any; uploading: boolean; onUpload: (f: File) => void; onReplace: (f: File) => void; onView: () => void; onDelete?: () => void }) {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [isReplace, setIsReplace] = useState(false);
   const status = doc.status;
 
   const statusConfig: Record<string, { iconColor: string; icon: any }> = {
@@ -794,8 +820,8 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onView, onDelete }: { d
         {uploading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-sm text-slate-900 truncate">{doc.original_filename || doc.document_type_name || 'Document'}</p>
+        <div className="flex items-start flex-wrap gap-x-2 gap-y-1">
+          <p className="font-medium text-sm text-slate-900 break-words">{doc.original_filename || doc.document_type_name || 'Document'}</p>
           <StatusBadge status={status} size="sm" />
         </div>
         {doc.document_type_description && (
@@ -805,7 +831,7 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onView, onDelete }: { d
           <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-700 bg-amber-50 rounded px-2 py-0.5 border border-amber-200 w-fit">
             <Upload className="h-3 w-3" />
             <span className="truncate max-w-[150px]">{pendingFile.name}</span>
-            <button className="text-rose-500 hover:text-rose-700 ml-1 flex-shrink-0" onClick={() => setPendingFile(null)}>✕</button>
+            <button className="text-rose-500 hover:text-rose-700 ml-1 flex-shrink-0" onClick={() => { setPendingFile(null); setIsReplace(false); }}>✕</button>
           </div>
         )}
         {status === 'REJECTED' && doc.rejection_reason && (
@@ -815,14 +841,22 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onView, onDelete }: { d
       <div className="flex items-center gap-1.5 flex-shrink-0">
         {(status === 'PENDING_UPLOAD' || status === 'REJECTED') && !pendingFile && (
           <label>
-            <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
+            <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPendingFile(f); setIsReplace(false); } e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer transition-colors">
               <Upload className="h-3 w-3" /> {status === 'REJECTED' ? 'Re-upload' : 'Upload'}
             </span>
           </label>
         )}
+        {status === 'UPLOADED' && !pendingFile && (
+          <label>
+            <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPendingFile(f); setIsReplace(true); } e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 cursor-pointer transition-colors">
+              <RefreshCw className="h-3 w-3" /> Replace
+            </span>
+          </label>
+        )}
         {pendingFile && (
-          <Button size="sm" className="relative overflow-visible bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md text-xs h-7" disabled={uploading} onClick={() => { onUpload(pendingFile); setPendingFile(null); }}>
+          <Button size="sm" className="relative overflow-visible bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md text-xs h-7" disabled={uploading} onClick={() => { if (isReplace) onReplace(pendingFile); else onUpload(pendingFile); setPendingFile(null); setIsReplace(false); }}>
             <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] font-medium px-2 py-0.5 rounded shadow-lg animate-bounce pointer-events-none">
               Click to confirm
               <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-900" />
@@ -847,12 +881,13 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onView, onDelete }: { d
 }
 
 /** Document type group - shows all files for a single document type with "Add Another" */
-function DocumentTypeGroup({ group, filingId, filingState, uploading, onUpload, onUploadAdditional, onView, onDelete }: {
+function DocumentTypeGroup({ group, filingId, filingState, uploading, onUpload, onReplace, onUploadAdditional, onView, onDelete }: {
   group: any;
   filingId: string;
   filingState: string;
   uploading: string | null;
   onUpload: (docId: string, file: File) => void;
+  onReplace: (docId: string, file: File) => void;
   onUploadAdditional: (typeId: string, file: File) => void;
   onView: (docId: string) => void;
   onDelete?: (docId: string) => void;
@@ -870,8 +905,8 @@ function DocumentTypeGroup({ group, filingId, filingState, uploading, onUpload, 
         <div className="flex items-start gap-2 min-w-0 flex-1">
           <FileText className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-semibold text-slate-800 truncate">{group.document_type_name}</h4>
+            <div className="flex items-start flex-wrap gap-x-2 gap-y-0.5">
+              <h4 className="text-sm font-semibold text-slate-800 break-words">{group.document_type_name}</h4>
               <span className="text-xs text-slate-500 flex-shrink-0">({files.length})</span>
             </div>
             {groupDescription && (
@@ -901,6 +936,7 @@ function DocumentTypeGroup({ group, filingId, filingState, uploading, onUpload, 
               doc={doc}
               uploading={uploading === doc.id}
               onUpload={(file) => onUpload(doc.id, file)}
+              onReplace={(file) => onReplace(doc.id, file)}
               onView={() => onView(doc.id)}
               onDelete={showDelete ? () => onDelete!(doc.id) : undefined}
             />
