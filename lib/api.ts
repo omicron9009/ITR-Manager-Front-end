@@ -249,6 +249,18 @@ export const setupEmailConfig = (data: {
 export const testEmailConfig = (test_recipient: string) =>
   api.post('/api/v1/email/test', { test_recipient }).then((r) => r.data);
 
+// ---------- WHATSAPP CONFIG ----------
+export const getWhatsAppConfig = () => api.get('/api/v1/whatsapp/config').then((r) => r.data);
+export const deleteWhatsAppConfig = () => api.delete('/api/v1/whatsapp/config').then((r) => r.data);
+export const setupWhatsApp = (data: { openwa_base_url: string; api_key: string; session_name?: string }) =>
+  api.post('/api/v1/whatsapp/setup', data).then((r) => r.data);
+export const startWhatsAppSession = () => api.post('/api/v1/whatsapp/session/start').then((r) => r.data);
+export const stopWhatsAppSession = () => api.post('/api/v1/whatsapp/session/stop').then((r) => r.data);
+export const getWhatsAppSessionStatus = () => api.get('/api/v1/whatsapp/session/status').then((r) => r.data);
+export const getWhatsAppQR = () => api.get('/api/v1/whatsapp/session/qr').then((r) => r.data);
+export const sendWhatsAppTest = (data: { to_phone: string; text?: string }) =>
+  api.post('/api/v1/whatsapp/messages/test', data).then((r) => r.data);
+
 // ---------- STORAGE ----------
 export const storageDownloadUrl = (file_id: string) => api.get(`/api/v1/storage/${file_id}/download-url`).then((r) => r.data);
 export const getOnboardingFiles = (client_id?: string) => api.get('/api/v1/storage/onboarding-files', { params: client_id ? { client_id } : {} }).then((r) => r.data);

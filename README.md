@@ -29,6 +29,11 @@ docker tag itr-platform-frontend omicron9009/itr-platform-frontend:latest
 docker push omicron9009/itr-platform-frontend:latest
 ```
 
+### for docker compose in dev env 
+```bash
+docker build -t itr-frontend .; docker tag itr-frontend omicron9009/itr-frontend:dev; docker push omicron9009/itr-frontend:dev
+```
+
 ### Pull & Run (on any machine)
 
 ```bash

@@ -8212,6 +8212,318 @@
         ]
       }
     },
+    "/api/v1/whatsapp/config": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Get Whatsapp Config",
+        "operationId": "get_whatsapp_config_api_v1_whatsapp_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppConfigResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Delete Whatsapp Config",
+        "operationId": "delete_whatsapp_config_api_v1_whatsapp_config_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/whatsapp/setup": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Setup Whatsapp",
+        "description": "Save OpenWA gateway URL + admin API key + session name (Partner only).\n\nThe API key is validated against OpenWA `/api/auth/validate` before being\nencrypted and persisted. Any pre-existing configuration is dropped.",
+        "operationId": "setup_whatsapp_api_v1_whatsapp_setup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppConfigSetupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/whatsapp/session/start": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Start Whatsapp Session",
+        "operationId": "start_whatsapp_session_api_v1_whatsapp_session_start_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppConfigResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/whatsapp/session/stop": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Stop Whatsapp Session",
+        "operationId": "stop_whatsapp_session_api_v1_whatsapp_session_stop_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppConfigResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/whatsapp/session/status": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Get Whatsapp Session Status",
+        "operationId": "get_whatsapp_session_status_api_v1_whatsapp_session_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppSessionStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/whatsapp/session/qr": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Get Whatsapp Qr",
+        "description": "Return the latest QR data URL. Poll every ~2s while status is `qr_ready`.",
+        "operationId": "get_whatsapp_qr_api_v1_whatsapp_session_qr_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppQRResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/whatsapp/messages/test": {
+      "post": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Send Whatsapp Test",
+        "operationId": "send_whatsapp_test_api_v1_whatsapp_messages_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppSendResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/whatsapp/me/preferences": {
+      "get": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Get My Whatsapp Preferences",
+        "operationId": "get_my_whatsapp_preferences_api_v1_whatsapp_me_preferences_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientWhatsAppPreferenceResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "WhatsApp"
+        ],
+        "summary": "Update My Whatsapp Preferences",
+        "description": "Client sets/updates their WhatsApp number and opt-in flag.\n\nThe number is stored in `users.phone_number` (shared field). Opt-in alone\nis stored on the client profile. Cannot opt in without a phone number.",
+        "operationId": "update_my_whatsapp_preferences_api_v1_whatsapp_me_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientWhatsAppPreferenceUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientWhatsAppPreferenceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/my-tax-filings": {
       "get": {
         "summary": "Read Filings",
@@ -8456,7 +8768,13 @@
           "TEXT_FIELD_PLACEHOLDER_REMOVED",
           "TEXT_FIELD_FILLED",
           "TEXT_FIELD_APPROVED",
-          "TEXT_FIELD_REJECTED"
+          "TEXT_FIELD_REJECTED",
+          "WHATSAPP_CONFIGURED",
+          "WHATSAPP_DISCONNECTED",
+          "WHATSAPP_SESSION_STARTED",
+          "WHATSAPP_SESSION_STOPPED",
+          "WHATSAPP_TEST_SENT",
+          "WHATSAPP_CLIENT_OPT_IN_CHANGED"
         ],
         "title": "AuditEventType"
       },
@@ -9857,6 +10175,55 @@
           "count"
         ],
         "title": "ClientStatusBreakdown"
+      },
+      "ClientWhatsAppPreferenceResponse": {
+        "properties": {
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "whatsapp_opt_in": {
+            "type": "boolean",
+            "title": "Whatsapp Opt In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "whatsapp_opt_in"
+        ],
+        "title": "ClientWhatsAppPreferenceResponse"
+      },
+      "ClientWhatsAppPreferenceUpdate": {
+        "properties": {
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "whatsapp_opt_in": {
+            "type": "boolean",
+            "title": "Whatsapp Opt In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "whatsapp_opt_in"
+        ],
+        "title": "ClientWhatsAppPreferenceUpdate"
       },
       "CompletedDocType": {
         "type": "string",
@@ -16450,6 +16817,294 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WhatsAppConfigResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "openwa_base_url": {
+            "type": "string",
+            "title": "Openwa Base Url"
+          },
+          "session_name": {
+            "type": "string",
+            "title": "Session Name"
+          },
+          "openwa_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openwa Session Id"
+          },
+          "session_status": {
+            "type": "string",
+            "title": "Session Status"
+          },
+          "phone_number_e164": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number E164"
+          },
+          "connected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connected At"
+          },
+          "last_qr_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Qr At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "is_configured": {
+            "type": "boolean",
+            "title": "Is Configured",
+            "default": true
+          },
+          "configured_by": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Configured By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "openwa_base_url",
+          "session_name",
+          "session_status",
+          "is_active",
+          "configured_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "WhatsAppConfigResponse"
+      },
+      "WhatsAppConfigSetupRequest": {
+        "properties": {
+          "openwa_base_url": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 4,
+            "title": "Openwa Base Url"
+          },
+          "api_key": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 8,
+            "title": "Api Key"
+          },
+          "session_name": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Session Name",
+            "default": "itr-platform"
+          }
+        },
+        "type": "object",
+        "required": [
+          "openwa_base_url",
+          "api_key"
+        ],
+        "title": "WhatsAppConfigSetupRequest"
+      },
+      "WhatsAppQRResponse": {
+        "properties": {
+          "qr_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qr Code"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "WhatsAppQRResponse"
+      },
+      "WhatsAppSendResponse": {
+        "properties": {
+          "sent": {
+            "type": "boolean",
+            "title": "Sent"
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sent"
+        ],
+        "title": "WhatsAppSendResponse"
+      },
+      "WhatsAppSessionStatus": {
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "phone_number_e164": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number E164"
+          },
+          "connected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connected At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "WhatsAppSessionStatus"
+      },
+      "WhatsAppTestRequest": {
+        "properties": {
+          "to_phone": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 8,
+            "title": "To Phone",
+            "description": "E.164, e.g. +919876543210"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "to_phone"
+        ],
+        "title": "WhatsAppTestRequest"
       }
     },
     "securitySchemes": {
