@@ -93,15 +93,20 @@ export default function FilingDetailPage() {
       if (state === 'PAYMENT' && f?.client_id) {
         getClient(f.client_id).then(setClientProfile).catch(() => {});
       }
-      // Check feedback for filings past FILING state (PAYMENT or COMPLETED)
+      // Check feedback for filings past FILING state (PAYMENT or COMPLETED).
+      // Must be awaited so setLoading(false) only fires after feedbackGiven is set —
+      // otherwise the page renders briefly then jumps to the feedback gate mid-scroll.
       if (state === 'PAYMENT' || state === 'COMPLETED') {
         if (isFeedbackDoneLocally()) {
           setFeedbackGiven(true);
         } else {
-          getFilingFeedback(filingId).then(() => markFeedbackDone()).catch((err) => {
+          try {
+            await getFilingFeedback(filingId);
+            markFeedbackDone();
+          } catch (err: any) {
             if (err?.response?.status === 404) setFeedbackGiven(false);
-            else setFeedbackGiven(true); // on error, don't block
-          });
+            else setFeedbackGiven(true); // on any other error, don't block the client
+          }
         }
       } else {
         setFeedbackGiven(true); // not past FILING, no gate needed
@@ -120,7 +125,7 @@ export default function FilingDetailPage() {
     setUploading(docId);
     try {
       const url = await docUploadUrl({ document_id: docId, filename: file.name, content_type: file.type });
-      await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type } });
+      await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type }, timeout: 60000 });
       await docConfirmUpload({ document_id: url.document_id || docId, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
       toast.success('Document uploaded');
       // Update the specific doc in-place instead of reloading the whole page
@@ -140,7 +145,7 @@ export default function FilingDetailPage() {
     setUploading(docId);
     try {
       const url = await docReplaceUrl(docId, { filename: file.name, content_type: file.type });
-      await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type } });
+      await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type }, timeout: 60000 });
       await docConfirmUpload({ document_id: url.document_id || docId, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
       toast.success('Document replaced');
       setDocs((prev) => prev.map((d) => d.id === docId ? { ...d, status: 'UPLOADED', original_filename: file.name } : d));
@@ -163,7 +168,7 @@ export default function FilingDetailPage() {
     setUploading(documentTypeId);
     try {
       const url = await docUploadUrl({ filing_id: filingId, document_type_id: documentTypeId, filename: file.name, content_type: file.type });
-      await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type } });
+      await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type }, timeout: 60000 });
       await docConfirmUpload({ document_id: url.document_id, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
       toast.success('Additional document uploaded');
       // Add the new doc in-place instead of full page reload
