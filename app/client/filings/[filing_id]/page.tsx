@@ -342,57 +342,59 @@ export default function FilingDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Back + Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/client/dashboard')}><ArrowLeft className="h-5 w-5" /></Button>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-slate-900">ITR Filing &middot; {filing.financial_year}</h1>
-          <p className="text-sm text-slate-500">Initiated {new Date(filing.initiated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-        </div>
-        <StatusBadge status={state} />
-      </div>
-
-      {/* Professional Fee + Engagement Info */}
-      {filing.no_fees_applicable ? (
-        <Card className="rounded-xl p-4 flex items-center gap-3 border-teal-100 bg-teal-50/40">
-          <CheckCircle2 className="h-5 w-5 text-teal-600" />
-          <div>
-            <div className="text-sm font-semibold text-teal-800">No Fees Applicable</div>
-            {filing.engagement_accepted_at && <div className="text-xs text-teal-600">Engagement accepted on {new Date(filing.engagement_accepted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
-          </div>
-        </Card>
-      ) : filing.professional_fee ? (
-        <Card className="rounded-xl p-4 flex items-center gap-3 border-indigo-100 bg-indigo-50/40">
-          <IndianRupee className="h-5 w-5 text-indigo-600" />
-          <div>
-            <div className="text-sm font-semibold text-indigo-900">Professional Fee: ₹{Number(filing.professional_fee).toLocaleString('en-IN')}</div>
-            {filing.engagement_accepted_at && <div className="text-xs text-indigo-600">Engagement accepted on {new Date(filing.engagement_accepted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
-          </div>
-        </Card>
-      ) : (
-        <Card className="rounded-xl p-4 flex items-center gap-3 border-slate-100 bg-slate-50/40">
-          <IndianRupee className="h-5 w-5 text-slate-400" />
-          <div>
-            <div className="text-sm font-semibold text-slate-700">Professional Fee: To be decided</div>
-            {filing.engagement_accepted_at && <div className="text-xs text-slate-500">Engagement accepted on {new Date(filing.engagement_accepted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
-          </div>
-        </Card>
-      )}
-
-      {/* Progress */}
-      <Card className="rounded-xl p-5">
-        {state === 'COMPLETED' ? (
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 text-emerald-600 flex-shrink-0" />
-            <div>
-              <div className="text-sm font-semibold text-emerald-800">Filing Completed</div>
-              <div className="text-xs text-emerald-600 mt-0.5">All stages finished{filing.completed_at ? ` on ${new Date(filing.completed_at).toLocaleDateString()}` : ''}</div>
+    <div className="space-y-5">
+      {/* Unified Filing Overview Card: identity + fee chip + progress */}
+      <Card className="rounded-xl overflow-hidden p-0">
+        {/* Zone 1: Filing identity */}
+        <div className="px-5 pt-4 pb-3">
+          <div className="flex items-start gap-3">
+            <Button variant="ghost" size="icon" className="flex-shrink-0 -ml-2 mt-0.5" onClick={() => router.push('/client/dashboard')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl font-bold text-slate-900">ITR Filing &middot; {filing.financial_year}</h1>
+                <StatusBadge status={state} />
+              </div>
+              <p className="text-sm text-slate-500 mt-0.5">Initiated {new Date(filing.initiated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
             </div>
           </div>
-        ) : (
-          <FilingProgressBar currentState={state} />
-        )}
+
+          {/* Fee as inline chip */}
+          <div className="mt-3 ml-8">
+            {filing.no_fees_applicable ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-700 border border-teal-200">
+                <CheckCircle2 className="h-3.5 w-3.5" /> No Fees Applicable
+                {filing.engagement_accepted_at && <span className="font-normal opacity-75">&middot; Accepted {new Date(filing.engagement_accepted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+              </span>
+            ) : filing.professional_fee ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">
+                <IndianRupee className="h-3.5 w-3.5" /> ₹{Number(filing.professional_fee).toLocaleString('en-IN')}
+                {filing.engagement_accepted_at && <span className="font-normal opacity-75">&middot; Accepted {new Date(filing.engagement_accepted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                <IndianRupee className="h-3.5 w-3.5" /> Professional Fee: To be decided
+                {filing.engagement_accepted_at && <span className="font-normal opacity-75">&middot; Accepted {new Date(filing.engagement_accepted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Zone 2: Progress (border-separated) */}
+        <div className="border-t border-slate-100 px-5 py-4 bg-slate-50/40">
+          {state === 'COMPLETED' ? (
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-6 w-6 text-emerald-600 flex-shrink-0" />
+              <div>
+                <div className="text-sm font-semibold text-emerald-800">Filing Completed</div>
+                <div className="text-xs text-emerald-600 mt-0.5">All stages finished{filing.completed_at ? ` on ${new Date(filing.completed_at).toLocaleDateString()}` : ''}</div>
+              </div>
+            </div>
+          ) : (
+            <FilingProgressBar currentState={state} />
+          )}
+        </div>
       </Card>
 
       {/* Payment QR - shown in PAYMENT state (not for no-fee filings) */}
@@ -470,7 +472,7 @@ export default function FilingDetailPage() {
             {state === 'INITIATED' ? 'Document checklist will be assigned soon...' : 'No documents assigned yet.'}
           </div>
         ) : docGroups.length > 0 ? (
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {docGroups.map((group) => (
               <DocumentTypeGroup
                 key={group.document_type_id}
@@ -674,9 +676,9 @@ export default function FilingDetailPage() {
               <p className="text-xs font-semibold text-slate-500 uppercase">History</p>
               {computations.filter((c) => ['PARTNER_APPROVED', 'APPROVED', 'CLIENT_APPROVED', 'REJECTED'].includes(c.status)).filter((c) => c.id !== currentComp?.id || c.status !== 'PARTNER_APPROVED').sort((a, b) => b.version - a.version).map((c) => (
                 <div key={c.id} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-500">v{c.version}</span>
-                    <span className="text-slate-700 truncate">{c.original_filename || 'computation'}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-bold text-slate-500 flex-shrink-0">v{c.version}</span>
+                    <span className="text-slate-700 break-all">{c.original_filename || 'computation'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <StatusBadge status={c.status} size="sm" />
@@ -691,53 +693,56 @@ export default function FilingDetailPage() {
         </Card>
       )}
 
-      {/* Completed Documents (filed) */}
-      {completed.length > 0 && (
-        <Card className="rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-            <h2 className="font-bold text-slate-900">Filed Documents</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {completed.map((d: any) => (
-              <div key={d.id} className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-emerald-600" />
-                  <div>
-                    <div className="font-medium text-sm text-slate-900">{{ ITR_ACKNOWLEDGEMENT: 'ITR Acknowledgement', INVOICE: 'Invoice', ITR_JSON: 'ITR JSON', ITR_FORM: 'ITR Form', TAX_PAID_COMPUTATION: 'Tax Paid Computation', FINANCIAL_STATEMENT: 'Financial Statement' }[d.doc_type] || d.doc_type || d.original_filename || 'Document'}</div>
-                    <div className="text-xs text-slate-500">{d.original_filename || d.filename}</div>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => onDownloadStorage(d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
+      {/* Completed + Other Documents — side by side on md+ */}
+      {(completed.length > 0 || otherDocs.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {completed.length > 0 && (
+            <Card className="rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                <h2 className="font-bold text-slate-900">Filed Documents</h2>
               </div>
-            ))}
-          </div>
-        </Card>
-      )}
+              <div className="space-y-3">
+                {completed.map((d: any) => (
+                  <div key={d.id} className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm text-slate-900 break-words">{{ ITR_ACKNOWLEDGEMENT: 'ITR Acknowledgement', INVOICE: 'Invoice', ITR_JSON: 'ITR JSON', ITR_FORM: 'ITR Form', TAX_PAID_COMPUTATION: 'Tax Paid Computation', FINANCIAL_STATEMENT: 'Financial Statement' }[d.doc_type] || d.doc_type || d.original_filename || 'Document'}</div>
+                        <div className="text-xs text-slate-500 break-all">{d.original_filename || d.filename}</div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="flex-shrink-0 ml-2" onClick={() => onDownloadStorage(d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
-      {/* Other Documents */}
-      {otherDocs.length > 0 && (
-        <Card className="rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <FolderOpen className="h-5 w-5 text-indigo-600" />
-            <h2 className="font-bold text-slate-900">Other Documents</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {otherDocs.map((d: any) => (
-              <div key={d.id} className="rounded-lg border border-slate-200 bg-white p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-indigo-500" />
-                  <div>
-                    <div className="font-medium text-sm text-slate-900">{d.label || d.filename || 'Document'}</div>
-                    {d.label && d.filename && <div className="text-xs text-slate-500">{d.filename}</div>}
-                    {d.uploaded_at && <div className="text-[10px] text-slate-400">{new Date(d.uploaded_at).toLocaleDateString('en-IN')}</div>}
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => onDownloadStorage(d.file_id || d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
+          {otherDocs.length > 0 && (
+            <Card className="rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <FolderOpen className="h-5 w-5 text-indigo-600" />
+                <h2 className="font-bold text-slate-900">Other Documents</h2>
               </div>
-            ))}
-          </div>
-        </Card>
+              <div className="space-y-3">
+                {otherDocs.map((d: any) => (
+                  <div key={d.id} className="rounded-lg border border-slate-200 bg-white p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm text-slate-900 break-words">{d.label || d.filename || 'Document'}</div>
+                        {d.label && d.filename && <div className="text-xs text-slate-500 break-all">{d.filename}</div>}
+                        {d.uploaded_at && <div className="text-[10px] text-slate-400">{new Date(d.uploaded_at).toLocaleDateString('en-IN')}</div>}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="flex-shrink-0 ml-2" onClick={() => onDownloadStorage(d.file_id || d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
       )}
 
       {/* Reject Computation Dialog */}
@@ -815,66 +820,73 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onReplace, onView, onDe
   const Icon = config.icon;
 
   return (
-    <div className="flex items-center gap-3 py-2">
-      <div className={`h-7 w-7 rounded-md flex items-center justify-center bg-slate-50 ${config.iconColor} flex-shrink-0`}>
+    <div className="flex items-start sm:items-center gap-3 py-2">
+      <div className={`h-7 w-7 rounded-md flex items-center justify-center bg-slate-50 ${config.iconColor} flex-shrink-0 mt-0.5 sm:mt-0`}>
         {uploading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start flex-wrap gap-x-2 gap-y-1">
-          <p className="font-medium text-sm text-slate-900 break-words">{doc.original_filename || doc.document_type_name || 'Document'}</p>
-          <StatusBadge status={status} size="sm" />
-        </div>
-        {doc.document_type_description && (
-          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{doc.document_type_description}</p>
-        )}
-        {pendingFile && (
-          <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-700 bg-amber-50 rounded px-2 py-0.5 border border-amber-200 w-fit">
-            <Upload className="h-3 w-3" />
-            <span className="truncate max-w-[150px]">{pendingFile.name}</span>
-            <button className="text-rose-500 hover:text-rose-700 ml-1 flex-shrink-0" onClick={() => { setPendingFile(null); setIsReplace(false); }}>✕</button>
+
+      {/* On mobile: column (text above, buttons below). On sm+: row (text left, buttons right). */}
+      <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        {/* Text content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start flex-wrap gap-x-2 gap-y-1">
+            <p className="font-medium text-sm text-slate-900 break-words">{doc.original_filename || doc.document_type_name || 'Document'}</p>
+            <StatusBadge status={status} size="sm" />
           </div>
-        )}
-        {status === 'REJECTED' && doc.rejection_reason && (
-          <p className="text-xs text-rose-600 mt-0.5 truncate">{doc.rejection_reason}</p>
-        )}
-      </div>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        {(status === 'PENDING_UPLOAD' || status === 'REJECTED') && !pendingFile && (
-          <label>
-            <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPendingFile(f); setIsReplace(false); } e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer transition-colors">
-              <Upload className="h-3 w-3" /> {status === 'REJECTED' ? 'Re-upload' : 'Upload'}
-            </span>
-          </label>
-        )}
-        {status === 'UPLOADED' && !pendingFile && (
-          <label>
-            <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPendingFile(f); setIsReplace(true); } e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 cursor-pointer transition-colors">
-              <RefreshCw className="h-3 w-3" /> Replace
-            </span>
-          </label>
-        )}
-        {pendingFile && (
-          <Button size="sm" className="relative overflow-visible bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md text-xs h-7" disabled={uploading} onClick={() => { if (isReplace) onReplace(pendingFile); else onUpload(pendingFile); setPendingFile(null); setIsReplace(false); }}>
-            <span className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] font-medium px-2 py-0.5 rounded shadow-lg animate-bounce pointer-events-none">
-              Click to confirm
-              <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-900" />
-            </span>
-            {uploading ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
-            Confirm
-          </Button>
-        )}
-        {(status === 'UPLOADED' || status === 'APPROVED') && (
-          <Button size="sm" variant="outline" className="text-xs h-7" onClick={onView}>
-            <Eye className="h-3 w-3 mr-1" /> View
-          </Button>
-        )}
-        {onDelete && (
-          <Button size="sm" variant="outline" className="text-xs h-7 text-rose-600 border-rose-200 hover:bg-rose-50 px-1.5" onClick={onDelete} title="Remove this row">
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        )}
+          {doc.document_type_description && (
+            <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{doc.document_type_description}</p>
+          )}
+          {pendingFile && (
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-700 bg-amber-50 rounded px-2 py-0.5 border border-amber-200 w-fit">
+              <Upload className="h-3 w-3" />
+              <span className="break-all">{pendingFile.name}</span>
+              <button className="text-rose-500 hover:text-rose-700 ml-1 flex-shrink-0" onClick={() => { setPendingFile(null); setIsReplace(false); }}>✕</button>
+            </div>
+          )}
+          {status === 'REJECTED' && doc.rejection_reason && (
+            <p className="text-xs text-rose-600 mt-0.5 break-words">{doc.rejection_reason}</p>
+          )}
+        </div>
+
+        {/* Action buttons — full-width row on mobile, compact row on desktop */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {(status === 'PENDING_UPLOAD' || status === 'REJECTED') && !pendingFile && (
+            <label className="flex-1 sm:flex-none">
+              <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPendingFile(f); setIsReplace(false); } e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
+              <span className="flex items-center justify-center gap-1 w-full sm:w-auto px-3 py-2 sm:px-2.5 sm:py-1 rounded-md text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer transition-colors">
+                <Upload className="h-3 w-3" /> {status === 'REJECTED' ? 'Re-upload' : 'Upload'}
+              </span>
+            </label>
+          )}
+          {status === 'UPLOADED' && !pendingFile && (
+            <label className="flex-1 sm:flex-none">
+              <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPendingFile(f); setIsReplace(true); } e.target.value = ''; }} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" />
+              <span className="flex items-center justify-center gap-1 w-full sm:w-auto px-3 py-2 sm:px-2.5 sm:py-1 rounded-md text-xs font-medium bg-amber-600 text-white hover:bg-amber-700 cursor-pointer transition-colors">
+                <RefreshCw className="h-3 w-3" /> Replace
+              </span>
+            </label>
+          )}
+          {pendingFile && (
+            <Button size="sm" className="relative overflow-visible bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md text-xs h-9 flex-1 sm:flex-none sm:h-8" disabled={uploading} onClick={() => { if (isReplace) onReplace(pendingFile); else onUpload(pendingFile); setPendingFile(null); setIsReplace(false); }}>
+              <span className="hidden sm:block absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-[10px] font-medium px-2 py-0.5 rounded shadow-lg animate-bounce pointer-events-none">
+                Click to confirm
+                <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-slate-900" />
+              </span>
+              {uploading ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
+              Confirm
+            </Button>
+          )}
+          {(status === 'UPLOADED' || status === 'APPROVED') && (
+            <Button size="sm" variant="outline" className="text-xs h-9 sm:h-8 flex-1 sm:flex-none" onClick={onView}>
+              <Eye className="h-3 w-3 mr-1" /> View
+            </Button>
+          )}
+          {onDelete && (
+            <Button size="sm" variant="outline" className="text-xs h-9 sm:h-8 text-rose-600 border-rose-200 hover:bg-rose-50 px-3 sm:px-1.5" onClick={onDelete} title="Remove this row">
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -900,7 +912,7 @@ function DocumentTypeGroup({ group, filingId, filingState, uploading, onUpload, 
   const groupDescription = group.document_type_description || files.find((f: any) => f?.document_type_description)?.document_type_description || null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden w-96 flex-shrink-0">
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden w-full">
       <div className="flex items-start justify-between px-4 py-3 bg-slate-50 border-b border-slate-100 gap-2">
         <div className="flex items-start gap-2 min-w-0 flex-1">
           <FileText className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
@@ -966,8 +978,8 @@ function TextFieldGroup({ group, description, maxLength, filingState, onSave, on
         <div className="flex items-start gap-2 px-4 py-3 bg-amber-50/40 border-b border-slate-100">
           <Type className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-semibold text-slate-800 truncate">{group.field_type_name}</h4>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <h4 className="text-sm font-semibold text-slate-800">{group.field_type_name}</h4>
               <span className="text-xs text-slate-500 flex-shrink-0">({fields.length})</span>
             </div>
             {description && (
@@ -1042,92 +1054,101 @@ function TextFieldPlaceholder({ field, maxLength, onSave, onDelete }: {
   return (
     <div className="py-3">
       <div className="flex items-start gap-3">
-        <div className={`h-7 w-7 rounded-md flex items-center justify-center bg-slate-50 ${config.iconColor} flex-shrink-0`}>
+        <div className={`h-7 w-7 rounded-md flex items-center justify-center bg-slate-50 ${config.iconColor} flex-shrink-0 mt-0.5`}>
           {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
         </div>
-        <div className="flex-1 min-w-0 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-600">{field.field_type_name || 'Text Field'}</span>
-            <StatusBadge status={status} size="sm" />
-            <span className="text-[10px] text-slate-400 ml-auto">{value.length}/{maxLength}</span>
+
+        {/* On mobile: column (content above, buttons below). On sm+: row (content left, buttons right). */}
+        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start sm:gap-3">
+          {/* Text content */}
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-xs font-medium text-slate-600">{field.field_type_name || 'Text Field'}</span>
+              <StatusBadge status={status} size="sm" />
+              <span className="text-[10px] text-slate-400 ml-auto flex-shrink-0">{value.length}/{maxLength}</span>
+            </div>
+            {readOnly ? (
+              <div className="text-sm text-slate-800 whitespace-pre-wrap break-words bg-emerald-50/50 rounded-md border border-emerald-200 px-3 py-2">
+                {field.value || <span className="italic text-slate-400">— empty —</span>}
+              </div>
+            ) : editing ? (
+              <>
+                {useTextarea ? (
+                  <Textarea
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    rows={3}
+                    maxLength={maxLength}
+                    placeholder="Enter your response…"
+                    className="text-sm"
+                  />
+                ) : (
+                  <Input
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    maxLength={maxLength}
+                    placeholder="Enter your response…"
+                    className="text-sm h-9"
+                  />
+                )}
+                {tooLong && (
+                  <p className="text-[11px] text-rose-600">Value exceeds the {maxLength}-character limit.</p>
+                )}
+              </>
+            ) : (
+              <div className="text-sm text-slate-800 whitespace-pre-wrap break-words bg-slate-50 rounded-md border border-slate-200 px-3 py-2">
+                {field.value || <span className="italic text-slate-400">— not yet filled —</span>}
+              </div>
+            )}
+            {status === 'REJECTED' && field.rejection_reason && (
+              <p className="text-xs text-rose-600">Rejection reason: {field.rejection_reason}</p>
+            )}
           </div>
-          {readOnly ? (
-            <div className="text-sm text-slate-800 whitespace-pre-wrap break-words bg-emerald-50/50 rounded-md border border-emerald-200 px-3 py-2">
-              {field.value || <span className="italic text-slate-400">— empty —</span>}
-            </div>
-          ) : editing ? (
-            <>
-              {useTextarea ? (
-                <Textarea
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  rows={3}
-                  maxLength={maxLength}
-                  placeholder="Enter your response…"
-                  className="text-sm"
-                />
-              ) : (
-                <Input
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  maxLength={maxLength}
-                  placeholder="Enter your response…"
-                  className="text-sm h-9"
-                />
+
+          {/* Action buttons — below content on mobile, right column on desktop */}
+          {(editing || (!editing && !readOnly && (status === 'FILLED' || status === 'REJECTED')) || onDelete) && (
+            <div className="flex items-center gap-2 mt-2 sm:mt-0 sm:gap-1.5 flex-shrink-0 sm:pt-0.5">
+              {editing && !readOnly && (
+                <>
+                  <Button
+                    size="sm"
+                    className="h-9 sm:h-8 text-xs bg-emerald-600 hover:bg-emerald-700 flex-1 sm:flex-none"
+                    disabled={saving || !trimmed || tooLong}
+                    onClick={handleSave}
+                  >
+                    {saving ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                    Save
+                  </Button>
+                  {(field.value || '').length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 sm:h-8 text-xs"
+                      disabled={saving}
+                      onClick={() => { setValue(field.value || ''); setEditing(false); }}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </>
               )}
-              {tooLong && (
-                <p className="text-[11px] text-rose-600">Value exceeds the {maxLength}-character limit.</p>
+              {!editing && !readOnly && (status === 'FILLED' || status === 'REJECTED') && (
+                <Button size="sm" variant="outline" className="h-9 sm:h-8 text-xs flex-1 sm:flex-none" onClick={() => setEditing(true)}>
+                  <Pencil className="h-3 w-3 mr-1" /> Edit
+                </Button>
               )}
-            </>
-          ) : (
-            <div className="text-sm text-slate-800 whitespace-pre-wrap break-words bg-slate-50 rounded-md border border-slate-200 px-3 py-2">
-              {field.value || <span className="italic text-slate-400">— not yet filled —</span>}
-            </div>
-          )}
-          {status === 'REJECTED' && field.rejection_reason && (
-            <p className="text-xs text-rose-600">Rejection reason: {field.rejection_reason}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
-          {editing && !readOnly && (
-            <>
-              <Button
-                size="sm"
-                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
-                disabled={saving || !trimmed || tooLong}
-                onClick={handleSave}
-              >
-                {saving ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
-                Save
-              </Button>
-              {(field.value || '').length > 0 && (
+              {onDelete && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 text-xs"
-                  disabled={saving}
-                  onClick={() => { setValue(field.value || ''); setEditing(false); }}
+                  className="h-9 sm:h-8 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 px-3 sm:px-1.5"
+                  onClick={onDelete}
+                  title="Remove this row"
                 >
-                  Cancel
+                  <Trash2 className="h-3 w-3" />
                 </Button>
               )}
-            </>
-          )}
-          {!editing && !readOnly && (status === 'FILLED' || status === 'REJECTED') && (
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditing(true)}>
-              <Pencil className="h-3 w-3 mr-1" /> Edit
-            </Button>
-          )}
-          {onDelete && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 px-1.5"
-              onClick={onDelete}
-              title="Remove this row"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            </div>
           )}
         </div>
       </div>

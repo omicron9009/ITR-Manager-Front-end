@@ -99,12 +99,12 @@ export default function AppShell({ nav, role, children }: { nav: NavItem[]; role
 
       {/* Main */}
       <div className="md:pl-64 flex flex-col min-h-screen">
-        <header className="sticky top-0 z-30 bg-indigo-50 border-b border-indigo-100 h-16 flex items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileOpen((v) => !v)}><Menu className="h-5 w-5" /></Button>
-            <h1 className="font-semibold text-slate-900">{currentNav?.label || 'Dashboard'}</h1>
+        <header className="sticky top-0 z-30 bg-indigo-50 border-b border-indigo-100 h-16 flex items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" className="md:hidden flex-shrink-0" onClick={() => setMobileOpen((v) => !v)}><Menu className="h-5 w-5" /></Button>
+            <h1 className="font-semibold text-slate-900 truncate min-w-0">{currentNav?.label || 'Dashboard'}</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <NotificationBell />
           </div>
         </header>

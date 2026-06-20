@@ -239,13 +239,13 @@ export default function RegisterPage() {
                   <h1 className="text-xl font-bold text-slate-900">Select your income sources</h1>
                   <p className="mt-1 text-sm text-slate-500">Help us understand your tax profile. You can update this later.</p>
 
-                  <div className="mt-5 space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+                  <div className="mt-5 space-y-4 max-h-[45vh] sm:max-h-[55vh] overflow-y-auto overscroll-contain pr-1">
                     {/* Head 1: Salary */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                         <Briefcase className="h-4 w-4 text-indigo-500" /> Salary Income
                       </div>
-                      <div className="grid grid-cols-2 gap-2 pl-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
                         <IncomeToggle label="Salary" checked={incomeHeads.salary} onChange={() => toggleHead('salary')} />
                         <IncomeToggle label="ESOP / RSU" checked={incomeHeads.esop} onChange={() => toggleHead('esop')} />
                       </div>
@@ -256,7 +256,7 @@ export default function RegisterPage() {
                       <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                         <Home className="h-4 w-4 text-indigo-500" /> House Property
                       </div>
-                      <div className="grid grid-cols-2 gap-2 pl-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
                         <IncomeToggle label="Rental Income" checked={incomeHeads.rental_income} onChange={() => toggleHead('rental_income')} />
                         <IncomeToggle label="More than 2 Properties" checked={incomeHeads.more_than_2_properties} onChange={() => toggleHead('more_than_2_properties')} />
                       </div>
@@ -267,7 +267,7 @@ export default function RegisterPage() {
                       <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                         <TrendingUp className="h-4 w-4 text-indigo-500" /> Capital Gains
                       </div>
-                      <div className="grid grid-cols-2 gap-2 pl-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
                         <IncomeToggle label="Shares / MF / F&O" checked={incomeHeads.capital_gain_shares} onChange={() => toggleHead('capital_gain_shares')} />
                         <IncomeToggle label="Sale of Land / Building" checked={incomeHeads.capital_gain_land} onChange={() => toggleHead('capital_gain_land')} />
                       </div>
@@ -288,7 +288,7 @@ export default function RegisterPage() {
                       <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                         <Coins className="h-4 w-4 text-indigo-500" /> Other Sources
                       </div>
-                      <div className="grid grid-cols-2 gap-2 pl-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
                         <IncomeToggle label="Interest / Dividend" checked={incomeHeads.interest_dividend} onChange={() => toggleHead('interest_dividend')} />
                         <IncomeToggle label="Foreign Assets / Income" checked={incomeHeads.foreign_assets} onChange={() => toggleHead('foreign_assets')} />
                       </div>

@@ -68,7 +68,7 @@ export default function NotificationBell() {
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 p-0" align="end">
+      <PopoverContent className="w-[min(24rem,calc(100vw-1rem))] p-0" align="end">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h4 className="font-semibold text-sm">Notifications</h4>
           <Button size="sm" variant="ghost" className="text-xs h-7" onClick={async () => { await markAllRead(); setCount(0); load(); }}>Mark all as read</Button>
