@@ -39,7 +39,11 @@ export default function GlobalFooter() {
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-6 mt-6 pt-4 border-t border-indigo-200 text-xs text-slate-500 flex flex-col md:flex-row justify-between items-center gap-2">
-        <span>© {new Date().getFullYear()} AIकर. All rights reserved.</span>
+        <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+          <span>© {new Date().getFullYear()} AIकर. All rights reserved.</span>
+          <Link href="/privacy-policy" className="hover:text-indigo-600 transition-colors">Privacy Policy</Link>
+          <a href="/aikar.apk" download="aikar.apk" className="hover:text-indigo-600 transition-colors">Download App</a>
+        </div>
         <Image src="/built by Black.png" alt="A Pgjco Product" width={640} height={320} className="h-12 object-contain ml-auto" />
       </div>
       <div className="max-w-7xl mx-auto px-6 mt-3 text-xs text-slate-500 flex flex-col md:flex-row items-center md:items-start gap-1 md:gap-4">

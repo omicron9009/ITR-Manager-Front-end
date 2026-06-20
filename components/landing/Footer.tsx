@@ -39,6 +39,7 @@ export default function Footer() {
             <li><a href="#roles" className="hover:text-white">For CAs</a></li>
             <li><a href="/auth/login" className="hover:text-white">Login</a></li>
             <li><a href="/privacy-policy" className="hover:text-white">Privacy Policy</a></li>
+            <li><a href="/aikar.apk" download="aikar.apk" className="hover:text-white">Download App</a></li>
           </ul>
         </div>
       </div>
