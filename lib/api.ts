@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 function getBaseUrl(): string {
   let url = process.env.NEXT_PUBLIC_API_URL || '__NEXT_PUBLIC_API_URL__';
   // If the placeholder was never replaced at runtime, fall back to localhost
-  if (url.startsWith('__')) return 'http://192.168.1.104:8000';
+  if (url.startsWith('__')) return 'http://localhost:8000';
   // Fix malformed URLs like "http:host" or "https:host" (missing //)
   url = url.replace(/^(https?):(?!\/\/)/, '$1://');
   // Ensure the URL starts with a protocol
@@ -87,6 +87,10 @@ export const updateMyName = (full_name: string) =>
   api.patch('/api/v1/auth/me/profile', { full_name }).then((r) => r.data);
 export const updateMyIncomeHeads = (data: Record<string, any>) =>
   api.put('/api/v1/clients/me/income-heads', data).then((r) => r.data);
+export const getWhatsappPreferences = () =>
+  api.get('/api/v1/whatsapp/me/preferences').then((r) => r.data);
+export const updateWhatsappPreferences = (data: { phone_number?: string | null; whatsapp_opt_in: boolean }) =>
+  api.put('/api/v1/whatsapp/me/preferences', data).then((r) => r.data);
 export const adminGenerateRecoveryCodes = (data: { email: string }) =>
   api.post('/api/v1/auth/admin/generate-recovery-codes', data).then((r) => r.data);
 export const regenerateRecoveryCodes = () =>

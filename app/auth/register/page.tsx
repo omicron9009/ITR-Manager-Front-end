@@ -25,7 +25,8 @@ const REFERRAL_OPTIONS = [
 
 /* Step 1 schema — basic info only */
 const step1Schema = z.object({
-  full_name: z.string().min(2, 'Enter your full name'),
+  first_name: z.string().min(2, 'Enter your first name'),
+  last_name: z.string().min(2, 'Enter your last name'),
   email: z.string().email('Enter a valid email'),
   password: z.string().min(8, 'Min 8 characters'),
   confirm: z.string(),
@@ -103,7 +104,7 @@ export default function RegisterPage() {
     try {
       const vals = getValues();
       await registerClient({
-        full_name: vals.full_name,
+        full_name: `${vals.first_name.trim()} ${vals.last_name.trim()}`,
         email: vals.email,
         password: vals.password,
         phone_number: vals.phone_number || undefined,
@@ -190,10 +191,17 @@ export default function RegisterPage() {
                   <p className="mt-1 text-sm text-slate-500">Register to start filing your ITR with your CA.</p>
                   <form onSubmit={handleSubmit(onStep1Next)} className="mt-6 space-y-4">
                     {err && <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg px-3 py-2">{err}</div>}
-                    <div>
-                      <Label>Full Name</Label>
-                      <Input {...register('full_name')} placeholder="Rajesh Kumar" className="mt-1.5" />
-                      {errors.full_name && <p className="text-xs text-rose-600 mt-1">{errors.full_name.message as string}</p>}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label>First Name <span className="text-rose-500">*</span></Label>
+                        <Input {...register('first_name')} placeholder="Rajesh" className="mt-1.5" />
+                        {errors.first_name && <p className="text-xs text-rose-600 mt-1">{errors.first_name.message as string}</p>}
+                      </div>
+                      <div>
+                        <Label>Last Name <span className="text-rose-500">*</span></Label>
+                        <Input {...register('last_name')} placeholder="Kumar" className="mt-1.5" />
+                        {errors.last_name && <p className="text-xs text-rose-600 mt-1">{errors.last_name.message as string}</p>}
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>

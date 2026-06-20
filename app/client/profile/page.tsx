@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { me, getClient, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl, getOnboardingFiles, changePassword, changeEmail, updateMyName, updateMyIncomeHeads } from '@/lib/api';
+import { me, getClient, getOnboardingForm, submitOnboardingForm, onboardingUploadUrl, confirmOnboardingUpload, storageDownloadUrl, getOnboardingFiles, changePassword, changeEmail, updateMyName, updateMyIncomeHeads, getWhatsappPreferences, updateWhatsappPreferences } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -44,6 +44,10 @@ export default function ClientProfilePage() {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [phoneValue, setPhoneValue] = useState('');
+  const [phoneEditValue, setPhoneEditValue] = useState('+91');
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [savingPhone, setSavingPhone] = useState(false);
   const [incomeHeads, setIncomeHeads] = useState<Record<string, boolean>>({});
   const [anyOtherText, setAnyOtherText] = useState('');
   const [savingIncomeHeads, setSavingIncomeHeads] = useState(false);
@@ -52,6 +56,9 @@ export default function ClientProfilePage() {
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
+    getWhatsappPreferences().then((prefs) => {
+      if (prefs?.phone_number) setPhoneValue(prefs.phone_number);
+    }).catch(() => {});
     me().then((p) => {
       setProfile(p);
       setNameValue(p?.full_name || '');
@@ -185,7 +192,30 @@ export default function ClientProfilePage() {
             )}
           </div>
           <div><div className="text-xs text-slate-500">Email</div><div className="font-medium text-slate-900">{profile.email || '—'}</div></div>
-          <div><div className="text-xs text-slate-500">Phone</div><div className="font-medium text-slate-900">{profile.phone_number || profile.phone || profile.mobile || values['phone'] || values['mobile'] || values['phone_number'] || '—'}</div></div>
+          <div>
+            <div className="text-xs text-slate-500">Phone</div>
+            {editingPhone ? (
+              <div className="flex items-center gap-2 mt-1">
+                <Input value={phoneEditValue} onChange={(e) => setPhoneEditValue(e.target.value)} placeholder="+919876543210" className="h-8 text-sm" autoFocus />
+                <Button size="sm" className="h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-xs" disabled={savingPhone || !phoneEditValue.trim()} onClick={async () => {
+                  setSavingPhone(true);
+                  try {
+                    await updateWhatsappPreferences({ phone_number: phoneEditValue.trim(), whatsapp_opt_in: true });
+                    setPhoneValue(phoneEditValue.trim());
+                    toast.success('Phone number updated');
+                    setEditingPhone(false);
+                  } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to update phone'); }
+                  finally { setSavingPhone(false); }
+                }}>{savingPhone ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}</Button>
+                <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setEditingPhone(false)}>Cancel</Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-900">{phoneValue || '—'}</span>
+                <button onClick={() => { setPhoneEditValue(phoneValue || '+91'); setEditingPhone(true); }} className="text-slate-400 hover:text-indigo-600 transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
+          </div>
           {clientProfile?.city && (
             <div><div className="text-xs text-slate-500">City</div><div className="font-medium text-slate-900">{clientProfile.city}</div></div>
           )}
