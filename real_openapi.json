@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "AIकर",
+    "title": "ITR Filing Platform",
     "description": "ITR Filing Management Platform API — manages end-to-end ITR filing lifecycle for CA practices.",
     "version": "1.0.0"
   },

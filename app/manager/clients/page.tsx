@@ -9,11 +9,21 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { getMyClients, getMyTeam, listFilings, assignExecutive, getActionItems, getFilingsByStatus, listClients } from '@/lib/api';
+import { getMyTeam, listFilings, assignExecutive, getActionItems, getFilingsByStatus, listClients } from '@/lib/api';
 import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot, ArrowUpDown, ArrowUp, ArrowDown, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const FILING_STATES = ['INITIATED', 'DOCUMENT_UPLOAD', 'PROCESSING', 'COMPUTATION', 'FILING', 'PAYMENT', 'COMPLETED', 'HALTED'];
+
+function getFYOptions() {
+  const opts: string[] = [];
+  const now = new Date();
+  const endYear = now.getMonth() >= 3 ? now.getFullYear() + 1 : now.getFullYear();
+  for (let y = endYear - 1; y >= 2000; y--) {
+    opts.push(`${y}-${y + 1}`);
+  }
+  return opts;
+}
 
 export default function ManagerClientsPageWrapper() {
   return (
@@ -27,11 +37,14 @@ function ManagerClientsPage() {
   const params = useSearchParams();
   const initialStatus = params.get('status') || '';
   const [search, setSearch] = useState('');
+  const [accountStatus, setAccountStatus] = useState('');
   const [filingStatus, setFilingStatus] = useState(initialStatus);
+  const [financialYear, setFinancialYear] = useState('');
   const [computationSubFilter, setComputationSubFilter] = useState('');
   const [filingDocSubFilter, setFilingDocSubFilter] = useState('');
   const [computationFilings, setComputationFilings] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [filingRows, setFilingRows] = useState<any[]>([]);
   const [teamExecs, setTeamExecs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionItems, setActionItems] = useState<any[]>([]);
@@ -43,32 +56,43 @@ function ManagerClientsPage() {
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
+  const fyOptions = useMemo(() => getFYOptions(), []);
+
   const load = async () => {
     setLoading(true);
     try {
-      // The manager-scoped /managers/me/clients endpoint does not support
-      // the onboarded_pending_filing / activated_not_onboarded filters, so fall
-      // back to /clients which is RBAC-scoped server-side to the manager's team.
-      if (filingStatus === 'ONBOARDED_PENDING_FILING') {
-        const r = await listClients({ page: 1, page_size: 100, onboarded_pending_filing: true, ...(search ? { search } : {}) });
-        setClients(r?.items || []);
-      } else if (filingStatus === 'ACTIVATED_NOT_ONBOARDED') {
-        const r = await listClients({ page: 1, page_size: 100, activated_not_onboarded: true, ...(search ? { search } : {}) });
-        setClients(r?.items || []);
-      } else {
-        const r = await getMyClients({ page: 1, page_size: 100 });
-        setClients(r?.items || []);
+      const skipFilings = filingStatus === 'ONBOARDED_PENDING_FILING' || filingStatus === 'ACTIVATED_NOT_ONBOARDED';
+      const [clientsRes, filingsRes] = await Promise.all([
+        listClients({
+          page: 1,
+          page_size: 100,
+          ...(search ? { search } : {}),
+          ...(accountStatus ? { account_status: accountStatus } : {}),
+          ...(filingStatus === 'ONBOARDED_PENDING_FILING' ? { onboarded_pending_filing: true } : {}),
+          ...(filingStatus === 'ACTIVATED_NOT_ONBOARDED' ? { activated_not_onboarded: true } : {}),
+        }),
+        skipFilings ? Promise.resolve(null) : listFilings({ page: 1, page_size: 100 }).catch(() => null),
+      ]);
+      setClients(clientsRes?.items || []);
+
+      const fRows: any[] = [];
+      for (const f of (filingsRes?.items || filingsRes?.filings || [])) {
+        fRows.push({
+          client_id: f.client_id,
+          financial_year: f.financial_year,
+          filing_status: f.status,
+          last_updated: f.updated_at,
+        });
       }
+      setFilingRows(fRows);
 
       if (filingStatus === 'AWAITING_TAX_PAYMENT' || initialStatus === 'AWAITING_TAX_PAYMENT') {
         try {
           const paymentRes = await getFilingsByStatus('PAYMENT', 1, 100);
-          const items = paymentRes?.items || paymentRes?.filings || [];
-          setAwaitingTaxRows(items);
+          setAwaitingTaxRows(paymentRes?.items || paymentRes?.filings || []);
         } catch { setAwaitingTaxRows([]); }
       }
 
-      // Fetch computation filings with sub-status for drill-down
       if (filingStatus === 'COMPUTATION' || initialStatus === 'COMPUTATION') {
         try {
           const compRes = await getFilingsByStatus('COMPUTATION', 1, 200);
@@ -82,13 +106,13 @@ function ManagerClientsPage() {
     }
   };
 
+  // On mount: fetch team and action items; load() is handled by the filingStatus/accountStatus effect below
   useEffect(() => {
-    load();
     getMyTeam().then((r) => setTeamExecs(r?.executives || [])).catch(() => {});
     getActionItems().then((r) => setActionItems(r?.items || [])).catch(() => {});
   }, []);
 
-  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [filingStatus]);
+  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [filingStatus, accountStatus]);
 
   const onAssign = async (client_id: string, executive_id: string) => {
     try {
@@ -100,19 +124,44 @@ function ManagerClientsPage() {
     }
   };
 
+  // Build expandedRows: one row per client-FY, with current_state from filing data
+  const expandedRows = useMemo(() => {
+    const clientMap = new Map(clients.map((c: any) => [c.id, c]));
+    const seen = new Set<string>();
+    const rows: any[] = [];
+    for (const fr of filingRows) {
+      const key = `${fr.client_id}-${fr.financial_year}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const c = clientMap.get(fr.client_id);
+      if (!c) continue;
+      rows.push({
+        ...c,
+        current_state: fr.filing_status,
+        _fy: fr.financial_year,
+        _rowKey: key,
+      });
+    }
+    // Include clients with no filings
+    for (const c of clients) {
+      if (!filingRows.some((fr) => fr.client_id === c.id)) {
+        rows.push({ ...c, current_state: null, _fy: null, _rowKey: `${c.id}-none` });
+      }
+    }
+    return rows;
+  }, [clients, filingRows]);
+
   // Build computation sub-status lookup: key = client_id-fy -> sub_status
   const computationSubStatusMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const f of computationFilings) {
       if (f.computation_sub_status) {
-        const key = `${f.client_id}-${f.financial_year}`;
-        map.set(key, f.computation_sub_status);
+        map.set(`${f.client_id}-${f.financial_year}`, f.computation_sub_status);
       }
     }
     return map;
   }, [computationFilings]);
 
-  // Get unique computation sub-statuses for filter dropdown
   const computationSubStatuses = useMemo(() => {
     const set = new Set<string>();
     for (const f of computationFilings) {
@@ -121,7 +170,6 @@ function ManagerClientsPage() {
     return Array.from(set);
   }, [computationFilings]);
 
-  // Build filing doc sub-status lookup from action items
   const FILING_DOC_ACTION_LABELS: Record<string, string> = {
     MANAGER_APPROVE_COMPLETED_DOCS: 'Awaiting Manager Approval',
     PARTNER_APPROVE_COMPLETED_DOCS: 'Awaiting Partner Approval',
@@ -131,9 +179,7 @@ function ManagerClientsPage() {
     const map = new Map<string, string>();
     for (const ai of actionItems) {
       const label = FILING_DOC_ACTION_LABELS[ai.type];
-      if (label && ai.related_client_id) {
-        map.set(ai.related_client_id, label);
-      }
+      if (label && ai.related_client_id) map.set(ai.related_client_id, label);
     }
     return map;
   }, [actionItems]);
@@ -146,20 +192,13 @@ function ManagerClientsPage() {
 
   // Build filtered rows
   const filtered = useMemo(() => {
-    let result = clients;
-
-    // Special case: ONBOARDED_PENDING_FILING / ACTIVATED_NOT_ONBOARDED come pre-filtered
-    // from the server. These clients have no filings, so skip the current_filing_state filter.
+    // Special case: ONBOARDED_PENDING_FILING / ACTIVATED_NOT_ONBOARDED are server pre-filtered
     if (filingStatus === 'ONBOARDED_PENDING_FILING' || filingStatus === 'ACTIVATED_NOT_ONBOARDED') {
       const suffix = filingStatus === 'ONBOARDED_PENDING_FILING' ? 'onboarded-pending' : 'activated-not-onboarded';
-      result = clients.map((c: any) => ({ ...c, _rowKey: `${c.id}-${suffix}` }));
+      let result = clients.map((c: any) => ({ ...c, _rowKey: `${c.id}-${suffix}` }));
       if (search) {
         const q = search.toLowerCase();
-        result = result.filter((c: any) => {
-          const name = (c.full_name || '').toLowerCase();
-          const email = (c.email || '').toLowerCase();
-          return name.includes(q) || email.includes(q);
-        });
+        result = result.filter((c: any) => (c.full_name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q));
       }
       return result;
     }
@@ -168,53 +207,41 @@ function ManagerClientsPage() {
     if (filingStatus === 'AWAITING_TAX_PAYMENT') {
       const clientMap = new Map<string, any>();
       for (const c of clients) clientMap.set(c.id, c);
-      // Only show awaiting-tax rows for clients that belong to this manager
       return awaitingTaxRows
         .filter((f: any) => clientMap.has(f.client_id))
         .map((f: any) => {
-          const clientInfo = clientMap.get(f.client_id);
+          const ci = clientMap.get(f.client_id);
           return {
             id: f.client_id,
-            full_name: clientInfo?.full_name || f.client_name,
-            email: clientInfo?.email || '',
-            phone_number: clientInfo?.phone_number || null,
-            account_status: clientInfo?.account_status || 'ACTIVE',
-            assigned_executive_id: clientInfo?.assigned_executive_id || null,
-            assigned_executive_name: clientInfo?.assigned_executive_name || null,
-            current_filing_state: 'COMPUTATION',
+            full_name: ci?.full_name || f.client_name,
+            email: ci?.email || '',
+            phone_number: ci?.phone_number || null,
+            account_status: ci?.account_status || 'ACTIVE',
+            assigned_executive_id: ci?.assigned_executive_id || null,
+            assigned_executive_name: ci?.assigned_executive_name || null,
+            current_state: 'COMPUTATION',
             is_tax_paid: false,
-            active_filing_year: f.financial_year,
+            _fy: f.financial_year,
             _rowKey: `${f.client_id}-${f.financial_year}-tax`,
           };
         });
     }
 
-    if (filingStatus) {
-      result = result.filter((c) => (c.current_filing_state) === filingStatus);
-    }
-    // Filter by computation sub-status when viewing COMPUTATION filings
+    let result = expandedRows;
+    if (financialYear) result = result.filter((c) => c._fy === financialYear);
+    if (filingStatus) result = result.filter((c) => c.current_state === filingStatus);
     if (filingStatus === 'COMPUTATION' && computationSubFilter) {
-      result = result.filter((c) => {
-        const key = `${c.id}-${c.active_filing_year}`;
-        return computationSubStatusMap.get(key) === computationSubFilter;
-      });
+      result = result.filter((c) => computationSubStatusMap.get(`${c.id}-${c._fy}`) === computationSubFilter);
     }
-    // Filter by filing doc sub-status when viewing FILING filings
     if (filingStatus === 'FILING' && filingDocSubFilter) {
-      result = result.filter((c) => {
-        return filingDocSubStatusMap.get(c.id) === filingDocSubFilter;
-      });
+      result = result.filter((c) => filingDocSubStatusMap.get(c.id) === filingDocSubFilter);
     }
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter((c) => {
-        const name = (c.full_name || '').toLowerCase();
-        const email = (c.email || '').toLowerCase();
-        return name.includes(q) || email.includes(q);
-      });
+      result = result.filter((c) => (c.full_name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q));
     }
     return result;
-  }, [clients, filingStatus, awaitingTaxRows, search, computationSubFilter, computationSubStatusMap, filingDocSubFilter, filingDocSubStatusMap]);
+  }, [expandedRows, clients, financialYear, filingStatus, awaitingTaxRows, search, computationSubFilter, computationSubStatusMap, filingDocSubFilter, filingDocSubStatusMap]);
 
   // Build action item lookup by client_id
   const actionItemByClient = useMemo(() => {
@@ -245,25 +272,22 @@ function ManagerClientsPage() {
   const loadFilingTimestamps = async () => {
     setLoadingTimestamps(true);
     try {
-      const res = await listFilings({ page: 1, page_size: 500 });
+      const res = await listFilings({ page: 1, page_size: 100 });
       const filings = res?.items || res?.filings || [];
       const map = new Map<string, string>();
       for (const f of filings) {
-        const key = `${f.client_id}-${f.financial_year}`;
         const enteredAt = getStateEnteredAt(f.status, f);
-        if (enteredAt) map.set(key, enteredAt);
+        if (enteredAt) map.set(`${f.client_id}-${f.financial_year}`, enteredAt);
       }
       setFilingTimestamps(map);
     } catch {} finally { setLoadingTimestamps(false); }
   };
 
-  // Helper: compute hours in state using accurate timestamps
   const getHoursInState = (row: any) => {
-    const key = `${row.id}-${row.active_filing_year}`;
+    const key = `${row.id}-${row._fy}`;
     const enteredAt = filingTimestamps.get(key) || row.last_updated;
     if (!enteredAt) return null;
-    const diff = Date.now() - new Date(enteredAt).getTime();
-    return Math.max(0, Math.round(diff / (1000 * 60 * 60)));
+    return Math.max(0, Math.round((Date.now() - new Date(enteredAt).getTime()) / (1000 * 60 * 60)));
   };
 
   const formatDuration = (hours: number | null) => {
@@ -274,14 +298,9 @@ function ManagerClientsPage() {
     return rem > 0 ? `${days}d ${rem}h` : `${days}d`;
   };
 
-  // Sorting logic
   const toggleSort = (col: string) => {
-    if (sortCol === col) {
-      setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortCol(col);
-      setSortDir('asc');
-    }
+    if (sortCol === col) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
   };
 
   const sorted = useMemo(() => {
@@ -293,12 +312,12 @@ function ManagerClientsPage() {
       switch (sortCol) {
         case 'client': va = (a.full_name || '').toLowerCase(); vb = (b.full_name || '').toLowerCase(); break;
         case 'phone': va = a.phone_number || ''; vb = b.phone_number || ''; break;
-        case 'fy': va = a.active_filing_year || ''; vb = b.active_filing_year || ''; break;
+        case 'fy': va = a._fy || ''; vb = b._fy || ''; break;
         case 'account': va = a.account_status || ''; vb = b.account_status || ''; break;
         case 'executive': va = (a.assigned_executive_name || 'zzz').toLowerCase(); vb = (b.assigned_executive_name || 'zzz').toLowerCase(); break;
         case 'partner_tag': va = (a.partner_tag_name || 'zzz').toLowerCase(); vb = (b.partner_tag_name || 'zzz').toLowerCase(); break;
-        case 'state': va = a.current_filing_state || ''; vb = b.current_filing_state || ''; break;
-        case 'comp_sub': va = (computationSubStatusMap.get(`${a.id}-${a.active_filing_year}`) || 'zzz').toLowerCase(); vb = (computationSubStatusMap.get(`${b.id}-${b.active_filing_year}`) || 'zzz').toLowerCase(); break;
+        case 'state': va = a.current_state || ''; vb = b.current_state || ''; break;
+        case 'comp_sub': va = (computationSubStatusMap.get(`${a.id}-${a._fy}`) || 'zzz').toLowerCase(); vb = (computationSubStatusMap.get(`${b.id}-${b._fy}`) || 'zzz').toLowerCase(); break;
         case 'filing_doc_sub': va = (filingDocSubStatusMap.get(a.id) || 'zzz').toLowerCase(); vb = (filingDocSubStatusMap.get(b.id) || 'zzz').toLowerCase(); break;
         case 'action': va = actionItemByClient.get(a.id)?.title || 'zzz'; vb = actionItemByClient.get(b.id)?.title || 'zzz'; break;
         case 'time': va = getHoursInState(a) ?? 99999; vb = getHoursInState(b) ?? 99999; break;
@@ -311,7 +330,6 @@ function ManagerClientsPage() {
     return arr;
   }, [filtered, sortCol, sortDir, actionItemByClient]);
 
-  // Apply time threshold filter
   const displayRows = useMemo(() => {
     if (!timeThreshold || !showTimeInState) return sorted;
     return sorted.filter((row) => {
@@ -344,6 +362,16 @@ function ManagerClientsPage() {
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email…" className="pl-9" />
           </div>
+          <Select value={accountStatus || 'all'} onValueChange={(v) => setAccountStatus(v === 'all' ? '' : v)}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Account Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="PENDING_VERIFICATION">Pending</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="REJECTED">Rejected</SelectItem>
+              <SelectItem value="DEACTIVATED">Deactivated</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={filingStatus || 'all'} onValueChange={(v) => { setFilingStatus(v === 'all' ? '' : v); setComputationSubFilter(''); setFilingDocSubFilter(''); }}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filing State" /></SelectTrigger>
             <SelectContent>
@@ -372,6 +400,13 @@ function ManagerClientsPage() {
               </SelectContent>
             </Select>
           )}
+          <Select value={financialYear || 'all'} onValueChange={(v) => setFinancialYear(v === 'all' ? '' : v)}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Financial Year" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Financial Years</SelectItem>
+              {fyOptions.map((fy) => <SelectItem key={fy} value={fy}>{`FY ${fy}`}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
@@ -392,9 +427,7 @@ function ManagerClientsPage() {
               </Button>
               {showTimeInState && (
                 <Select value={timeThreshold !== null ? String(timeThreshold) : 'all'} onValueChange={(v) => setTimeThreshold(v === 'all' ? null : Number(v))}>
-                  <SelectTrigger className="h-7 w-[130px] text-xs">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-7 w-[130px] text-xs"><SelectValue placeholder="All" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
                     <SelectItem value="24">&gt; 24 hours</SelectItem>
@@ -441,7 +474,7 @@ function ManagerClientsPage() {
                     </td>
                     <td className="px-5 py-3 text-sm text-slate-700">{c.phone_number || <span className="text-xs text-slate-400">—</span>}</td>
                     <td className="px-5 py-3 text-sm text-slate-700">
-                      {c.active_filing_year ? `FY ${c.active_filing_year}` : <span className="text-xs text-slate-400">—</span>}
+                      {c._fy ? `FY ${c._fy}` : <span className="text-xs text-slate-400">—</span>}
                     </td>
                     <td className="px-5 py-3"><StatusBadge status={c.account_status} /></td>
                     <td className="px-5 py-3 text-xs text-slate-700">{c.partner_tag_name || <span className="text-slate-400">—</span>}</td>
@@ -460,12 +493,12 @@ function ManagerClientsPage() {
                       </Select>
                     </td>
                     <td className="px-5 py-3">
-                      {c.current_filing_state ? <StatusBadge status={c.current_filing_state} /> : <span className="text-xs text-slate-400">—</span>}
+                      {c.current_state ? <StatusBadge status={c.current_state} /> : <span className="text-xs text-slate-400">—</span>}
                     </td>
                     {filingStatus === 'COMPUTATION' && (
                       <td className="px-5 py-3">
                         {(() => {
-                          const subStatus = computationSubStatusMap.get(`${c.id}-${c.active_filing_year}`);
+                          const subStatus = computationSubStatusMap.get(`${c.id}-${c._fy}`);
                           if (!subStatus) return <span className="text-xs text-slate-400">—</span>;
                           return (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-violet-100 text-violet-700 ring-1 ring-inset ring-violet-200">
