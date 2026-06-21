@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 
 function getBaseUrl(): string {
   let url = process.env.NEXT_PUBLIC_API_URL || '__NEXT_PUBLIC_API_URL__';
-  // If the placeholder was never replaced at runtime, fall back to localhost
-  if (url.startsWith('__')) return 'http://localhost:8000';
+  // If the placeholder was never replaced at runtime, fall back to production API
+  if (url.startsWith('__')) return 'https://api.workpartners.co.in';
   // Fix malformed URLs like "http:host" or "https:host" (missing //)
   url = url.replace(/^(https?):(?!\/\/)/, '$1://');
   // Ensure the URL starts with a protocol
