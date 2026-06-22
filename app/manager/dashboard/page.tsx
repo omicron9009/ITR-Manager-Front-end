@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { getSummary, getMyTeam, listFilings, getMyClients, listClients } from '@/lib/api';
+import { getUser, getIsElevated } from '@/lib/auth';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Users, ArrowRight, Shield, TrendingUp, IndianRupee, AlertTriangle, UserCheck, UserX } from 'lucide-react';
 
@@ -23,6 +24,7 @@ const CARDS = [
 
 export default function ManagerDashboard() {
   const router = useRouter();
+  const isElevated = getIsElevated();
   const [summary, setSummary] = useState<any>({});
   const [team, setTeam] = useState<any>(null);
   const [awaitingTaxPayment, setAwaitingTaxPayment] = useState<any[]>([]);
@@ -34,18 +36,20 @@ export default function ManagerDashboard() {
     getSummary().then(setSummary).catch(() => {});
     getMyTeam().then(setTeam).catch(() => {});
 
-    // Fetch manager's clients to filter dashboard data
-    getMyClients({ page: 1, page_size: 100 }).then((r) => {
-      const ids = new Set<string>((r?.items || []).map((c: any) => c.id));
-      setMyClientIds(ids);
-    }).catch(() => {});
+    // For non-elevated managers: fetch assigned client IDs to filter dashboard data
+    if (!isElevated) {
+      getMyClients({ page: 1, page_size: 100 }).then((r) => {
+        const ids = new Set<string>((r?.items || []).map((c: any) => c.id));
+        setMyClientIds(ids);
+      }).catch(() => {});
+    }
 
     listFilings({ status: 'COMPUTATION', page_size: 100 }).then((r) => {
       const items = r?.items || r?.filings || [];
       setAwaitingTaxPayment(items.filter((f: any) => f.is_tax_paid === false));
     }).catch(() => {});
 
-    // Server-side scopes listClients to the manager's team clients
+    // Server-side scopes listClients to the manager's team (or all for elevated)
     listClients({ onboarded_pending_filing: true, page: 1, page_size: 1 })
       .then((r) => setOnboardedPendingCount(r?.total ?? 0))
       .catch(() => setOnboardedPendingCount(0));
@@ -54,11 +58,11 @@ export default function ManagerDashboard() {
       .catch(() => setActivatedNotOnboardedCount(0));
   }, []);
 
-  // Filter awaiting tax payment to only manager's clients
+  // For elevated managers show all tax-payment items; for regular managers filter to own clients
   const filteredAwaitingTax = useMemo(() => {
-    if (myClientIds.size === 0) return awaitingTaxPayment;
+    if (isElevated || myClientIds.size === 0) return awaitingTaxPayment;
     return awaitingTaxPayment.filter((f: any) => myClientIds.has(f.client_id));
-  }, [awaitingTaxPayment, myClientIds]);
+  }, [awaitingTaxPayment, myClientIds, isElevated]);
 
   const getCount = (k: string) => {
     if (k === 'AWAITING_TAX_PAYMENT') return filteredAwaitingTax.length;
@@ -75,7 +79,10 @@ export default function ManagerDashboard() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Manager Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">Your team&rsquo;s filings &middot; {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p className="text-sm text-slate-500 mt-1">
+            {isElevated ? 'Firm-wide view' : 'Your team’s filings'} &middot; {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {isElevated && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 uppercase tracking-wide">Elevated</span>}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Card

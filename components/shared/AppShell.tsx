@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Menu, UserCheck, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { clearAuth, getUser } from '@/lib/auth';
+import { clearAuth, getUser, getIsElevated } from '@/lib/auth';
 import NotificationBell from '@/components/shared/NotificationBell';
 import GlobalFooter from '@/components/shared/GlobalFooter';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,11 @@ export default function AppShell({ nav, role, children }: { nav: NavItem[]; role
   const [mobileOpen, setMobileOpen] = useState(false);
   const [myTags, setMyTags] = useState<{ manager_tags: any[]; location_tags: any[] }>({ manager_tags: [], location_tags: [] });
 
-  useEffect(() => { setUser(getUser()); }, []);
+  useEffect(() => {
+    const u = getUser();
+    if (u && role === 'MANAGER') setUser({ ...u, is_elevated: getIsElevated() });
+    else setUser(u);
+  }, []);
   useEffect(() => {
     if (role === 'EXECUTIVE') {
       getMyTags().then((r) => {
@@ -68,7 +72,12 @@ export default function AppShell({ nav, role, children }: { nav: NavItem[]; role
             <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xs font-bold">{initials}</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-900 truncate">{user?.full_name || user?.name || 'User'}</p>
-              <p className="text-[10px] uppercase tracking-wide text-indigo-600 font-bold">{role}</p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-[10px] uppercase tracking-wide text-indigo-600 font-bold">{role}</p>
+                {role === 'MANAGER' && user?.is_elevated && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 leading-none">Elevated</span>
+                )}
+              </div>
             </div>
           </div>
           {role === 'EXECUTIVE' && (myTags.manager_tags.length > 0 || myTags.location_tags.length > 0) && (

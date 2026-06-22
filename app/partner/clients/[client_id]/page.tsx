@@ -10,7 +10,7 @@ import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
 import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, internalWorkingReplaceUploadUrl, internalWorkingReplaceConfirm, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag, getIncomeHeadsCatalog, listTextFieldTypes, assignTextFields, listFilingTextFields, deleteTextField, approveTextFields, rejectTextFields } from '@/lib/api';
-import { getUser } from '@/lib/auth';
+import { getUser, getIsElevated } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Mail, Phone, MapPin, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save, Replace, History } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -35,6 +35,7 @@ export default function ClientDetailPage() {
   const isPartner = pathname.startsWith('/partner');
   const isManager = pathname.startsWith('/manager');
   const isExecutive = pathname.startsWith('/executive');
+  const isElevatedManager = isManager && getIsElevated();
   const [client, setClient] = useState<any>(null);
   const [filings, setFilings] = useState<any[]>([]);
   const [docs, setDocs] = useState<Record<string, any[]>>({});
@@ -114,10 +115,25 @@ export default function ClientDetailPage() {
           } catch {}
         }
       }).catch(() => {});
+    } else if (isElevatedManager) {
+      // Elevated managers can list all managers; use client's assigned_manager_id
+      // instead of looping (elevated manager can't access other managers' client lists)
+      listManagers().then((r) => setManagers(r?.items || r?.managers || r || [])).catch(() => {});
+      listExecutives().then((r) => {
+        const execs = r?.items || r?.executives || r || [];
+        setExecutives(execs.map((e: any) => ({ ...e, executive_id: e.id || e.executive_id, executive_name: e.full_name || e.executive_name })));
+      }).catch(() => {});
     } else if (isManager) {
       getMyTeam().then((r) => setExecutives(r?.executives || [])).catch(() => {});
     }
-  }, [isPartner, isManager, client_id]);
+  }, [isPartner, isManager, isElevatedManager, client_id]);
+
+  // For elevated managers, sync clientManagerId from client data once loaded
+  useEffect(() => {
+    if (isElevatedManager && client?.assigned_manager_id) {
+      setClientManagerId(client.assigned_manager_id);
+    }
+  }, [isElevatedManager, client]);
 
   // Load partner tags
   useEffect(() => {
@@ -179,12 +195,12 @@ export default function ClientDetailPage() {
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">No Fees Applicable</span>
             </div>
           )}
-          {/* Professional Fee (Partner only) */}
-          {isPartner && (
+          {/* Professional Fee (Partner or Elevated Manager) */}
+          {(isPartner || isElevatedManager) && (
             <ProfessionalFeeSection clientId={client_id} currentFee={client.professional_fee} noFeesApplicable={client.no_fees_applicable} onUpdated={load} />
           )}
           <div className="mt-5 pt-5 border-t border-slate-200 space-y-4">
-            {isPartner && (
+            {(isPartner || isElevatedManager) && (
               <div>
                 <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Manager</div>
                 <Select value={clientManagerId || ''} onValueChange={(v) => onAssignManager(v)}>
@@ -290,7 +306,7 @@ export default function ClientDetailPage() {
           <Card className="rounded-xl overflow-hidden">
             <div className="max-h-[calc(100vh-140px)] overflow-y-auto divide-y divide-slate-100">
               {filings.map((f: any) => (
-                <FilingAccordionItem key={f.id} filing={f} docs={docs} docGroups={docGroups} load={load} viewDoc={viewDoc} isExecutive={isExecutive} />
+                <FilingAccordionItem key={f.id} filing={f} docs={docs} docGroups={docGroups} load={load} viewDoc={viewDoc} isExecutive={isExecutive} clientFee={client?.professional_fee} />
               ))}
             </div>
           </Card>
@@ -302,7 +318,7 @@ export default function ClientDetailPage() {
   );
 }
 
-function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExecutive = false }: { filing: any; docs: Record<string, any[]>; docGroups: Record<string, any[]>; load: () => void; viewDoc: (id: string, name?: string) => void; isExecutive?: boolean }) {
+function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExecutive = false, clientFee }: { filing: any; docs: Record<string, any[]>; docGroups: Record<string, any[]>; load: () => void; viewDoc: (id: string, name?: string) => void; isExecutive?: boolean; clientFee?: string | number | null }) {
   const storageKey = `filing-accordion-${f.id}`;
   const [open, setOpen] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -653,7 +669,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
             {/* State actions + Fee — always visible below tabs */}
             <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
               <StateActions filing={f} onChange={load} isExecutive={isExecutive} />
-              <FilingFeeUpdate filing={f} onUpdated={load} />
+              <FilingFeeUpdate filing={f} clientFee={clientFee} onUpdated={load} />
             </div>
           </div>
         )}
@@ -1389,8 +1405,9 @@ function FiledDocsPanel({ filingId, filingStatus, noFeesApplicable, onMoveToPaym
   const isPartner = pathname.startsWith('/partner');
   const isManager = pathname.startsWith('/manager');
   const isExecutive = pathname.startsWith('/executive');
+  const isElevatedManager = isManager && getIsElevated();
 
-  // Filter out INVOICE for no-fee filings
+  // Filter out INVOICE only for no-fee filings; backend enforces role-based upload permissions
   const applicableDocTypes = noFeesApplicable
     ? COMPLETED_DOC_TYPES.filter(d => d.key !== 'INVOICE')
     : COMPLETED_DOC_TYPES;
@@ -2254,15 +2271,21 @@ function SetFilingFeeButton({ filing, onUpdated }: { filing: any; onUpdated: () 
   );
 }
 
-function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => void }) {
+function FilingFeeUpdate({ filing, clientFee, onUpdated }: { filing: any; clientFee?: string | number | null; onUpdated: () => void }) {
   const pathname = usePathname();
   const isPartner = pathname.startsWith('/partner');
+  const isManager = pathname.startsWith('/manager');
+  const isElevatedManager = isManager && getIsElevated();
   const [editing, setEditing] = useState(false);
   const [fee, setFee] = useState('');
   const [saving, setSaving] = useState(false);
 
-  if (!isPartner) return null;
+  if (!isPartner && !isElevatedManager) return null;
   if (filing.no_fees_applicable) return null;
+
+  const filingFee = filing.professional_fee;
+  const effectiveFee = filingFee ?? clientFee;
+  const isInherited = !filingFee && !!clientFee;
 
   const doSave = async () => {
     if (!fee || Number(fee) <= 0) return;
@@ -2288,15 +2311,18 @@ function FilingFeeUpdate({ filing, onUpdated }: { filing: any; onUpdated: () => 
           <span className="text-xs font-semibold text-slate-500 uppercase">Filing Fee</span>
         </div>
         {!editing && (
-          <Button size="sm" variant="ghost" className="h-6 px-2 text-indigo-600" onClick={() => { setEditing(true); setFee(filing.professional_fee ? String(filing.professional_fee) : ''); }}>
-            <Pencil className="h-3 w-3 mr-1" /> {filing.professional_fee ? 'Change' : 'Set'}
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-indigo-600" onClick={() => { setEditing(true); setFee(effectiveFee ? String(effectiveFee) : ''); }}>
+            <Pencil className="h-3 w-3 mr-1" /> {effectiveFee ? 'Change' : 'Set'}
           </Button>
         )}
       </div>
-      {!editing && filing.professional_fee && (
-        <div className="text-sm font-semibold text-slate-900 mt-1 ml-6">₹{Number(filing.professional_fee).toLocaleString('en-IN')}</div>
+      {!editing && effectiveFee && (
+        <div className="mt-1 ml-6 flex items-baseline gap-1.5">
+          <span className="text-sm font-semibold text-slate-900">₹{Number(effectiveFee).toLocaleString('en-IN')}</span>
+          {isInherited && <span className="text-xs text-slate-400">(client default)</span>}
+        </div>
       )}
-      {!editing && !filing.professional_fee && (
+      {!editing && !effectiveFee && (
         <div className="text-xs text-amber-600 mt-1 ml-6">To be decided</div>
       )}
       {editing && (

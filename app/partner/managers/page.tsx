@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { listManagers, createManager, getManagerTeam, assignExecutiveToManager, removeExecutiveFromManager, listExecutives, assignClientToManager, removeClientFromManager, getManagerClients, listClients, listTags, assignTagToManager, removeTagFromManager, getManagerTags } from '@/lib/api';
+import { listManagers, createManager, getManagerTeam, assignExecutiveToManager, removeExecutiveFromManager, listExecutives, assignClientToManager, removeClientFromManager, getManagerClients, listClients, listTags, assignTagToManager, removeTagFromManager, getManagerTags, elevateManager } from '@/lib/api';
 import { toast } from 'sonner';
 import { Users, UserPlus, Loader2, Shield, ChevronDown, ChevronUp, X, UserCheck, Clock, Search, MapPin, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
@@ -58,6 +58,9 @@ export default function PartnerManagersPage() {
   const [managerSearch, setManagerSearch] = useState('');
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Elevation toggle
+  const [elevatingId, setElevatingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -208,6 +211,19 @@ export default function PartnerManagersPage() {
     const q = createExecSearch.toLowerCase();
     return createAllExecs.filter((e) => (e.full_name || e.name || '').toLowerCase().includes(q) || (e.email || '').toLowerCase().includes(q));
   }, [createAllExecs, createExecSearch]);
+
+  const handleToggleElevation = async (managerId: string, currentlyElevated: boolean) => {
+    setElevatingId(managerId);
+    try {
+      await elevateManager(managerId, !currentlyElevated);
+      toast.success(currentlyElevated ? 'Manager elevation removed' : 'Manager elevated successfully');
+      load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Failed to update elevation');
+    } finally {
+      setElevatingId(null);
+    }
+  };
 
   const toggleExpand = async (managerId: string) => {
     if (expandedManager === managerId) {
@@ -420,7 +436,12 @@ export default function PartnerManagersPage() {
                             <Users className="h-4 w-4" />
                           </div>
                           <div>
-                            <span className="font-semibold text-slate-900">{mgr.full_name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-900">{mgr.full_name}</span>
+                              {mgr.is_elevated && (
+                                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">Elevated</span>
+                              )}
+                            </div>
                             {mgrTags.length > 0 && (
                               <div className="flex items-center gap-1 mt-0.5">
                                 {mgrTags.map((t: any) => (
@@ -528,6 +549,31 @@ export default function PartnerManagersPage() {
                                     </div>
                                   )}
                                 </div>
+                              </div>
+
+                              {/* Elevation Toggle */}
+                              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                                <div>
+                                  <div className="text-xs font-semibold text-slate-700">Elevated Manager</div>
+                                  <div className="text-xs text-slate-400 mt-0.5">
+                                    {mgr.is_elevated
+                                      ? 'Can set fees and upload invoices for any client.'
+                                      : 'Standard manager — limited to assigned clients.'}
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant={mgr.is_elevated ? 'outline' : 'default'}
+                                  className={mgr.is_elevated
+                                    ? 'border-violet-300 text-violet-700 hover:bg-violet-50'
+                                    : 'bg-violet-600 hover:bg-violet-700 text-white'}
+                                  onClick={(e) => { e.stopPropagation(); handleToggleElevation(id, mgr.is_elevated); }}
+                                  disabled={elevatingId === id}
+                                >
+                                  {elevatingId === id
+                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                    : mgr.is_elevated ? 'Remove Elevation' : 'Elevate'}
+                                </Button>
                               </div>
                               </div>
                             )}

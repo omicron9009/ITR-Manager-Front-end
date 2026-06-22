@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { getMyTeam, listFilings, assignExecutive, getActionItems, getFilingsByStatus, listClients } from '@/lib/api';
+import { getMyTeam, listFilings, listExecutives, assignExecutive, getActionItems, getFilingsByStatus, listClients } from '@/lib/api';
+import { getUser, getIsElevated } from '@/lib/auth';
 import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot, ArrowUpDown, ArrowUp, ArrowDown, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -106,9 +107,18 @@ function ManagerClientsPage() {
     }
   };
 
+  const isElevated = getIsElevated();
+
   // On mount: fetch team and action items; load() is handled by the filingStatus/accountStatus effect below
   useEffect(() => {
-    getMyTeam().then((r) => setTeamExecs(r?.executives || [])).catch(() => {});
+    if (isElevated) {
+      listExecutives().then((r) => {
+        const execs = r?.items || r?.executives || r || [];
+        setTeamExecs(execs.map((e: any) => ({ ...e, executive_id: e.id || e.executive_id, executive_name: e.full_name || e.executive_name })));
+      }).catch(() => {});
+    } else {
+      getMyTeam().then((r) => setTeamExecs(r?.executives || [])).catch(() => {});
+    }
     getActionItems().then((r) => setActionItems(r?.items || [])).catch(() => {});
   }, []);
 
@@ -316,6 +326,7 @@ function ManagerClientsPage() {
         case 'account': va = a.account_status || ''; vb = b.account_status || ''; break;
         case 'executive': va = (a.assigned_executive_name || 'zzz').toLowerCase(); vb = (b.assigned_executive_name || 'zzz').toLowerCase(); break;
         case 'partner_tag': va = (a.partner_tag_name || 'zzz').toLowerCase(); vb = (b.partner_tag_name || 'zzz').toLowerCase(); break;
+        case 'manager': va = (a.assigned_manager_name || 'zzz').toLowerCase(); vb = (b.assigned_manager_name || 'zzz').toLowerCase(); break;
         case 'state': va = a.current_state || ''; vb = b.current_state || ''; break;
         case 'comp_sub': va = (computationSubStatusMap.get(`${a.id}-${a._fy}`) || 'zzz').toLowerCase(); vb = (computationSubStatusMap.get(`${b.id}-${b._fy}`) || 'zzz').toLowerCase(); break;
         case 'filing_doc_sub': va = (filingDocSubStatusMap.get(a.id) || 'zzz').toLowerCase(); vb = (filingDocSubStatusMap.get(b.id) || 'zzz').toLowerCase(); break;
@@ -351,8 +362,11 @@ function ManagerClientsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Clients</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{filtered.length} client{filtered.length !== 1 ? 's' : ''} assigned to you</p>
+          <h1 className="text-2xl font-bold text-slate-900">{isElevated ? 'All Clients' : 'My Clients'}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {filtered.length} client{filtered.length !== 1 ? 's' : ''} {isElevated ? 'firm-wide' : 'assigned to you'}
+            {isElevated && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 uppercase tracking-wide">Firm-wide</span>}
+          </p>
         </div>
       </div>
 
@@ -453,6 +467,7 @@ function ManagerClientsPage() {
                   <SortHeader col="fy">FY</SortHeader>
                   <SortHeader col="account">Account</SortHeader>
                   <SortHeader col="partner_tag">Partner</SortHeader>
+                  {isElevated && <SortHeader col="manager">Manager</SortHeader>}
                   <SortHeader col="executive">Executive</SortHeader>
                   <SortHeader col="state">Current State</SortHeader>
                   {filingStatus === 'COMPUTATION' && <SortHeader col="comp_sub">Sub-Status</SortHeader>}
@@ -478,6 +493,9 @@ function ManagerClientsPage() {
                     </td>
                     <td className="px-5 py-3"><StatusBadge status={c.account_status} /></td>
                     <td className="px-5 py-3 text-xs text-slate-700">{c.partner_tag_name || <span className="text-slate-400">—</span>}</td>
+                    {isElevated && (
+                      <td className="px-5 py-3 text-xs text-slate-700">{c.assigned_manager_name || <span className="text-slate-400">—</span>}</td>
+                    )}
                     <td className="px-5 py-3">
                       <Select value={c.assigned_executive_id || ''} onValueChange={(v) => onAssign(c.id, v)}>
                         <SelectTrigger className={`h-8 w-[160px] text-xs ${c.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>

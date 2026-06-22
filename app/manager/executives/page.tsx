@@ -8,13 +8,15 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { getMyTeam, listExecutives, createExecutive, assignExecutive, deactivateExec, reactivateExec, execClients, getMyClients, managerAssignClient, assignTag, getManagerTags } from '@/lib/api';
+import { getMyTeam, listExecutives, createExecutive, assignExecutive, deactivateExec, reactivateExec, execClients, getMyClients, listClients, managerAssignClient, assignTag, getManagerTags } from '@/lib/api';
+import { getUser, getIsElevated } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Shield, UserPlus, Loader2, Users, ArrowRight, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ManagerExecutivesPage() {
   const router = useRouter();
+  const isElevated = getIsElevated();
   const [team, setTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -31,15 +33,22 @@ export default function ManagerExecutivesPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const r = await getMyTeam();
-      setTeam(r);
-      const managerId = r?.manager_id;
-      if (managerId) {
-        try {
-          const tags = await getManagerTags(managerId);
-          setLocationTags(tags || []);
-        } catch {
-          setLocationTags([]);
+      if (isElevated) {
+        const r = await listExecutives();
+        const execs = r?.items || r?.executives || r || [];
+        // Shape firm-wide executives to match team response format
+        setTeam({ executives: execs.map((e: any) => ({ ...e, executive_id: e.id || e.executive_id, executive_name: e.full_name || e.executive_name })) });
+      } else {
+        const r = await getMyTeam();
+        setTeam(r);
+        const managerId = r?.manager_id;
+        if (managerId) {
+          try {
+            const tags = await getManagerTags(managerId);
+            setLocationTags(tags || []);
+          } catch {
+            setLocationTags([]);
+          }
         }
       }
     } catch {
@@ -77,8 +86,13 @@ export default function ManagerExecutivesPage() {
     if (!selectedClient || !selectedExec) return;
     setAssigning(true);
     try {
-      const managerId = team?.manager_id;
-      await managerAssignClient(managerId, { client_id: selectedClient, executive_id: selectedExec.executive_id || selectedExec.id });
+      if (isElevated) {
+        // Elevated managers use direct assignment (no manager_id needed)
+        await assignExecutive(selectedClient, selectedExec.executive_id || selectedExec.id);
+      } else {
+        const managerId = team?.manager_id;
+        await managerAssignClient(managerId, { client_id: selectedClient, executive_id: selectedExec.executive_id || selectedExec.id });
+      }
       toast.success('Client assigned successfully');
       setShowAssignClient(false);
       setSelectedClient('');
@@ -93,7 +107,9 @@ export default function ManagerExecutivesPage() {
   const openAssignClient = async (exec: any) => {
     setSelectedExec(exec);
     try {
-      const r = await getMyClients({ page_size: 100 });
+      const r = isElevated
+        ? await listClients({ page_size: 100 })
+        : await getMyClients({ page_size: 100 });
       setClients(r?.items || []);
     } catch {}
     setShowAssignClient(true);
@@ -105,8 +121,11 @@ export default function ManagerExecutivesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Executives</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{teamExecs.length} executive{teamExecs.length !== 1 ? 's' : ''} in your team</p>
+          <h1 className="text-2xl font-bold text-slate-900">{isElevated ? 'All Executives' : 'My Executives'}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {teamExecs.length} executive{teamExecs.length !== 1 ? 's' : ''} {isElevated ? 'firm-wide' : 'in your team'}
+            {isElevated && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 uppercase tracking-wide">Firm-wide</span>}
+          </p>
         </div>
         <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => setShowCreate(true)}>
           <UserPlus className="h-4 w-4 mr-1" /> Create Executive

@@ -423,7 +423,7 @@
           "Clients"
         ],
         "summary": "Activate Client Account",
-        "description": "Activate a client account (Partner, Manager, or Executive).",
+        "description": "Activate a client account (Partner only).",
         "operationId": "activate_client_account_api_v1_clients_activate_post",
         "requestBody": {
           "content": {
@@ -1331,7 +1331,7 @@
           "Managers"
         ],
         "summary": "List Managers",
-        "description": "List all managers with team info (Partner only).",
+        "description": "List all managers with team info (Partner or Elevated Manager).",
         "operationId": "list_managers_api_v1_managers_get",
         "responses": {
           "200": {
@@ -2081,6 +2081,66 @@
         }
       }
     },
+    "/api/v1/managers/{manager_id}/elevation": {
+      "put": {
+        "tags": [
+          "Managers"
+        ],
+        "summary": "Toggle Manager Elevation Endpoint",
+        "description": "Toggle the elevated status on a Manager (Partner only).",
+        "operationId": "toggle_manager_elevation_endpoint_api_v1_managers__manager_id__elevation_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manager_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Manager Id"
+            }
+          },
+          {
+            "name": "elevate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "description": "True to elevate, False to de-elevate",
+              "title": "Elevate"
+            },
+            "description": "True to elevate, False to de-elevate"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/filings/initiate": {
       "post": {
         "tags": [
@@ -2193,7 +2253,7 @@
           "Filings"
         ],
         "summary": "Update Filing Fee",
-        "description": "Set/update the professional fee for a filing. Partner only.\n\nDirectly applies the fee, regenerates the engagement letter with the\nactual fee amount, and emails the revised letter to the client.\nNo client approval step needed — the client pre-agreed to 'mutually decided' fees.",
+        "description": "Set/update the professional fee for a filing. Partner or Elevated Manager only.\n\nDirectly applies the fee, regenerates the engagement letter with the\nactual fee amount, and emails the revised letter to the client.\nNo client approval step needed — the client pre-agreed to 'mutually decided' fees.",
         "operationId": "update_filing_fee_api_v1_filings__filing_id__update_fee_post",
         "security": [
           {
@@ -8761,6 +8821,7 @@
           "REVISE_COMPLETED_DOC",
           "MARK_PAYMENT_RECEIVED",
           "SET_PROFESSIONAL_FEE",
+          "UPLOAD_INVOICE",
           "MANAGER_APPROVE_COMPUTATION",
           "PARTNER_APPROVE_COMPUTATION",
           "ASSIGN_CLIENT_TO_EXECUTIVE",
@@ -8841,7 +8902,9 @@
           "WHATSAPP_SESSION_STARTED",
           "WHATSAPP_SESSION_STOPPED",
           "WHATSAPP_TEST_SENT",
-          "WHATSAPP_CLIENT_OPT_IN_CHANGED"
+          "WHATSAPP_CLIENT_OPT_IN_CHANGED",
+          "MANAGER_ELEVATED",
+          "MANAGER_DE_ELEVATED"
         ],
         "title": "AuditEventType"
       },
@@ -15228,6 +15291,11 @@
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
+          },
+          "is_elevated": {
+            "type": "boolean",
+            "title": "Is Elevated",
+            "default": false
           },
           "team_executive_count": {
             "type": "integer",

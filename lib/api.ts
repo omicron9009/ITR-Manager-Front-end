@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 function getBaseUrl(): string {
   let url = process.env.NEXT_PUBLIC_API_URL || '__NEXT_PUBLIC_API_URL__';
   // If the placeholder was never replaced at runtime, fall back to production API
-  if (url.startsWith('__')) return 'https://api.workpartners.co.in';
+  if (url.startsWith('__')) return 'http://localhost:8000';
   // Fix malformed URLs like "http:host" or "https:host" (missing //)
   url = url.replace(/^(https?):(?!\/\/)/, '$1://');
   // Ensure the URL starts with a protocol
@@ -364,6 +364,8 @@ export const removeTagFromManager = (manager_id: string, tag_id: string) =>
   api.delete(`/api/v1/managers/${manager_id}/tags/${tag_id}`).then((r) => r.data);
 export const getManagerTags = (manager_id: string) =>
   api.get(`/api/v1/managers/${manager_id}/tags`).then((r) => r.data);
+export const elevateManager = (manager_id: string, elevate: boolean) =>
+  api.put(`/api/v1/managers/${manager_id}/elevation`, null, { params: { elevate } }).then((r) => r.data);
 
 // ---------- INTERNAL WORKINGS ----------
 export const internalWorkingUploadUrl = (data: { filing_id: string; filename: string; content_type: string; label?: string }) =>

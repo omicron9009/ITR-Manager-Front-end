@@ -53,6 +53,17 @@ export const clearAuth = () => {
   document.cookie = `${ROLE_KEY}=; path=/; max-age=0`;
 };
 
+export const getIsElevated = (): boolean => {
+  const token = getToken();
+  if (!token) return false;
+  try {
+    const p = jwtDecode<JwtPayload>(token);
+    return !!(p as any).is_elevated;
+  } catch {
+    return false;
+  }
+};
+
 export const decodeRole = (token: string): UserRole | null => {
   try {
     const p = jwtDecode<JwtPayload>(token);

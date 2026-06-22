@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from 'react';
 import AppShell from '@/components/shared/AppShell';
 import { LayoutDashboard, Users, Shield, FileCheck, Layout, Bell, User, ClipboardList } from 'lucide-react';
+import { getIsElevated, getUser, setUser } from '@/lib/auth';
 
 const NAV = [
   { href: '/manager/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -15,5 +17,13 @@ const NAV = [
 ];
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    const elevated = getIsElevated();
+    const stored = getUser();
+    if (stored && stored.is_elevated !== elevated) {
+      setUser({ ...stored, is_elevated: elevated });
+    }
+  }, []);
+
   return <AppShell nav={NAV} role="MANAGER" avatarHref="/manager/profile">{children}</AppShell>;
 }
