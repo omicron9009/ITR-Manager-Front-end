@@ -92,6 +92,8 @@ export default function LoginPage() {
       setToken(token);
       let role = decodeRole(token);
       let user: any = { email: values.email };
+      // Capture is_elevated from login response immediately
+      if (res.is_elevated !== undefined) user.is_elevated = res.is_elevated;
       try {
         const profile = await apiMe();
         user = { ...user, ...profile };

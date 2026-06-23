@@ -54,14 +54,17 @@ export const clearAuth = () => {
 };
 
 export const getIsElevated = (): boolean => {
+  // Check JWT first
   const token = getToken();
-  if (!token) return false;
-  try {
-    const p = jwtDecode<JwtPayload>(token);
-    return !!(p as any).is_elevated;
-  } catch {
-    return false;
+  if (token) {
+    try {
+      const p = jwtDecode<JwtPayload>(token);
+      if ((p as any).is_elevated) return true;
+    } catch {}
   }
+  // Fallback: check stored user object (set from /me response or login)
+  const user = getUser();
+  return !!(user?.is_elevated);
 };
 
 export const decodeRole = (token: string): UserRole | null => {

@@ -423,7 +423,7 @@
           "Clients"
         ],
         "summary": "Activate Client Account",
-        "description": "Activate a client account (Partner only).",
+        "description": "Activate a client account (Partner or Elevated Manager).",
         "operationId": "activate_client_account_api_v1_clients_activate_post",
         "requestBody": {
           "content": {
@@ -642,7 +642,7 @@
           "Clients"
         ],
         "summary": "Set Client Partner Tag",
-        "description": "Assign or change the partner tag for a client. Partner only.",
+        "description": "Assign or change the partner tag for a client. Partner or Elevated Manager.",
         "operationId": "set_client_partner_tag_api_v1_clients__client_id__set_partner_tag_post",
         "security": [
           {
@@ -704,7 +704,7 @@
           "Clients"
         ],
         "summary": "Remove Client Partner Tag",
-        "description": "Remove the partner tag from a client. Partner only.",
+        "description": "Remove the partner tag from a client. Partner or Elevated Manager.",
         "operationId": "remove_client_partner_tag_api_v1_clients__client_id__partner_tag_delete",
         "security": [
           {
@@ -1649,7 +1649,7 @@
           "Managers"
         ],
         "summary": "Assign Client To Mgr",
-        "description": "Assign a client to a manager (Partner only).",
+        "description": "Assign a client to a manager (Partner or Elevated Manager).",
         "operationId": "assign_client_to_mgr_api_v1_managers__manager_id__clients_post",
         "security": [
           {
@@ -1794,7 +1794,7 @@
           "Managers"
         ],
         "summary": "Remove Client From Manager",
-        "description": "Unassign a client from a manager (Partner only).",
+        "description": "Unassign a client from a manager (Partner or Elevated Manager).",
         "operationId": "remove_client_from_manager_api_v1_managers__manager_id__clients__client_id__delete",
         "security": [
           {
@@ -16901,6 +16901,11 @@
             "title": "Token Type",
             "default": "bearer"
           },
+          "is_elevated": {
+            "type": "boolean",
+            "title": "Is Elevated",
+            "default": false
+          },
           "recovery_codes": {
             "anyOf": [
               {
@@ -16962,6 +16967,11 @@
           "role": {
             "type": "string",
             "title": "Role"
+          },
+          "is_elevated": {
+            "type": "boolean",
+            "title": "Is Elevated",
+            "default": false
           },
           "account_status": {
             "type": "string",

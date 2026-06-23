@@ -73,10 +73,7 @@ export default function AppShell({ nav, role, children }: { nav: NavItem[]; role
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-900 truncate">{user?.full_name || user?.name || 'User'}</p>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <p className="text-[10px] uppercase tracking-wide text-indigo-600 font-bold">{role}</p>
-                {role === 'MANAGER' && user?.is_elevated && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 leading-none">Elevated</span>
-                )}
+                <p className="text-[10px] uppercase tracking-wide text-indigo-600 font-bold">{role === 'MANAGER' && user?.is_elevated ? 'ADMIN' : role}</p>
               </div>
             </div>
           </div>

@@ -35,7 +35,7 @@ export default function ClientDetailPage() {
   const isPartner = pathname.startsWith('/partner');
   const isManager = pathname.startsWith('/manager');
   const isExecutive = pathname.startsWith('/executive');
-  const isElevatedManager = isManager && getIsElevated();
+  const [isElevatedManager, setIsElevatedManager] = useState(false);
   const [client, setClient] = useState<any>(null);
   const [filings, setFilings] = useState<any[]>([]);
   const [docs, setDocs] = useState<Record<string, any[]>>({});
@@ -53,6 +53,10 @@ export default function ClientDetailPage() {
   const [docViewerOpen, setDocViewerOpen] = useState(false);
   const [docViewerUrl, setDocViewerUrl] = useState<string | null>(null);
   const [docViewerName, setDocViewerName] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (isManager) setIsElevatedManager(getIsElevated());
+  }, [isManager]);
 
   const viewDoc = async (docId: string, filename?: string) => {
     try {
