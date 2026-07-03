@@ -116,10 +116,14 @@ export default function ResetPasswordPage() {
               </>
             )}
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-2">
               <Link href="/auth/login" className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:underline font-medium">
                 <ArrowLeft className="h-3.5 w-3.5" /> Back to login
               </Link>
+              <p className="text-xs text-slate-500">
+                Don&apos;t have a recovery code?{' '}
+                <Link href="/auth/forgot-password" className="text-indigo-600 hover:underline font-medium">Reset via email link</Link>
+              </p>
             </div>
           </div>
         </div>

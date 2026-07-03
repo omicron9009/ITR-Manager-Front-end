@@ -110,6 +110,92 @@
         }
       }
     },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Forgot Password",
+        "description": "Request a password reset link sent to the user's email.\n\nRate-limited to prevent abuse. Returns error if email not found.",
+        "operationId": "forgot_password_api_v1_auth_forgot_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Forgot Password Api V1 Auth Forgot Password Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password-with-link": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Reset Password With Link",
+        "description": "Reset password using a token from the email reset link.",
+        "operationId": "reset_password_with_link_api_v1_auth_reset_password_with_link_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordWithLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Reset Password With Link Api V1 Auth Reset Password With Link Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/change-password": {
       "post": {
         "tags": [
@@ -4818,7 +4904,7 @@
           "Dashboard"
         ],
         "summary": "Get Pending Verifications",
-        "description": "Get list of clients awaiting verification (Partner only).",
+        "description": "Get list of clients awaiting verification (Partner or Elevated Manager).",
         "operationId": "get_pending_verifications_api_v1_dashboard_pending_verification_get",
         "responses": {
           "200": {
@@ -6511,7 +6597,7 @@
           "Tags"
         ],
         "summary": "List All Tags",
-        "description": "List all tags, optionally filtered by type. Partner only.",
+        "description": "List all tags, optionally filtered by type. Partner or Elevated Manager.",
         "operationId": "list_all_tags_api_v1_tags_get",
         "security": [
           {
@@ -8903,8 +8989,12 @@
           "WHATSAPP_SESSION_STOPPED",
           "WHATSAPP_TEST_SENT",
           "WHATSAPP_CLIENT_OPT_IN_CHANGED",
+          "WHATSAPP_SESSION_AUTO_RECONNECTED",
+          "WHATSAPP_SESSION_LOST",
           "MANAGER_ELEVATED",
-          "MANAGER_DE_ELEVATED"
+          "MANAGER_DE_ELEVATED",
+          "PASSWORD_RESET_REQUESTED",
+          "PASSWORD_RESET_VIA_LINK"
         ],
         "title": "AuditEventType"
       },
@@ -13873,6 +13963,20 @@
         ],
         "title": "FilingTrackingResponse"
       },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ForgotPasswordRequest"
+      },
       "FormFieldCreateRequest": {
         "properties": {
           "field_label": {
@@ -16544,6 +16648,27 @@
           "message"
         ],
         "title": "RecoveryCodesResponse"
+      },
+      "ResetPasswordWithLinkRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Token"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "ResetPasswordWithLinkRequest"
       },
       "StageTiming": {
         "properties": {

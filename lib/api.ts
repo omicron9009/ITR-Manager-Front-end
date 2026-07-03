@@ -79,6 +79,10 @@ export const login = (email: string, password: string) =>
 export const me = () => api.get('/api/v1/auth/me').then((r) => r.data);
 export const resetPassword = (data: { email: string; recovery_code: string; new_password: string }) =>
   api.post('/api/v1/auth/reset-password', data).then((r) => r.data);
+export const forgotPassword = (email: string) =>
+  api.post('/api/v1/auth/forgot-password', { email }).then((r) => r.data);
+export const resetPasswordWithLink = (data: { token: string; new_password: string }) =>
+  api.post('/api/v1/auth/reset-password-with-link', data).then((r) => r.data);
 export const changePassword = (data: { old_password: string; new_password: string }) =>
   api.post('/api/v1/auth/change-password', data).then((r) => r.data);
 export const changeEmail = (data: { new_email: string; password: string }) =>

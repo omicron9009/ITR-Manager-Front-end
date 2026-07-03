@@ -180,7 +180,7 @@ export default function LoginPage() {
                 <div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="password">Password</Label>
-                    <Link href="/auth/reset-password" className="text-xs text-indigo-600 hover:underline font-medium">Forgot password?</Link>
+                    <Link href="/auth/forgot-password" className="text-xs text-indigo-600 hover:underline font-medium">Forgot password?</Link>
                   </div>
                   <Input id="password" type="password" placeholder="••••••••" {...register('password')} className="mt-1.5" />
                   {errors.password && <p className="text-xs text-rose-600 mt-1">{errors.password.message as string}</p>}
