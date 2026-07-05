@@ -75,9 +75,16 @@ export function AssignAfterActivationDialog({ client, managers, executives, part
   const [selectedPartnerTag, setSelectedPartnerTag] = useState('');
   const [managerExecs, setManagerExecs] = useState<any[]>([]);
 
+  // Pre-populate with existing assignments when client changes
   useEffect(() => {
-    if (!selectedManager) { setManagerExecs([]); setSelectedExecutive(''); return; }
-    setSelectedExecutive('');
+    if (!client) return;
+    setSelectedPartnerTag(client.partner_tag_id || '');
+    setSelectedManager(client.assigned_manager_id || '');
+    setSelectedExecutive(client.assigned_executive_id || '');
+  }, [client?.id]);
+
+  useEffect(() => {
+    if (!selectedManager) { setManagerExecs([]); return; }
     getManagerTeam(selectedManager)
       .then((r) => setManagerExecs(r?.executives || r?.items || []))
       .catch(() => setManagerExecs([]));
@@ -85,23 +92,30 @@ export function AssignAfterActivationDialog({ client, managers, executives, part
 
   if (!client) return null;
 
+  const hasManager = !!client.assigned_manager_id;
+  const hasExecutive = !!client.assigned_executive_id;
+  const hasPartnerTag = !!client.partner_tag_id;
+
   return (
     <Dialog open={!!client} onOpenChange={(o) => { if (!o) onSkip(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-emerald-700 flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5" /> Client Activated
+          <DialogTitle className="text-indigo-700 flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5" /> Assign Client
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3">
             <div className="text-sm font-semibold text-slate-900">{client.full_name || client.name}</div>
             <div className="text-xs text-slate-500">{client.email}</div>
           </div>
-          <p className="text-sm text-slate-600">Assign a manager, partner tag, and optionally an executive to this client.</p>
+          <p className="text-sm text-slate-600">Assign the missing manager, partner tag, or executive for this client.</p>
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Partner Tag <span className="text-rose-500">*</span></label>
+              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">
+                Partner Tag <span className="text-rose-500">*</span>
+                {hasPartnerTag && <span className="ml-2 text-[10px] font-medium text-emerald-600 normal-case">(already assigned)</span>}
+              </label>
               <Select value={selectedPartnerTag} onValueChange={setSelectedPartnerTag}>
                 <SelectTrigger className={`w-full ${selectedPartnerTag ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
                   <SelectValue placeholder="Select Partner Tag" />
@@ -114,7 +128,10 @@ export function AssignAfterActivationDialog({ client, managers, executives, part
               </Select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Manager <span className="text-rose-500">*</span></label>
+              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">
+                Manager <span className="text-rose-500">*</span>
+                {hasManager && <span className="ml-2 text-[10px] font-medium text-emerald-600 normal-case">(already assigned)</span>}
+              </label>
               <Select value={selectedManager} onValueChange={setSelectedManager}>
                 <SelectTrigger className={`w-full ${selectedManager ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
                   <SelectValue placeholder="Select Manager" />
@@ -127,7 +144,10 @@ export function AssignAfterActivationDialog({ client, managers, executives, part
               </Select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">Executive <span className="text-slate-400">(optional)</span></label>
+              <label className="text-xs font-semibold text-slate-700 uppercase mb-1.5 block">
+                Executive <span className="text-slate-400">(optional)</span>
+                {hasExecutive && <span className="ml-2 text-[10px] font-medium text-emerald-600 normal-case">(already assigned)</span>}
+              </label>
               <Select value={selectedExecutive} onValueChange={setSelectedExecutive} disabled={!selectedManager}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={selectedManager ? 'Select Executive (optional)' : 'Select a manager first'} />
@@ -145,7 +165,7 @@ export function AssignAfterActivationDialog({ client, managers, executives, part
           </div>
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onSkip}>Skip for now</Button>
+          <Button variant="outline" onClick={onSkip}>Cancel</Button>
           <Button
             disabled={!selectedManager || !selectedPartnerTag || acting}
             className="bg-indigo-600 hover:bg-indigo-700"
