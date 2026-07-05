@@ -682,39 +682,6 @@ export default function FilingDetailPage() {
         </Card>
       )}
 
-      {/* Text Fields Section */}
-      {textFields.length > 0 && (
-        <Card className="rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Type className="h-5 w-5 text-amber-600" />
-            <h2 className="font-bold text-slate-900">Information Fields</h2>
-            {textFieldsMeta.total > 0 && (
-              <span className="text-xs text-slate-500 ml-1">
-                ({textFieldsMeta.filled || 0}/{textFieldsMeta.total} filled)
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-500 mb-4">Please fill in the details requested below. You can edit them anytime until they are approved.</p>
-          <div className="space-y-4">
-            {(textFieldGroups.length > 0 ? textFieldGroups : [{ field_type_id: '__all__', field_type_name: '', fields: textFields }]).map((g: any) => {
-              const description = g.fields?.[0]?.field_type_description;
-              const maxLength = g.fields?.[0]?.field_type_max_length;
-              return (
-                <TextFieldGroup
-                  key={g.field_type_id}
-                  group={g}
-                  description={description}
-                  maxLength={maxLength}
-                  filingState={state}
-                  onSave={onSaveTextField}
-                  onDelete={onDeleteTextField}
-                />
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
       {/* Documents Section - File System View */}
       <Card className="rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
@@ -798,6 +765,39 @@ export default function FilingDetailPage() {
           </div>
         )}
       </Card>
+
+      {/* Text Fields Section */}
+      {textFields.length > 0 && (
+        <Card className="rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Type className="h-5 w-5 text-amber-600" />
+            <h2 className="font-bold text-slate-900">Information Fields</h2>
+            {textFieldsMeta.total > 0 && (
+              <span className="text-xs text-slate-500 ml-1">
+                ({textFieldsMeta.filled || 0}/{textFieldsMeta.total} filled)
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mb-4">Please fill in the details requested below. You can edit them anytime until they are approved.</p>
+          <div className="space-y-4">
+            {(textFieldGroups.length > 0 ? textFieldGroups : [{ field_type_id: '__all__', field_type_name: '', fields: textFields }]).map((g: any) => {
+              const description = g.fields?.[0]?.field_type_description;
+              const maxLength = g.fields?.[0]?.field_type_max_length;
+              return (
+                <TextFieldGroup
+                  key={g.field_type_id}
+                  group={g}
+                  description={description}
+                  maxLength={maxLength}
+                  filingState={state}
+                  onSave={onSaveTextField}
+                  onDelete={onDeleteTextField}
+                />
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Reject Computation Dialog */}
       <Dialog open={!!rejectingComp} onOpenChange={(o) => { if (!o) { setRejectingComp(null); setRejectReason(''); } }}>

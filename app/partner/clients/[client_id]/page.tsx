@@ -1,6 +1,6 @@
 // @ts-nocheck
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { FilingProgressBar } from '@/components/shared/FilingProgressBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FileViewer } from '@/components/shared/FileViewer';
-import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, internalWorkingReplaceUploadUrl, internalWorkingReplaceConfirm, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag, getIncomeHeadsCatalog, listTextFieldTypes, assignTextFields, listFilingTextFields, deleteTextField, approveTextFields, rejectTextFields } from '@/lib/api';
+import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, docUploadUrl, docReplaceUrl, docConfirmUpload, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, internalWorkingReplaceUploadUrl, internalWorkingReplaceConfirm, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag, getIncomeHeadsCatalog, listTextFieldTypes, assignTextFields, listFilingTextFields, updateTextFieldValue, deleteTextField, approveTextFields, rejectTextFields } from '@/lib/api';
 import { getUser, getIsElevated } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Mail, Phone, MapPin, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save, Replace, History, AlertTriangle } from 'lucide-react';
@@ -322,6 +322,88 @@ export default function ClientDetailPage() {
   );
 }
 
+function StaffTextFieldRow({ tf, canDeletePlaceholder, onDeleteTextField, reloadAll, setRejectFieldFor, setRejectFieldReason }: {
+  tf: any; canDeletePlaceholder: boolean; onDeleteTextField: (tf: any) => void; reloadAll: () => void;
+  setRejectFieldFor: (tf: any) => void; setRejectFieldReason: (r: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(tf.value || '');
+  const [saving, setSaving] = useState(false);
+  const maxLen = tf.field_type_max_length || 200;
+  const canEdit = tf.status === 'PENDING' || tf.status === 'REJECTED' || tf.status === 'FILLED';
+
+  useEffect(() => { setValue(tf.value || ''); setEditing(false); }, [tf.value, tf.status]);
+
+  const handleSave = async () => {
+    const trimmed = value.trim();
+    if (!trimmed) { toast.error('Please enter a value'); return; }
+    if (trimmed.length > maxLen) { toast.error(`Max ${maxLen} characters`); return; }
+    setSaving(true);
+    try {
+      await updateTextFieldValue(tf.id, trimmed);
+      toast.success('Saved on behalf of client');
+      reloadAll();
+    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to save'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="flex items-start justify-between gap-3 p-3">
+      <div className="flex-1 min-w-0">
+        {editing ? (
+          <div className="space-y-2">
+            {maxLen > 100 ? (
+              <Textarea value={value} onChange={(e) => setValue(e.target.value)} rows={3} maxLength={maxLen} placeholder="Enter value on behalf of client…" className="text-sm" />
+            ) : (
+              <Input value={value} onChange={(e) => setValue(e.target.value)} maxLength={maxLen} placeholder="Enter value on behalf of client…" className="text-sm h-8" />
+            )}
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" disabled={saving || !value.trim()} onClick={handleSave}>
+                {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />} Save
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setValue(tf.value || ''); setEditing(false); }}>Cancel</Button>
+              <span className="text-[10px] text-slate-400 ml-auto">{value.length}/{maxLen}</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            {tf.value ? (
+              <div className="text-sm text-slate-800 whitespace-pre-wrap break-words">{tf.value}</div>
+            ) : (
+              <div className="text-sm italic text-slate-400">— not yet filled —</div>
+            )}
+            {tf.status === 'REJECTED' && tf.rejection_reason && (
+              <div className="text-[11px] text-rose-600 mt-1">Rejection: {tf.rejection_reason}</div>
+            )}
+            {tf.filled_at && (
+              <div className="text-[10px] text-slate-400 mt-1">Filled {new Date(tf.filled_at).toLocaleDateString()}</div>
+            )}
+          </>
+        )}
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <StatusBadge status={tf.status} size="sm" />
+        {canEdit && !editing && (
+          <Button size="sm" variant="outline" className="h-7 px-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50" onClick={() => setEditing(true)}>
+            <Pencil className="h-3 w-3 mr-1" /> Fill
+          </Button>
+        )}
+        {tf.status === 'FILLED' && !editing && (
+          <>
+            <Button size="sm" variant="outline" className="h-7 text-emerald-700 border-emerald-200" onClick={async () => { try { await approveTextFields([tf.id]); toast.success('Approved'); reloadAll(); } catch { toast.error('Failed'); } }}><Check className="h-3 w-3" /></Button>
+            <Button size="sm" variant="outline" className="h-7 text-rose-700 border-rose-200" onClick={() => { setRejectFieldFor(tf); setRejectFieldReason(''); }}><X className="h-3 w-3" /></Button>
+          </>
+        )}
+        {tf.status === 'PENDING' && canDeletePlaceholder && (
+          <Button size="sm" variant="outline" className="h-7 px-2 text-rose-700 border-rose-200 hover:bg-rose-50" onClick={() => onDeleteTextField(tf)} title="Remove this placeholder">
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExecutive = false, clientFee }: { filing: any; docs: Record<string, any[]>; docGroups: Record<string, any[]>; load: () => void; viewDoc: (id: string, name?: string) => void; isExecutive?: boolean; clientFee?: string | number | null }) {
   const storageKey = `filing-accordion-${f.id}`;
   const [open, setOpen] = useState(() => {
@@ -339,6 +421,46 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
   const [rejectFieldFor, setRejectFieldFor] = useState<any>(null);
   const [rejectFieldReason, setRejectFieldReason] = useState('');
   const [acting, setActing] = useState(false);
+  const [staffUploading, setStaffUploading] = useState<string | null>(null);
+  const staffFileRef = useRef<HTMLInputElement>(null);
+  const staffUploadTarget = useRef<{ docId: string; mode: 'upload' | 'replace' } | null>(null);
+
+  const onStaffFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (staffFileRef.current) staffFileRef.current.value = '';
+    if (!file || !staffUploadTarget.current) return;
+    const { docId, mode } = staffUploadTarget.current;
+    staffUploadTarget.current = null;
+    if (file.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf','doc','docx','xls','xlsx','csv','png','jpg','jpeg'].includes(ext)) { toast.error('Allowed types: PDF, Word, Excel, CSV, PNG, JPG'); return; }
+    setStaffUploading(docId);
+    try {
+      const axios = (await import('axios')).default;
+      if (mode === 'upload') {
+        const url = await docUploadUrl({ document_id: docId, filename: file.name, content_type: file.type });
+        await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type }, timeout: 60000 });
+        await docConfirmUpload({ document_id: url.document_id || docId, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
+        toast.success('Document uploaded on behalf of client');
+      } else {
+        const url = await docReplaceUrl(docId, { filename: file.name, content_type: file.type });
+        await axios.put(url.upload_url, file, { headers: { 'Content-Type': file.type }, timeout: 60000 });
+        await docConfirmUpload({ document_id: url.document_id || docId, object_key: url.object_key, filename: file.name, content_type: file.type, file_size: file.size });
+        toast.success('Document replaced on behalf of client');
+      }
+      reloadAll();
+    } catch (e: any) {
+      const s = e?.response?.status;
+      if (s === 403) toast.error('This document is already approved and cannot be modified.');
+      else if (s === 409) toast.error('Document modification is not allowed at this filing stage.');
+      else toast.error(e?.response?.data?.detail || (mode === 'upload' ? 'Upload failed' : 'Replace failed'));
+    } finally { setStaffUploading(null); }
+  };
+
+  const triggerStaffUpload = (docId: string, mode: 'upload' | 'replace') => {
+    staffUploadTarget.current = { docId, mode };
+    staffFileRef.current?.click();
+  };
   const [textFields, setTextFields] = useState<any[]>([]);
   const [textFieldGroups, setTextFieldGroups] = useState<any[]>([]);
   const status = f.status || f.current_state;
@@ -407,6 +529,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
 
   return (
     <>
+      <input type="file" ref={staffFileRef} className="hidden" onChange={onStaffFilePicked} accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" />
       <div className="group">
         {/* Collapsed Header */}
         <button
@@ -516,6 +639,16 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <StatusBadge status={d.status} size="sm" />
+                                  {(d.status === 'PENDING_UPLOAD' || d.status === 'REJECTED') && (
+                                    <Button size="sm" variant="outline" className="h-7 px-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50" disabled={staffUploading === d.id} onClick={() => triggerStaffUpload(d.id, 'upload')}>
+                                      {staffUploading === d.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />} Upload
+                                    </Button>
+                                  )}
+                                  {d.status === 'UPLOADED' && (
+                                    <Button size="sm" variant="outline" className="h-7 px-2 text-amber-700 border-amber-200 hover:bg-amber-50" disabled={staffUploading === d.id} onClick={() => triggerStaffUpload(d.id, 'replace')}>
+                                      {staffUploading === d.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Replace className="h-3 w-3 mr-1" />} Replace
+                                    </Button>
+                                  )}
                                   {d.status !== 'PENDING_UPLOAD' && (
                                     <Button size="sm" variant="outline" className="h-7 px-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50" onClick={() => viewDoc(d.id, d.original_filename)}>
                                       <Eye className="h-3 w-3 mr-1" /> View
@@ -560,6 +693,16 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                       </div>
                       <div className="flex items-center gap-2">
                         <StatusBadge status={d.status} size="sm" />
+                        {(d.status === 'PENDING_UPLOAD' || d.status === 'REJECTED') && (
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50" disabled={staffUploading === d.id} onClick={() => triggerStaffUpload(d.id, 'upload')}>
+                            {staffUploading === d.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />} Upload
+                          </Button>
+                        )}
+                        {d.status === 'UPLOADED' && (
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-amber-700 border-amber-200 hover:bg-amber-50" disabled={staffUploading === d.id} onClick={() => triggerStaffUpload(d.id, 'replace')}>
+                            {staffUploading === d.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Replace className="h-3 w-3 mr-1" />} Replace
+                          </Button>
+                        )}
                         {d.status !== 'PENDING_UPLOAD' && (
                           <Button size="sm" variant="outline" className="h-7 px-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50" onClick={() => viewDoc(d.id, d.original_filename)}>
                             <Eye className="h-3 w-3 mr-1" /> View
@@ -612,41 +755,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                               )}
                               <div className="divide-y divide-slate-100">
                                 {g.fields.map((tf: any) => (
-                                  <div key={tf.id} className="flex items-start justify-between gap-3 p-3">
-                                    <div className="flex-1 min-w-0">
-                                      {tf.value ? (
-                                        <div className="text-sm text-slate-800 whitespace-pre-wrap break-words">{tf.value}</div>
-                                      ) : (
-                                        <div className="text-sm italic text-slate-400">— not yet filled —</div>
-                                      )}
-                                      {tf.status === 'REJECTED' && tf.rejection_reason && (
-                                        <div className="text-[11px] text-rose-600 mt-1">Rejection: {tf.rejection_reason}</div>
-                                      )}
-                                      {tf.filled_at && (
-                                        <div className="text-[10px] text-slate-400 mt-1">Filled {new Date(tf.filled_at).toLocaleDateString()}</div>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                      <StatusBadge status={tf.status} size="sm" />
-                                      {tf.status === 'FILLED' && (
-                                        <>
-                                          <Button size="sm" variant="outline" className="h-7 text-emerald-700 border-emerald-200" onClick={async () => { try { await approveTextFields([tf.id]); toast.success('Approved'); reloadAll(); } catch { toast.error('Failed'); } }}><Check className="h-3 w-3" /></Button>
-                                          <Button size="sm" variant="outline" className="h-7 text-rose-700 border-rose-200" onClick={() => { setRejectFieldFor(tf); setRejectFieldReason(''); }}><X className="h-3 w-3" /></Button>
-                                        </>
-                                      )}
-                                      {tf.status === 'PENDING' && canDeletePlaceholder && (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-7 px-2 text-rose-700 border-rose-200 hover:bg-rose-50"
-                                          onClick={() => onDeleteTextField(tf)}
-                                          title="Remove this placeholder"
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
+                                  <StaffTextFieldRow key={tf.id} tf={tf} canDeletePlaceholder={canDeletePlaceholder} onDeleteTextField={onDeleteTextField} reloadAll={reloadAll} setRejectFieldFor={setRejectFieldFor} setRejectFieldReason={setRejectFieldReason} />
                                 ))}
                               </div>
                             </div>
