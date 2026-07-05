@@ -19,7 +19,7 @@ export default function Navbar() {
     )}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center">
-          <Image src={scrolled ? '/darklogo1.png' : '/logo1.png'} alt="ITR Manager" width={150} height={50} className="h-14 object-contain" />
+          <Image src={scrolled ? '/darklogo1.png' : '/logo1r.png'} alt="ITR Manager" width={150} height={50} className="h-14 object-contain" />
         </Link>
         <nav className="hidden md:flex items-center gap-8">
           {[['Why us', '#features'], ['How it Works', '#how'], ['Benefits', '#benefits'], ['Login', '/auth/login']].map(([label, href]) => (

@@ -8,7 +8,7 @@ export default function AuthHeader({ activePage }: { activePage?: 'login' | 'reg
     <header className="bg-gradient-to-r from-indigo-600 to-violet-600 shadow-md">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center">
-          <Image src="/logo1.png" alt="ITR Manager" width={180} height={60} className="h-12 w-auto object-contain" />
+          <Image src="/logo1r.png" alt="ITR Manager" width={180} height={60} className="h-12 w-auto object-contain" />
         </Link>
         <div className="flex items-center gap-3">
           {activePage === 'login' ? (

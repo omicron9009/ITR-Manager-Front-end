@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10">
         <div>
           <div className="flex items-center gap-2 text-white">
-            <Image src="/logo1.png" alt="ITR Manager" width={160} height={50} className="h-10 w-auto object-contain" />
+            <Image src="/logo1r.png" alt="ITR Manager" width={160} height={50} className="h-10 w-auto object-contain" />
           </div>
           <p className="mt-3 text-sm leading-relaxed">The end-to-end ITR filing management platform for modern CA practices in India.</p>
           <div className="mt-3 space-y-1 text-sm">
