@@ -660,10 +660,11 @@ function FilingCard({ filing, onClick }: { filing: any; onClick: () => void }) {
       <div className="mt-3 text-[11px] text-slate-500">
         {state === 'HALTED' && <span className="text-rose-600 font-medium">Filing halted by CA</span>}
         {state === 'COMPUTATION' && <span className="text-violet-600 font-medium">Review computation</span>}
-        {state === 'DOCUMENT_UPLOAD' && <span className="text-blue-600 font-medium">Upload documents</span>}
+        {state === 'DOCUMENT_UPLOAD' && <span className="text-blue-600 font-medium">{docsTotal > 0 && docsApproved + (filing.documents_uploaded || 0) >= docsTotal ? 'Docs uploaded — awaiting review' : 'Upload documents'}</span>}
         {state === 'COMPLETED' && <span className="inline-flex items-center gap-1 text-emerald-600 font-medium"><CheckCircle2 className="h-3 w-3" /> Filed</span>}
-        {state === 'PROCESSING' && <span className="text-indigo-600 font-medium">CA reviewing</span>}
+        {state === 'PROCESSING' && <span className="text-indigo-600 font-medium">Under review — no action needed</span>}
         {state === 'INITIATED' && <span className="text-slate-600 font-medium">Awaiting checklist</span>}
+        {state === 'FILING' && <span className="text-orange-600 font-medium">Filing in progress — no action needed</span>}
       </div>
     </div>
   );

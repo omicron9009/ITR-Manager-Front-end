@@ -43,6 +43,7 @@ export default function FilingDetailPage() {
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerFileName, setViewerFileName] = useState<string | undefined>(undefined);
   const [showQr, setShowQr] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [clientProfile, setClientProfile] = useState<any>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<boolean | null>(null); // null = loading, true/false
   const [feedbackRating, setFeedbackRating] = useState(0);
@@ -402,6 +403,37 @@ export default function FilingDetailPage() {
         </div>
       </Card>
 
+      {/* Waiting banners — when client has no action needed */}
+      {state === 'DOCUMENT_UPLOAD' && docsMeta.total > 0 && docsMeta.pending === 0 && (docsMeta.rejected || 0) === 0 && !docsMeta.all_approved && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 flex items-center gap-3">
+          <Clock className="h-5 w-5 text-blue-600 flex-shrink-0" />
+          <div>
+            <div className="text-sm font-semibold text-blue-900">All documents uploaded successfully</div>
+            <div className="text-xs text-blue-700 mt-0.5">Your CA will review them shortly. No action is needed from your side right now.</div>
+          </div>
+        </div>
+      )}
+
+      {state === 'PROCESSING' && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 flex items-center gap-3">
+          <Clock className="h-5 w-5 text-indigo-600 flex-shrink-0" />
+          <div>
+            <div className="text-sm font-semibold text-indigo-900">Your documents are being reviewed</div>
+            <div className="text-xs text-indigo-700 mt-0.5">Your CA is processing your documents. No action is needed from your side — you will be notified when the next step is ready.</div>
+          </div>
+        </div>
+      )}
+
+      {state === 'FILING' && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 flex items-center gap-3">
+          <Clock className="h-5 w-5 text-indigo-600 flex-shrink-0" />
+          <div>
+            <div className="text-sm font-semibold text-indigo-900">Your income tax return is being filed</div>
+            <div className="text-xs text-indigo-700 mt-0.5">Your CA is filing your return with the Income Tax Department. No action is needed from your side right now.</div>
+          </div>
+        </div>
+      )}
+
       {/* Payment QR - shown in PAYMENT state (not for no-fee filings) */}
       {state === 'PAYMENT' && !filing.no_fees_applicable && (
         <Card className="rounded-xl p-5 border-amber-200 bg-amber-50/30">
@@ -442,104 +474,56 @@ export default function FilingDetailPage() {
         </div>
       )}
 
-      {/* Documents Section - File System View */}
-      <Card className="rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-5 w-5 text-indigo-600" />
-            <h2 className="font-bold text-slate-900">Documents</h2>
-            {docsMeta.total > 0 && (
-              <span className="text-xs text-slate-500 ml-2">
-                {docsMeta.approved || 0} approved / {docsMeta.total} total
-              </span>
-            )}
-          </div>
-          {state === 'PROCESSING' && (
-            <Button size="sm" onClick={onSubmitDocs} disabled={acting} className="bg-indigo-600 hover:bg-indigo-700">
-              {acting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />} Submit Documents
-            </Button>
+      {/* Completed + Other Documents — side by side on md+ */}
+      {(completed.length > 0 || otherDocs.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {completed.length > 0 && (
+            <Card className="rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                <h2 className="font-bold text-slate-900">Filed Documents</h2>
+              </div>
+              <div className="space-y-3">
+                {completed.map((d: any) => (
+                  <div key={d.id} className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm text-slate-900 break-words">{{ ITR_ACKNOWLEDGEMENT: 'ITR Acknowledgement', INVOICE: 'Invoice', ITR_JSON: 'ITR JSON', ITR_FORM: 'ITR Form', TAX_PAID_COMPUTATION: 'Tax Paid Computation', FINANCIAL_STATEMENT: 'Financial Statement' }[d.doc_type] || d.doc_type || d.original_filename || 'Document'}</div>
+                        <div className="text-xs text-slate-500 break-all">{d.original_filename || d.filename}</div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="flex-shrink-0 ml-2" onClick={() => onDownloadStorage(d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {otherDocs.length > 0 && (
+            <Card className="rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <FolderOpen className="h-5 w-5 text-indigo-600" />
+                <h2 className="font-bold text-slate-900">Other Documents</h2>
+              </div>
+              <div className="space-y-3">
+                {otherDocs.map((d: any) => (
+                  <div key={d.id} className="rounded-lg border border-slate-200 bg-white p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm text-slate-900 break-words">{d.label || d.filename || 'Document'}</div>
+                        {d.label && d.filename && <div className="text-xs text-slate-500 break-all">{d.filename}</div>}
+                        {d.uploaded_at && <div className="text-[10px] text-slate-400">{new Date(d.uploaded_at).toLocaleDateString('en-IN')}</div>}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="flex-shrink-0 ml-2" onClick={() => onDownloadStorage(d.file_id || d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
         </div>
-
-        {/* All documents approved banner */}
-        {docsMeta.all_approved && docsMeta.total > 0 && (state === 'PROCESSING' || state === 'DOCUMENT_UPLOAD') && (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 mb-4 flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-            <div>
-              <div className="text-sm font-semibold text-emerald-800">All documents approved</div>
-              <div className="text-xs text-emerald-600 mt-0.5">Awaiting executive action to proceed to computation stage.</div>
-            </div>
-          </div>
-        )}
-
-        {docs.length === 0 ? (
-          <div className="text-center py-8 text-sm text-slate-400">
-            {state === 'INITIATED' ? 'Document checklist will be assigned soon...' : 'No documents assigned yet.'}
-          </div>
-        ) : docGroups.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {docGroups.map((group) => (
-              <DocumentTypeGroup
-                key={group.document_type_id}
-                group={group}
-                filingId={filingId}
-                filingState={state}
-                uploading={uploading}
-                onUpload={onUpload}
-                onReplace={onReplace}
-                onUploadAdditional={onUploadAdditional}
-                onView={onDownloadDoc}
-                onDelete={onDeleteDoc}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {docs.map((doc) => (
-              <DocumentPlaceholder
-                key={doc.id}
-                doc={doc}
-                uploading={uploading === doc.id}
-                onUpload={(file) => onUpload(doc.id, file)}
-                onReplace={(file) => onReplace(doc.id, file)}
-                onView={() => onDownloadDoc(doc.id)}
-              />
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Text Fields Section */}
-      {textFields.length > 0 && (
-        <Card className="rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Type className="h-5 w-5 text-amber-600" />
-            <h2 className="font-bold text-slate-900">Information Fields</h2>
-            {textFieldsMeta.total > 0 && (
-              <span className="text-xs text-slate-500 ml-1">
-                ({textFieldsMeta.filled || 0}/{textFieldsMeta.total} filled)
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-500 mb-4">Please fill in the details requested below. You can edit them anytime until they are approved.</p>
-          <div className="space-y-4">
-            {(textFieldGroups.length > 0 ? textFieldGroups : [{ field_type_id: '__all__', field_type_name: '', fields: textFields }]).map((g: any) => {
-              const description = g.fields?.[0]?.field_type_description;
-              const maxLength = g.fields?.[0]?.field_type_max_length;
-              return (
-                <TextFieldGroup
-                  key={g.field_type_id}
-                  group={g}
-                  description={description}
-                  maxLength={maxLength}
-                  filingState={state}
-                  onSave={onSaveTextField}
-                  onDelete={onDeleteTextField}
-                />
-              );
-            })}
-          </div>
-        </Card>
       )}
 
       {/* Computation Section */}
@@ -657,7 +641,7 @@ export default function FilingDetailPage() {
                 className="bg-amber-600 hover:bg-amber-700 w-full"
               >
                 {acting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <IndianRupee className="h-4 w-4 mr-2" />}
-                I Confirm that Tax has been Paid 
+                Click here if you have paid your TAX or eligible for a REFUND 
               </Button>
             </div>
           )}
@@ -698,57 +682,122 @@ export default function FilingDetailPage() {
         </Card>
       )}
 
-      {/* Completed + Other Documents — side by side on md+ */}
-      {(completed.length > 0 || otherDocs.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {completed.length > 0 && (
-            <Card className="rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <h2 className="font-bold text-slate-900">Filed Documents</h2>
-              </div>
-              <div className="space-y-3">
-                {completed.map((d: any) => (
-                  <div key={d.id} className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <div className="font-medium text-sm text-slate-900 break-words">{{ ITR_ACKNOWLEDGEMENT: 'ITR Acknowledgement', INVOICE: 'Invoice', ITR_JSON: 'ITR JSON', ITR_FORM: 'ITR Form', TAX_PAID_COMPUTATION: 'Tax Paid Computation', FINANCIAL_STATEMENT: 'Financial Statement' }[d.doc_type] || d.doc_type || d.original_filename || 'Document'}</div>
-                        <div className="text-xs text-slate-500 break-all">{d.original_filename || d.filename}</div>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" className="flex-shrink-0 ml-2" onClick={() => onDownloadStorage(d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+      {/* Text Fields Section */}
+      {textFields.length > 0 && (
+        <Card className="rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Type className="h-5 w-5 text-amber-600" />
+            <h2 className="font-bold text-slate-900">Information Fields</h2>
+            {textFieldsMeta.total > 0 && (
+              <span className="text-xs text-slate-500 ml-1">
+                ({textFieldsMeta.filled || 0}/{textFieldsMeta.total} filled)
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mb-4">Please fill in the details requested below. You can edit them anytime until they are approved.</p>
+          <div className="space-y-4">
+            {(textFieldGroups.length > 0 ? textFieldGroups : [{ field_type_id: '__all__', field_type_name: '', fields: textFields }]).map((g: any) => {
+              const description = g.fields?.[0]?.field_type_description;
+              const maxLength = g.fields?.[0]?.field_type_max_length;
+              return (
+                <TextFieldGroup
+                  key={g.field_type_id}
+                  group={g}
+                  description={description}
+                  maxLength={maxLength}
+                  filingState={state}
+                  onSave={onSaveTextField}
+                  onDelete={onDeleteTextField}
+                />
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
-          {otherDocs.length > 0 && (
-            <Card className="rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <FolderOpen className="h-5 w-5 text-indigo-600" />
-                <h2 className="font-bold text-slate-900">Other Documents</h2>
-              </div>
-              <div className="space-y-3">
-                {otherDocs.map((d: any) => (
-                  <div key={d.id} className="rounded-lg border border-slate-200 bg-white p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="h-4 w-4 text-indigo-500 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <div className="font-medium text-sm text-slate-900 break-words">{d.label || d.filename || 'Document'}</div>
-                        {d.label && d.filename && <div className="text-xs text-slate-500 break-all">{d.filename}</div>}
-                        {d.uploaded_at && <div className="text-[10px] text-slate-400">{new Date(d.uploaded_at).toLocaleDateString('en-IN')}</div>}
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" className="flex-shrink-0 ml-2" onClick={() => onDownloadStorage(d.file_id || d.id)}><Eye className="h-3.5 w-3.5 mr-1" /> View</Button>
-                  </div>
-                ))}
-              </div>
-            </Card>
+      {/* Documents Section - File System View */}
+      <Card className="rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-5 w-5 text-indigo-600" />
+            <h2 className="font-bold text-slate-900">Documents</h2>
+            {docsMeta.total > 0 && (
+              <span className="text-xs text-slate-500 ml-2">
+                {docsMeta.approved || 0} approved / {docsMeta.total} total
+              </span>
+            )}
+          </div>
+          {state === 'DOCUMENT_UPLOAD' && docsMeta.total > 0 && (
+            <Button size="sm" onClick={() => {
+              const pending = docsMeta.pending || 0;
+              const rejected = docsMeta.rejected || 0;
+              if (pending > 0) {
+                toast.error(`Please upload all documents first. ${pending} document${pending > 1 ? 's' : ''} still pending.`);
+                return;
+              }
+              if (rejected > 0) {
+                toast.error(`${rejected} document${rejected > 1 ? 's are' : ' is'} rejected. Please re-upload before submitting.`);
+                return;
+              }
+              setShowSubmitConfirm(true);
+            }} disabled={acting} className="bg-indigo-600 hover:bg-indigo-700">
+              {acting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />} Submit Documents
+            </Button>
+          )}
+          {state === 'PROCESSING' && (
+            <Button size="sm" onClick={onSubmitDocs} disabled={acting} className="bg-indigo-600 hover:bg-indigo-700">
+              {acting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />} Submit Documents
+            </Button>
           )}
         </div>
-      )}
+
+        {/* All documents approved banner */}
+        {docsMeta.all_approved && docsMeta.total > 0 && (state === 'PROCESSING' || state === 'DOCUMENT_UPLOAD') && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 mb-4 flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+            <div>
+              <div className="text-sm font-semibold text-emerald-800">All documents approved</div>
+              <div className="text-xs text-emerald-600 mt-0.5">Awaiting executive action to proceed to computation stage.</div>
+            </div>
+          </div>
+        )}
+
+        {docs.length === 0 ? (
+          <div className="text-center py-8 text-sm text-slate-400">
+            {state === 'INITIATED' ? 'Document checklist will be assigned soon...' : 'No documents assigned yet.'}
+          </div>
+        ) : docGroups.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {docGroups.map((group) => (
+              <DocumentTypeGroup
+                key={group.document_type_id}
+                group={group}
+                filingId={filingId}
+                filingState={state}
+                uploading={uploading}
+                onUpload={onUpload}
+                onReplace={onReplace}
+                onUploadAdditional={onUploadAdditional}
+                onView={onDownloadDoc}
+                onDelete={onDeleteDoc}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {docs.map((doc) => (
+              <DocumentPlaceholder
+                key={doc.id}
+                doc={doc}
+                uploading={uploading === doc.id}
+                onUpload={(file) => onUpload(doc.id, file)}
+                onReplace={(file) => onReplace(doc.id, file)}
+                onView={() => onDownloadDoc(doc.id)}
+              />
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* Reject Computation Dialog */}
       <Dialog open={!!rejectingComp} onOpenChange={(o) => { if (!o) { setRejectingComp(null); setRejectReason(''); } }}>
@@ -760,6 +809,37 @@ export default function FilingDetailPage() {
             <Button variant="outline" onClick={() => { setRejectingComp(null); setRejectReason(''); }}>Cancel</Button>
             <Button onClick={onRejectComp} disabled={acting || !rejectReason.trim()} className="bg-rose-600 hover:bg-rose-700">
               {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Submit Documents Confirmation Dialog */}
+      <Dialog open={showSubmitConfirm} onOpenChange={(o) => { if (!o) setShowSubmitConfirm(false); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-indigo-700">
+              <Send className="h-5 w-5" /> Submit Documents
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700">You are about to submit all your documents for review by your CA.</p>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-blue-600 flex-shrink-0" />
+              <p className="text-xs text-blue-800">Once submitted, your CA will review them. You won't need to do anything until the next step is ready.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSubmitConfirm(false)}>Cancel</Button>
+            <Button
+              disabled={acting}
+              className="bg-indigo-600 hover:bg-indigo-700"
+              onClick={async () => {
+                setShowSubmitConfirm(false);
+                onSubmitDocs();
+              }}
+            >
+              {acting && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm & Submit
             </Button>
           </DialogFooter>
         </DialogContent>

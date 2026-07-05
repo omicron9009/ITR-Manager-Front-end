@@ -12,7 +12,7 @@ import { FileViewer } from '@/components/shared/FileViewer';
 import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, internalWorkingReplaceUploadUrl, internalWorkingReplaceConfirm, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag, getIncomeHeadsCatalog, listTextFieldTypes, assignTextFields, listFilingTextFields, deleteTextField, approveTextFields, rejectTextFields } from '@/lib/api';
 import { getUser, getIsElevated } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Mail, Phone, MapPin, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save, Replace, History } from 'lucide-react';
+import { Mail, Phone, MapPin, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save, Replace, History, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -1194,6 +1194,7 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
   const [approving, setApproving] = useState<string | null>(null);
   const [rejectingComp, setRejectingComp] = useState<any>(null);
   const [rejectCompReason, setRejectCompReason] = useState('');
+  const [bypassConfirmComp, setBypassConfirmComp] = useState<any>(null);
   const userRole = typeof window !== 'undefined' ? getUser()?.role?.toUpperCase() : '';
 
   const load = async () => {
@@ -1332,17 +1333,31 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
                 </div>
               )}
               {(c.status === 'UPLOADED' || c.status === 'MANAGER_APPROVED') && userRole === 'PARTNER' && (
-                <div className="mt-2 flex items-center gap-2">
-                  <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs h-7" disabled={approving === c.id} onClick={async () => {
-                    setApproving(c.id);
-                    try { await partnerApproveComp(c.id); toast.success('Computation approved (Partner)'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setApproving(null); }
-                  }}>
-                    {approving === c.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />} Partner Approve
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-rose-700 border-rose-200 text-xs h-7" onClick={() => { setRejectingComp(c); setRejectCompReason(''); }}>
-                    <X className="h-3 w-3 mr-1" /> Reject
-                  </Button>
-                </div>
+                <>
+                  {c.status === 'UPLOADED' && (
+                    <div className="mt-2 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
+                      <span className="text-xs text-amber-800 font-medium">Awaiting manager approval — Manager has not reviewed this computation yet.</span>
+                    </div>
+                  )}
+                  <div className="mt-2 flex items-center gap-2">
+                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-xs h-7" disabled={approving === c.id} onClick={() => {
+                      if (c.status === 'UPLOADED') {
+                        setBypassConfirmComp(c);
+                      } else {
+                        (async () => {
+                          setApproving(c.id);
+                          try { await partnerApproveComp(c.id); toast.success('Computation approved (Partner)'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } finally { setApproving(null); }
+                        })();
+                      }
+                    }}>
+                      {approving === c.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />} Partner Approve
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-rose-700 border-rose-200 text-xs h-7" onClick={() => { setRejectingComp(c); setRejectCompReason(''); }}>
+                      <X className="h-3 w-3 mr-1" /> Reject
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
           ))}
@@ -1352,6 +1367,40 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
 
 
       <FileViewer open={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={undefined} />
+
+      {/* Bypass Manager Approval Confirmation Dialog */}
+      <Dialog open={!!bypassConfirmComp} onOpenChange={(o) => { if (!o) setBypassConfirmComp(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle className="text-amber-700 flex items-center gap-2"><AlertTriangle className="h-5 w-5" /> Bypass Manager Approval</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="text-xs text-slate-500">Computation</div>
+              <div className="text-sm font-medium text-slate-900 mt-0.5">Version {bypassConfirmComp?.version} — {bypassConfirmComp?.original_filename || 'computation'}</div>
+            </div>
+            <p className="text-sm text-slate-700">Manager has not approved this computation yet. Are you sure you want to approve it directly?</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBypassConfirmComp(null)}>Cancel</Button>
+            <Button
+              disabled={approving === bypassConfirmComp?.id}
+              className="bg-amber-600 hover:bg-amber-700"
+              onClick={async () => {
+                if (!bypassConfirmComp) return;
+                setApproving(bypassConfirmComp.id);
+                try {
+                  await partnerApproveComp(bypassConfirmComp.id);
+                  toast.success('Computation approved (Partner — bypassed manager)');
+                  setBypassConfirmComp(null);
+                  load();
+                } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+                finally { setApproving(null); }
+              }}
+            >
+              {approving === bypassConfirmComp?.id && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Yes, Approve Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Manager Reject Computation Dialog */}
       <Dialog open={!!rejectingComp} onOpenChange={(o) => { if (!o) { setRejectingComp(null); setRejectCompReason(''); } }}>
