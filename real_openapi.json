@@ -3502,7 +3502,7 @@
           "Documents"
         ],
         "summary": "Get Document Replace Url",
-        "description": "Return a pre-signed PUT URL so a client can replace an existing document.\n\nAvailable for any document that has not yet been approved (PENDING_UPLOAD,\nUPLOADED, or REJECTED). Once approved the slot is locked — 403 is returned.\nWorks in both DOCUMENT_UPLOAD and PROCESSING filing phases.\nClient role only.",
+        "description": "Return a pre-signed PUT URL so a user can replace an existing document.\n\nAvailable for any document that has not yet been approved (PENDING_UPLOAD,\nUPLOADED, or REJECTED). Once approved the slot is locked — 403 is returned.\nWorks in both DOCUMENT_UPLOAD and PROCESSING filing phases.\nClients upload their own docs; Partner/Manager/Executive can upload on behalf of client.",
         "operationId": "get_document_replace_url_api_v1_documents__document_id__replace_url_post",
         "security": [
           {
@@ -7283,7 +7283,7 @@
           "Action Items"
         ],
         "summary": "List Action Items",
-        "description": "Get action items (what you need to do) for the current user.\n\nAction items are computed dynamically from the current state of filings,\ndocuments, computations, and client accounts. They are role-scoped:\n- Partner: sees all actionable items across all clients\n- Executive: sees items for assigned clients only\n- Client: sees their own pending actions",
+        "description": "Get action items (what you need to do) for the current user.\n\nAction items are computed dynamically from the current state of filings,\ndocuments, computations, and client accounts. They are role-scoped:\n- Partner: sees all actionable items across all clients\n- Executive: sees items for assigned clients only\n- Client: sees their own pending actions\n\nPartner-specific filters:\n- partner_only: only show items that require partner-level action\n- partner_tag_id: only show items for clients tagged with this partner tag",
         "operationId": "list_action_items_api_v1_action_items_get",
         "security": [
           {
@@ -7327,6 +7327,37 @@
               "title": "Filing Id"
             },
             "description": "Filter by filing ID"
+          },
+          {
+            "name": "partner_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Partner scope: show only items requiring partner action",
+              "default": false,
+              "title": "Partner Only"
+            },
+            "description": "Partner scope: show only items requiring partner action"
+          },
+          {
+            "name": "partner_tag_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by partner tag (clients with this partner_tag_id)",
+              "title": "Partner Tag Id"
+            },
+            "description": "Filter by partner tag (clients with this partner_tag_id)"
           }
         ],
         "responses": {

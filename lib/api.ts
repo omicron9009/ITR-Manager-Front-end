@@ -338,7 +338,7 @@ export const dismissAllQueue = () =>
   api.post('/api/v1/dashboard/completed-queue/dismiss-all').then((r) => r.data);
 
 // ---------- ACTION ITEMS ----------
-export const getActionItems = (params?: { type?: string; filing_id?: string }) =>
+export const getActionItems = (params?: { type?: string; filing_id?: string; partner_only?: boolean; partner_tag_id?: string }) =>
   api.get('/api/v1/action-items', { params }).then((r) => r.data);
 
 // ---------- MANAGERS ----------

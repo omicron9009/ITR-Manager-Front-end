@@ -10,7 +10,7 @@ import NotificationBell from '@/components/shared/NotificationBell';
 import GlobalFooter from '@/components/shared/GlobalFooter';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
-import { getMyTags } from '@/lib/api';
+import { getMyTags, getActionItems } from '@/lib/api';
 
 export interface NavItem { href: string; label: string; icon: any; }
 
@@ -37,6 +37,20 @@ export default function AppShell({ nav, role, children }: { nav: NavItem[]; role
     }
   }, [role]);
 
+  const [actionItemCount, setActionItemCount] = useState(0);
+  useEffect(() => {
+    if (role === 'CLIENT') return;
+    const fetchCount = () => {
+      getActionItems().then((res) => {
+        const total = res?.items?.length ?? 0;
+        setActionItemCount(total);
+      }).catch(() => {});
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 60000);
+    return () => clearInterval(interval);
+  }, [role]);
+
   const logout = () => {
     clearAuth();
     router.push('/auth/login');
@@ -60,9 +74,16 @@ export default function AppShell({ nav, role, children }: { nav: NavItem[]; role
             const hasMoreSpecific = nav.some((other) => other.href !== item.href && other.href.startsWith(item.href + '/') && (pathname === other.href || pathname.startsWith(other.href + '/')));
             const active = !hasMoreSpecific && (pathname === item.href || pathname.startsWith(item.href + '/'));
             const Icon = item.icon;
+            const isActionItems = item.label === 'Action Items';
             return (
               <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors', active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}>
-                <Icon className="h-4 w-4" /> {item.label}
+                <Icon className="h-4 w-4" />
+                <span className="flex-1">{item.label}</span>
+                {isActionItems && actionItemCount > 0 && (
+                  <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">
+                    {actionItemCount > 99 ? '99+' : actionItemCount}
+                  </span>
+                )}
               </Link>
             );
           })}
