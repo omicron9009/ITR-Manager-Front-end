@@ -193,15 +193,19 @@ export default function ClientDetailPage() {
             {client.phone_number && <div className="flex items-center gap-2 text-slate-600"><Phone className="h-4 w-4" /> {client.phone_number}</div>}
             {client.city && <div className="flex items-center gap-2 text-slate-600"><MapPin className="h-4 w-4" /> {client.city}</div>}
           </div>
-          {/* No Fees Badge */}
-          {client.no_fees_applicable && (
-            <div className="mt-3">
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">No Fees Applicable</span>
-            </div>
-          )}
           {/* Professional Fee (Partner or Elevated Manager) */}
           {(isPartner || isElevatedManager) && (
-            <ProfessionalFeeSection clientId={client_id} currentFee={client.professional_fee} noFeesApplicable={client.no_fees_applicable} onUpdated={load} />
+            client.no_fees_applicable ? (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Professional Fee</div>
+                <div className="flex items-center gap-2 rounded-lg bg-teal-50 border border-teal-200 px-3 py-2">
+                  <CheckCircle2 className="h-4 w-4 text-teal-600" />
+                  <span className="text-sm font-medium text-teal-700">No fees applicable</span>
+                </div>
+              </div>
+            ) : (
+              <ProfessionalFeeSection key={`fee-${client.no_fees_applicable}`} clientId={client_id} currentFee={client.professional_fee} noFeesApplicable={client.no_fees_applicable} onUpdated={load} />
+            )
           )}
           <div className="mt-5 pt-5 border-t border-slate-200 space-y-4">
             {(isPartner || isElevatedManager) && (
@@ -540,6 +544,9 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
             <div className="flex items-center gap-3">
               <h3 className="font-semibold text-slate-900 text-sm">FY {f.financial_year}</h3>
               <StatusBadge status={status} size="sm" />
+              {f.no_fees_applicable && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200">No Fee</span>
+              )}
             </div>
             {/* Progress bar or completed indicator */}
             {status === 'COMPLETED' ? (
@@ -775,7 +782,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                 <InternalWorkingsSection filingId={f.id} filingStatus={status} />
               </TabsContent>
               <TabsContent value="filed-docs" className="mt-3">
-                <FiledDocsPanel filingId={f.id} filingStatus={status} noFeesApplicable={f.no_fees_applicable} onMoveToPayment={status === 'FILING' ? async () => { try { await transitionFiling(f.id, { to_status: 'PAYMENT' }); toast.success('Moved to Payment'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } } : undefined} />
+                <FiledDocsPanel filingId={f.id} filingStatus={status} noFeesApplicable={f.no_fees_applicable} onMoveToPayment={status === 'FILING' && !f.no_fees_applicable ? async () => { try { await transitionFiling(f.id, { to_status: 'PAYMENT' }); toast.success('Moved to Payment'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); } } : undefined} />
               </TabsContent>
             </Tabs>
 
@@ -1807,7 +1814,7 @@ function FiledDocsPanel({ filingId, filingStatus, noFeesApplicable, onMoveToPaym
 
           {allRequiredApproved && (
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 text-center">
-              ✅ All required filed documents approved. You can now mark payment and complete the filing.
+              ✅ All required filed documents approved. {noFeesApplicable ? 'You can now complete the filing.' : 'You can now mark payment and complete the filing.'}
             </div>
           )}
 
@@ -2291,7 +2298,9 @@ function ProfessionalFeeSection({ clientId, currentFee, noFeesApplicable, onUpda
   const [saving, setSaving] = useState(false);
   const [savedFee, setSavedFee] = useState<string | number | null>(null);
   const [togglingNoFees, setTogglingNoFees] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
+  const isNoFee = !!noFeesApplicable;
   const displayFee = savedFee || currentFee;
 
   const doSave = async () => {
@@ -2311,34 +2320,126 @@ function ProfessionalFeeSection({ clientId, currentFee, noFeesApplicable, onUpda
   const doToggleNoFees = async () => {
     setTogglingNoFees(true);
     try {
-      await toggleNoFees(clientId, !noFeesApplicable);
-      toast.success(noFeesApplicable ? 'No-fees flag removed' : 'Marked as no fees applicable');
+      const res = await toggleNoFees(clientId, !isNoFee);
+      const updatedCount = res?.updated_filings?.length || 0;
+      if (!isNoFee) {
+        toast.success(`Marked as no fees applicable${updatedCount ? `. ${updatedCount} active filing(s) updated.` : ''}`);
+      } else {
+        toast.success(`No-fees flag removed${updatedCount ? `. ${updatedCount} active filing(s) updated — fees will now apply.` : ''}`);
+      }
+      setConfirmOpen(false);
       onUpdated();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to toggle no-fees'); }
     finally { setTogglingNoFees(false); }
   };
+
+  // --- When no_fees_applicable is true, show only the status panel ---
+  if (isNoFee) {
+    return (
+      <div className="mt-4 pt-4 border-t border-slate-200">
+        <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Professional Fee</div>
+        <div className="flex items-center justify-between rounded-lg bg-teal-50 border border-teal-200 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-teal-600" />
+            <span className="text-sm font-medium text-teal-700">No fees applicable for this client</span>
+          </div>
+          <button
+            onClick={() => setConfirmOpen(true)}
+            disabled={togglingNoFees}
+            className="text-[11px] text-amber-600 hover:text-amber-800 font-medium underline underline-offset-2 disabled:opacity-50"
+          >
+            {togglingNoFees ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
+        {/* Confirmation Dialog for removal */}
+        {confirmOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmOpen(false)}>
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Remove No-Fee Status?</h3>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-amber-800 font-medium">⚠️ This will re-enable fees for this client.</p>
+                <p className="text-xs text-amber-700 mt-1">All active filings will be updated and engagement letters will be regenerated with fee amounts.</p>
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={togglingNoFees}>Cancel</Button>
+                <Button
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={doToggleNoFees}
+                  disabled={togglingNoFees}
+                >
+                  {togglingNoFees ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  Yes, Remove No-Fee
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- Normal fee UI (no_fees_applicable is false) ---
 
   return (
     <div className="mt-4 pt-4 border-t border-slate-200">
       <div className="flex items-center justify-between">
         <div className="text-xs uppercase text-slate-400 font-semibold">Professional Fee</div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" className={`h-6 px-2 text-xs ${noFeesApplicable ? 'text-teal-700' : 'text-slate-500'}`} onClick={doToggleNoFees} disabled={togglingNoFees}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-3 text-xs font-semibold rounded-full ring-1 ring-inset bg-amber-50 text-amber-700 ring-amber-300 hover:bg-amber-100"
+            onClick={() => setConfirmOpen(true)}
+            disabled={togglingNoFees}
+          >
             {togglingNoFees ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-            {noFeesApplicable ? 'Remove No-Fee' : 'Mark No-Fee'}
+            Mark No-Fee
           </Button>
-          {!editing && !noFeesApplicable && (
+          {!editing && (
             <Button size="sm" variant="ghost" className="h-6 px-2 text-indigo-600" onClick={() => { setEditing(true); setFee(displayFee ? String(displayFee) : ''); }}>
               <Pencil className="h-3 w-3 mr-1" /> {displayFee ? 'Edit' : 'Set'}
             </Button>
           )}
         </div>
       </div>
-      {noFeesApplicable ? (
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-sm font-medium text-teal-700">No fees applicable for this client</span>
+
+      {/* Confirmation Dialog */}
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmOpen(false)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-teal-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Mark as No Fees Applicable?</h3>
+            </div>
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-teal-800 font-medium">⚠️ This client will not be charged any professional fees.</p>
+              <p className="text-xs text-teal-700 mt-1">All active filings will be updated — fee amounts will be cleared and engagement letters regenerated without fees.</p>
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={togglingNoFees}>Cancel</Button>
+              <Button
+                size="sm"
+                className="bg-teal-600 hover:bg-teal-700 text-white"
+                onClick={doToggleNoFees}
+                disabled={togglingNoFees}
+              >
+                {togglingNoFees ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                Yes, Mark No-Fee
+              </Button>
+            </div>
+          </div>
         </div>
-      ) : editing ? (
+      )}
+
+      {editing ? (
         <div className="flex items-center gap-2 mt-2">
           <div className="relative flex-1">
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
