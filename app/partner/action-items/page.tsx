@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { getActionItems, getClient } from '@/lib/api';
+import { getActionItems, getClient, listTags } from '@/lib/api';
 import { CheckCircle2, Circle, AlertTriangle, ArrowRight, ClipboardList, Filter, Users, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -44,14 +45,25 @@ export default function ActionItemsPage() {
   const [countsByType, setCountsByType] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
+  const [partnerOnly, setPartnerOnly] = useState(false);
+  const [partnerTagId, setPartnerTagId] = useState('');
+  const [partnerTags, setPartnerTags] = useState<any[]>([]);
 
   const [clientMap, setClientMap] = useState<Map<string, any>>(new Map());
+
+  useEffect(() => {
+    listTags('PARTNER').then((res) => {
+      setPartnerTags(res?.items || res?.tags || []);
+    }).catch(() => {});
+  }, []);
 
   const load = async () => {
     setLoading(true);
     try {
       const params: any = {};
       if (typeFilter) params.type = typeFilter;
+      if (partnerOnly) params.partner_only = true;
+      if (partnerTagId) params.partner_tag_id = partnerTagId;
       const res = await getActionItems(params);
       const actionItems = (res?.items || []).reverse();
       setItems(actionItems);
@@ -72,7 +84,7 @@ export default function ActionItemsPage() {
     }
   };
 
-  useEffect(() => { load(); }, [typeFilter]);
+  useEffect(() => { load(); }, [typeFilter, partnerOnly, partnerTagId]);
 
   const totalCount = items.length;
   const highCount = items.filter(i => i.priority === 'HIGH').length;
@@ -85,6 +97,29 @@ export default function ActionItemsPage() {
           <p className="text-sm text-slate-500 mt-0.5">
             {totalCount} pending {highCount > 0 && <span className="text-red-600 font-medium">({highCount} high priority)</span>}
           </p>
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={partnerOnly}
+              onCheckedChange={setPartnerOnly}
+              id="partner-only"
+            />
+            <label htmlFor="partner-only" className="text-sm font-medium text-slate-700 cursor-pointer">
+              Partner Only
+            </label>
+          </div>
+          <Select value={partnerTagId} onValueChange={(v) => setPartnerTagId(v === '_all' ? '' : v)}>
+            <SelectTrigger className="w-[180px] h-9 text-sm">
+              <SelectValue placeholder="All Partner Tags" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">All Partner Tags</SelectItem>
+              {partnerTags.map((tag: any) => (
+                <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
