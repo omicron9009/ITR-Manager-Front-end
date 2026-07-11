@@ -31,6 +31,7 @@ export default function FilingDetailPage() {
   const [computations, setComputations] = useState<any[]>([]);
   const [currentComp, setCurrentComp] = useState<any>(null);
   const [hasInternalWorkings, setHasInternalWorkings] = useState(false);
+  const [internalWorkingsReady, setInternalWorkingsReady] = useState(false);
   const [completed, setCompleted] = useState<any[]>([]);
   const [otherDocs, setOtherDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +85,7 @@ export default function FilingDetailPage() {
         setComputations(c?.items || []);
         setCurrentComp(c?.current_version || null);
         setHasInternalWorkings(!!c?.has_internal_workings);
+        setInternalWorkingsReady(!!c?.internal_workings_ready);
       }
       if (['FILING', 'PAYMENT', 'COMPLETED'].includes(state)) {
         const cd = await completedDocs(filingId);
@@ -119,6 +121,16 @@ export default function FilingDetailPage() {
 
   useEffect(() => { if (filingId) load(); }, [filingId]);
 
+  // Silent background refresh of doc metadata (counts) so Submit button logic stays accurate
+  const refreshDocsMeta = async () => {
+    try {
+      const d = await filingDocs(filingId);
+      setDocs(d?.items || []);
+      setDocGroups(d?.groups || []);
+      setDocsMeta({ all_approved: d?.all_approved, pending: d?.pending_count, uploaded: d?.uploaded_count, rejected: d?.rejected_count, approved: d?.approved_count, total: d?.total });
+    } catch {}
+  };
+
   const onUpload = async (docId: string, file: File) => {
     if (file.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
     const ext = file.name.split('.').pop()?.toLowerCase();
@@ -135,6 +147,8 @@ export default function FilingDetailPage() {
         ...g,
         files: (g.files || []).map((d: any) => d.id === docId ? { ...d, status: 'UPLOADED', original_filename: file.name } : d),
       })));
+      // Background refresh to sync metadata counts
+      refreshDocsMeta();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
     finally { setUploading(null); }
   };
@@ -154,6 +168,7 @@ export default function FilingDetailPage() {
         ...g,
         files: (g.files || []).map((d: any) => d.id === docId ? { ...d, status: 'UPLOADED', original_filename: file.name } : d),
       })));
+      refreshDocsMeta();
     } catch (e: any) {
       const s = e?.response?.status;
       if (s === 403) toast.error('This document is already approved and cannot be replaced.');
@@ -176,6 +191,7 @@ export default function FilingDetailPage() {
       const newDoc = { id: url.document_id, document_type_id: documentTypeId, status: 'UPLOADED', original_filename: file.name };
       setDocs((prev) => [...prev, newDoc]);
       setDocGroups((prev) => prev.map((g) => g.document_type_id === documentTypeId ? { ...g, files: [...(g.files || []), newDoc] } : g));
+      refreshDocsMeta();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
     finally { setUploading(null); }
   };
@@ -190,6 +206,7 @@ export default function FilingDetailPage() {
         ...g,
         files: (g.files || []).filter((d: any) => d.id !== docId),
       })));
+      refreshDocsMeta();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to delete'); }
   };
 
@@ -555,16 +572,16 @@ export default function FilingDetailPage() {
           )}
 
           {/* Tax Payment Confirmation - shown when computation is approved but tax not yet paid AND internal workings uploaded */}
-          {currentComp && (currentComp.status === 'APPROVED' || currentComp.status === 'CLIENT_APPROVED') && !filing.is_tax_paid && state === 'COMPUTATION' && !hasInternalWorkings && (
+          {currentComp && (currentComp.status === 'APPROVED' || currentComp.status === 'CLIENT_APPROVED') && !filing.is_tax_paid && state === 'COMPUTATION' && !internalWorkingsReady && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 mb-4 flex items-center gap-3">
               <Clock className="h-5 w-5 text-slate-500 flex-shrink-0" />
               <div>
-                <div className="text-sm font-semibold text-slate-700">Awaiting Internal Documents</div>
-                <div className="text-xs text-slate-500 mt-0.5">Your CA is preparing required internal documents. Tax payment confirmation will be available once they are ready.</div>
+                <div className="text-sm font-semibold text-slate-700">Awaiting Internal Verification</div>
+                <div className="text-xs text-slate-500 mt-0.5">Your CA is completing internal verification. You&apos;ll be notified when tax payment confirmation is needed.</div>
               </div>
             </div>
           )}
-          {currentComp && (currentComp.status === 'APPROVED' || currentComp.status === 'CLIENT_APPROVED') && !filing.is_tax_paid && state === 'COMPUTATION' && hasInternalWorkings && (
+          {currentComp && (currentComp.status === 'APPROVED' || currentComp.status === 'CLIENT_APPROVED') && !filing.is_tax_paid && state === 'COMPUTATION' && internalWorkingsReady && (
             <div className="rounded-lg border-2 border-amber-200 bg-amber-50/50 p-4 mb-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">

@@ -667,7 +667,7 @@
           "Clients"
         ],
         "summary": "Toggle No Fees",
-        "description": "Toggle no_fees_applicable for a client. Partner only.",
+        "description": "Toggle no_fees_applicable for a client and update all active filings.",
         "operationId": "toggle_no_fees_api_v1_clients__client_id__toggle_no_fees_post",
         "security": [
           {
@@ -7615,6 +7615,15 @@
             }
           },
           {
+            "name": "doc_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Type"
+            }
+          },
+          {
             "name": "label",
             "in": "query",
             "required": false,
@@ -10773,6 +10782,11 @@
             "type": "boolean",
             "title": "Has Internal Workings",
             "default": false
+          },
+          "internal_workings_ready": {
+            "type": "boolean",
+            "title": "Internal Workings Ready",
+            "default": false
           }
         },
         "type": "object",
@@ -13489,6 +13503,11 @@
             "title": "Has Internal Workings",
             "default": false
           },
+          "internal_workings_ready": {
+            "type": "boolean",
+            "title": "Internal Workings Ready",
+            "default": false
+          },
           "pending_executive_assignment": {
             "type": "boolean",
             "title": "Pending Executive Assignment",
@@ -14510,6 +14529,17 @@
         "title": "IncomeHeadsUpdateRequest",
         "description": "Update income heads — all fields optional for partial update."
       },
+      "InternalWorkingDocType": {
+        "type": "string",
+        "enum": [
+          "AIS",
+          "TIS",
+          "26AS",
+          "OTHER"
+        ],
+        "title": "InternalWorkingDocType",
+        "description": "Type of internal working document."
+      },
       "InternalWorkingListResponse": {
         "properties": {
           "items": {
@@ -14595,6 +14625,16 @@
             "type": "string",
             "format": "uuid",
             "title": "File Id"
+          },
+          "doc_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InternalWorkingDocType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "label": {
             "anyOf": [
@@ -14689,6 +14729,9 @@
             "type": "string",
             "title": "Content Type"
           },
+          "doc_type": {
+            "$ref": "#/components/schemas/InternalWorkingDocType"
+          },
           "label": {
             "anyOf": [
               {
@@ -14705,7 +14748,8 @@
         "required": [
           "filing_id",
           "filename",
-          "content_type"
+          "content_type",
+          "doc_type"
         ],
         "title": "InternalWorkingUploadRequest"
       },

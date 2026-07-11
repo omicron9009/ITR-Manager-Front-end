@@ -372,9 +372,9 @@ export const elevateManager = (manager_id: string, elevate: boolean) =>
   api.put(`/api/v1/managers/${manager_id}/elevation`, null, { params: { elevate } }).then((r) => r.data);
 
 // ---------- INTERNAL WORKINGS ----------
-export const internalWorkingUploadUrl = (data: { filing_id: string; filename: string; content_type: string; label?: string }) =>
+export const internalWorkingUploadUrl = (data: { filing_id: string; filename: string; content_type: string; doc_type: string; label?: string }) =>
   api.post('/api/v1/internal-workings/upload-url', data).then((r) => r.data);
-export const internalWorkingConfirm = (params: { filing_id: string; object_key: string; filename: string; content_type: string; file_size: number; label?: string }) =>
+export const internalWorkingConfirm = (params: { filing_id: string; object_key: string; filename: string; content_type: string; file_size: number; doc_type: string; label?: string }) =>
   api.post('/api/v1/internal-workings/confirm-upload', null, { params }).then((r) => r.data);
 export const listInternalWorkings = (filing_id: string, include_history?: boolean) =>
   api

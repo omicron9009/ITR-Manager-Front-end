@@ -12,7 +12,7 @@ import { FileViewer } from '@/components/shared/FileViewer';
 import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, docUploadUrl, docReplaceUrl, docConfirmUpload, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, internalWorkingReplaceUploadUrl, internalWorkingReplaceConfirm, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag, getIncomeHeadsCatalog, listTextFieldTypes, assignTextFields, listFilingTextFields, updateTextFieldValue, deleteTextField, approveTextFields, rejectTextFields } from '@/lib/api';
 import { getUser, getIsElevated } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Mail, Phone, MapPin, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save, Replace, History, AlertTriangle } from 'lucide-react';
+import { Mail, Phone, MapPin, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, XCircle, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save, Replace, History, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -1866,11 +1866,16 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
   // Only show to Partner/Manager/Executive
   if (isClient) return null;
 
+  const DOC_TYPES = ['AIS', 'TIS', '26AS', 'OTHER'] as const;
+  const DOC_TYPE_LABELS: Record<string, string> = { AIS: 'AIS', TIS: 'TIS', '26AS': '26AS', OTHER: 'Other' };
+  const MANDATORY_TYPES = ['AIS', 'TIS', '26AS'];
+
   const [docs, setDocs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [pendingLabel, setPendingLabel] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<Record<string, File | null>>({ AIS: null, TIS: null, '26AS': null, OTHER: null });
+  const [pendingLabels, setPendingLabels] = useState<Record<string, string>>({ AIS: '', TIS: '', '26AS': '', OTHER: '' });
+  const [activeTab, setActiveTab] = useState<string>('AIS');
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -1903,6 +1908,14 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
     return map;
   })();
 
+  // Mandatory doc checklist
+  const mandatoryStatus = MANDATORY_TYPES.map((type) => ({
+    type,
+    label: DOC_TYPE_LABELS[type],
+    uploaded: activeDocs.some((d: any) => d.doc_type === type),
+  }));
+  const allMandatoryReady = mandatoryStatus.every((s) => s.uploaded);
+
   const getHistoryChain = (active: any): any[] => {
     const chain: any[] = [];
     let cur = active.replaces_id ? supersededById.get(active.replaces_id) : null;
@@ -1915,20 +1928,22 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
     return chain;
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (docType: string) => {
+    const pendingFile = pendingFiles[docType];
     if (!pendingFile) return;
     if (pendingFile.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
     setUploading(true);
     try {
-      const params: any = { filing_id: filingId, filename: pendingFile.name, content_type: pendingFile.type };
-      if (pendingLabel.trim()) params.label = pendingLabel.trim();
+      const params: any = { filing_id: filingId, filename: pendingFile.name, content_type: pendingFile.type, doc_type: docType };
+      const label = pendingLabels[docType]?.trim();
+      if (label) params.label = label;
       const urlRes = await internalWorkingUploadUrl(params);
       const axios = (await import('axios')).default;
       await axios.put(urlRes.upload_url, pendingFile, { headers: { 'Content-Type': pendingFile.type } });
-      await internalWorkingConfirm({ filing_id: filingId, object_key: urlRes.object_key, filename: pendingFile.name, content_type: pendingFile.type, file_size: pendingFile.size, ...(pendingLabel.trim() ? { label: pendingLabel.trim() } : {}) });
-      toast.success('Internal working document uploaded');
-      setPendingFile(null);
-      setPendingLabel('');
+      await internalWorkingConfirm({ filing_id: filingId, object_key: urlRes.object_key, filename: pendingFile.name, content_type: pendingFile.type, file_size: pendingFile.size, doc_type: docType, ...(label ? { label } : {}) });
+      toast.success(`${DOC_TYPE_LABELS[docType] || docType} document uploaded`);
+      setPendingFiles((p) => ({ ...p, [docType]: null }));
+      setPendingLabels((p) => ({ ...p, [docType]: '' }));
       load();
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
     finally { setUploading(false); }
@@ -1968,6 +1983,11 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
     } catch { toast.error('Could not load file'); }
   };
 
+  const getDocTypeLabel = (doc: any) => {
+    if (!doc.doc_type) return 'Legacy';
+    return DOC_TYPE_LABELS[doc.doc_type] || doc.doc_type;
+  };
+
   const renderDocRow = (doc: any, opts: { active: boolean }) => {
     const isLastActive = opts.active && activeDocs.length === 1;
     const blockDelete = isLastActive && filingStatus === 'COMPUTATION';
@@ -1979,8 +1999,19 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
       >
         <FileArchive className={`h-4 w-4 flex-shrink-0 ${opts.active ? 'text-violet-500' : 'text-slate-400'}`} />
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium truncate ${opts.active ? 'text-slate-900' : 'text-slate-500 line-through'}`}>
-            {doc.original_filename || doc.filename || doc.label || 'Document'}
+          <div className="flex items-center gap-2">
+            <div className={`text-sm font-medium truncate ${opts.active ? 'text-slate-900' : 'text-slate-500 line-through'}`}>
+              {doc.original_filename || doc.filename || doc.label || 'Document'}
+            </div>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+              doc.doc_type === 'AIS' ? 'bg-blue-100 text-blue-700' :
+              doc.doc_type === 'TIS' ? 'bg-green-100 text-green-700' :
+              doc.doc_type === '26AS' ? 'bg-purple-100 text-purple-700' :
+              doc.doc_type === 'OTHER' ? 'bg-slate-100 text-slate-600' :
+              'bg-amber-100 text-amber-700'
+            }`}>
+              {getDocTypeLabel(doc)}
+            </span>
           </div>
           {doc.label && (doc.original_filename || doc.filename) && <div className="text-xs text-slate-400 truncate">{doc.label}</div>}
           <div className="text-[10px] text-slate-400">
@@ -2052,6 +2083,25 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
         </div>
       </div>
 
+      {/* Mandatory document checklist */}
+      <div className={`rounded-lg border p-3 ${allMandatoryReady ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+        <div className={`text-xs font-semibold mb-2 ${allMandatoryReady ? 'text-emerald-800' : 'text-amber-800'}`}>
+          {allMandatoryReady ? 'All mandatory documents uploaded' : 'Mandatory Documents Required'}
+        </div>
+        <div className="flex items-center gap-4">
+          {mandatoryStatus.map((s) => (
+            <div key={s.type} className="flex items-center gap-1.5">
+              {s.uploaded ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <XCircle className="h-4 w-4 text-amber-500" />
+              )}
+              <span className={`text-xs font-medium ${s.uploaded ? 'text-emerald-700' : 'text-amber-700'}`}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Warning if no active docs and in COMPUTATION state */}
       {activeDocs.length === 0 && filingStatus === 'COMPUTATION' && !loading && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 flex items-center gap-2">
@@ -2096,31 +2146,69 @@ function InternalWorkingsSection({ filingId, filingStatus }: { filingId: string;
         <p className="text-xs text-slate-400 italic">No internal working documents uploaded yet.</p>
       )}
 
-      {/* Upload area */}
+      {/* Tabbed upload area */}
       {canUpload && (
-        <div className="p-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-violet-400 transition-colors space-y-2">
-          {!pendingFile ? (
-            <div className="flex items-center gap-3">
-              <Button size="sm" variant="outline" onClick={() => document.getElementById(`iw-upload-${filingId}`)?.click()}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> {activeDocs.length > 0 ? 'Add another internal working' : 'Add Internal Working'}
-              </Button>
-              <span className="text-xs text-slate-400">PDF, Word, Excel, Images (max 10 MB)</span>
-              <input id={`iw-upload-${filingId}`} type="file" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFile(f); e.target.value = ''; }} />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <FileArchive className="h-4 w-4 text-violet-500 flex-shrink-0" />
-                <span className="text-sm text-slate-700 truncate flex-1">{pendingFile.name}</span>
-                <Button size="sm" variant="ghost" className="h-6 px-1 text-rose-500" onClick={() => { setPendingFile(null); setPendingLabel(''); }}>✕</Button>
+        <div className="p-3 rounded-lg border-2 border-dashed border-slate-300 hover:border-violet-400 transition-colors space-y-3">
+          {/* Tabs */}
+          <div className="flex border-b border-slate-200">
+            {DOC_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setActiveTab(type)}
+                className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === type
+                    ? 'border-violet-600 text-violet-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {DOC_TYPE_LABELS[type]}
+                {MANDATORY_TYPES.includes(type) && !mandatoryStatus.find((s) => s.type === type)?.uploaded && (
+                  <span className="ml-1 text-[9px] text-amber-600">●</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Upload area for active tab */}
+          {(() => {
+            const pendingFile = pendingFiles[activeTab];
+            const pendingLabel = pendingLabels[activeTab];
+            const docsOfType = activeDocs.filter((d: any) => d.doc_type === activeTab);
+            return (
+              <div className="space-y-2">
+                {docsOfType.length > 0 && (
+                  <div className="text-[11px] text-slate-500">
+                    {docsOfType.length} {DOC_TYPE_LABELS[activeTab]} document{docsOfType.length !== 1 ? 's' : ''} already uploaded. You can upload additional files.
+                  </div>
+                )}
+                {!pendingFile ? (
+                  <div className="flex items-center gap-3">
+                    <Button size="sm" variant="outline" onClick={() => document.getElementById(`iw-upload-${filingId}-${activeTab}`)?.click()}>
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Upload {DOC_TYPE_LABELS[activeTab]}
+                    </Button>
+                    <span className="text-xs text-slate-400">PDF, Word, Excel, Images (max 10 MB)</span>
+                    <input id={`iw-upload-${filingId}-${activeTab}`} type="file" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPendingFiles((p) => ({ ...p, [activeTab]: f })); e.target.value = ''; }} />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FileArchive className="h-4 w-4 text-violet-500 flex-shrink-0" />
+                      <span className="text-sm text-slate-700 truncate flex-1">{pendingFile.name}</span>
+                      <Button size="sm" variant="ghost" className="h-6 px-1 text-rose-500" onClick={() => { setPendingFiles((p) => ({ ...p, [activeTab]: null })); setPendingLabels((p) => ({ ...p, [activeTab]: '' })); }}>✕</Button>
+                    </div>
+                    {activeTab === 'OTHER' && (
+                      <Input placeholder="Label (optional)" value={pendingLabel} onChange={(e) => setPendingLabels((p) => ({ ...p, [activeTab]: e.target.value }))} className="h-8 text-sm" />
+                    )}
+                    <Button size="sm" className="bg-violet-600 hover:bg-violet-700" disabled={uploading} onClick={() => handleUpload(activeTab)}>
+                      {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
+                      Upload {DOC_TYPE_LABELS[activeTab]}
+                    </Button>
+                  </div>
+                )}
               </div>
-              <Input placeholder="Label (optional)" value={pendingLabel} onChange={(e) => setPendingLabel(e.target.value)} className="h-8 text-sm" />
-              <Button size="sm" className="bg-violet-600 hover:bg-violet-700" disabled={uploading} onClick={handleUpload}>
-                {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
-                Upload
-              </Button>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
