@@ -111,6 +111,7 @@ export const activateClient = (client_id: string, no_fees_applicable?: boolean) 
 export const rejectClient = (client_id: string, reason: string) => api.post('/api/v1/clients/reject', { client_id, reason }).then((r) => r.data);
 export const setClientFee = (client_id: string, fee: number) => api.post(`/api/v1/clients/${client_id}/set-fee`, null, { params: { fee } }).then((r) => r.data);
 export const toggleNoFees = (client_id: string, no_fees: boolean) => api.post(`/api/v1/clients/${client_id}/toggle-no-fees`, null, { params: { no_fees } }).then((r) => r.data);
+export const createClient = (data: any) => api.post('/api/v1/clients/create', data).then((r) => r.data);
 export const updateFilingFee = (filing_id: string, fee: number) => api.post(`/api/v1/filings/${filing_id}/update-fee`, null, { params: { fee } }).then((r) => r.data);
 
 // ---------- DASHBOARD ----------
@@ -136,6 +137,7 @@ export const confirmIncomeHeads = (filing_id: string, data: Record<string, any>)
 export const submitDocs = (id: string) => api.post(`/api/v1/filings/${id}/submit-documents`).then((r) => r.data);
 export const markPayment = (id: string) => api.post(`/api/v1/filings/${id}/mark-payment`).then((r) => r.data);
 export const moveToComputation = (id: string) => api.post(`/api/v1/filings/${id}/move-to-computation`).then((r) => r.data);
+export const initiateFilingForClient = (data: { client_id: string; financial_year: string }) => api.post('/api/v1/filings/initiate-for-client', data).then((r) => r.data);
 export const myTracking = () => api.get('/api/v1/filings/my/tracking').then((r) => r.data);
 export const getFilingHistory = (id: string) => api.get(`/api/v1/filings/${id}/history`).then((r) => r.data);
 
@@ -235,6 +237,7 @@ export const deleteField = (id: string) => api.delete(`/api/v1/onboarding/fields
 export const getOnboardingForm = () => api.get('/api/v1/onboarding/form').then((r) => r.data);
 export const getClientOnboardingForm = (client_id: string) => api.get(`/api/v1/onboarding/form/${client_id}`).then((r) => r.data);
 export const submitOnboardingForm = (form_data: any) => api.post('/api/v1/onboarding/form/submit', { form_data }).then((r) => r.data);
+export const submitOnboardingFormForClient = (client_id: string, form_data: any) => api.post(`/api/v1/onboarding/form/${client_id}/submit`, { form_data }).then((r) => r.data);
 
 // ---------- NOTIFICATIONS ----------
 export const listNotifications = (params: any = {}) => api.get('/api/v1/notifications', { params }).then((r) => r.data);

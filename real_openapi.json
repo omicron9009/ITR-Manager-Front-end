@@ -461,6 +461,53 @@
         }
       }
     },
+    "/api/v1/clients/create": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Create Client",
+        "description": "Create a client account (Manager/Partner). Password defaults to aikar@\u003Cfirstname\u003E.",
+        "operationId": "create_client_api_v1_clients_create_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientCreateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/clients/register": {
       "post": {
         "tags": [
@@ -961,6 +1008,24 @@
               "title": "Activated Not Onboarded"
             },
             "description": "Only ACTIVE clients who have NOT yet submitted the onboarding form"
+          },
+          {
+            "name": "staff_created",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter: true = only staff-created clients, false = only self-registered",
+              "title": "Staff Created"
+            },
+            "description": "Filter: true = only staff-created clients, false = only self-registered"
           }
         ],
         "responses": {
@@ -2240,6 +2305,53 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/FilingInitiateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/filings/initiate-for-client": {
+      "post": {
+        "tags": [
+          "Filings"
+        ],
+        "summary": "Initiate Filing For Client",
+        "description": "Initiate an ITR filing on behalf of a client (Manager/Partner).\nClient must be ACTIVE with onboarding form submitted.",
+        "operationId": "initiate_filing_for_client_api_v1_filings_initiate_for_client_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilingInitiateForClientRequest"
               }
             }
           },
@@ -4720,6 +4832,66 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/onboarding/form/{client_id}/submit": {
+      "post": {
+        "tags": [
+          "Onboarding"
+        ],
+        "summary": "Submit Onboarding Form For Client",
+        "description": "Submit or update the onboarding form on behalf of a client (Manager/Partner).",
+        "operationId": "submit_onboarding_form_for_client_api_v1_onboarding_form__client_id__submit_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Client Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingFormSubmitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Submit Onboarding Form For Client Api V1 Onboarding Form  Client Id  Submit Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/notifications": {
@@ -9426,6 +9598,165 @@
         ],
         "title": "ClientBriefItem"
       },
+      "ClientCreateRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "manager_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manager Id",
+            "description": "Assign to this manager (used when Partner creates a client)"
+          },
+          "salary": {
+            "type": "boolean",
+            "title": "Salary",
+            "default": false
+          },
+          "esop": {
+            "type": "boolean",
+            "title": "Esop",
+            "default": false
+          },
+          "rental_income": {
+            "type": "boolean",
+            "title": "Rental Income",
+            "default": false
+          },
+          "more_than_2_properties": {
+            "type": "boolean",
+            "title": "More Than 2 Properties",
+            "default": false
+          },
+          "capital_gain_shares": {
+            "type": "boolean",
+            "title": "Capital Gain Shares",
+            "default": false
+          },
+          "capital_gain_land": {
+            "type": "boolean",
+            "title": "Capital Gain Land",
+            "default": false
+          },
+          "business_profession": {
+            "type": "boolean",
+            "title": "Business Profession",
+            "default": false
+          },
+          "interest_dividend": {
+            "type": "boolean",
+            "title": "Interest Dividend",
+            "default": false
+          },
+          "foreign_assets": {
+            "type": "boolean",
+            "title": "Foreign Assets",
+            "default": false
+          },
+          "any_other": {
+            "type": "boolean",
+            "title": "Any Other",
+            "default": false
+          },
+          "any_other_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Any Other Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "full_name"
+        ],
+        "title": "ClientCreateRequest"
+      },
+      "ClientCreateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "account_status": {
+            "type": "string",
+            "title": "Account Status"
+          },
+          "default_password": {
+            "type": "string",
+            "title": "Default Password"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Client account created successfully."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "account_status",
+          "default_password"
+        ],
+        "title": "ClientCreateResponse"
+      },
       "ClientDashboardResponse": {
         "properties": {
           "account_status": {
@@ -9843,6 +10174,29 @@
               }
             ],
             "title": "Form Submitted At"
+          },
+          "created_by_staff_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Staff Id"
+          },
+          "created_by_staff_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Staff Name"
           }
         },
         "type": "object",
@@ -10154,6 +10508,29 @@
               }
             ],
             "title": "Partner Tag Name"
+          },
+          "created_by_staff_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Staff Id"
+          },
+          "created_by_staff_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By Staff Name"
           },
           "created_at": {
             "type": "string",
@@ -13278,6 +13655,26 @@
         ],
         "title": "FilingHaltRequest"
       },
+      "FilingInitiateForClientRequest": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "financial_year": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{4}$",
+            "title": "Financial Year"
+          }
+        },
+        "type": "object",
+        "required": [
+          "client_id",
+          "financial_year"
+        ],
+        "title": "FilingInitiateForClientRequest"
+      },
       "FilingInitiateRequest": {
         "properties": {
           "financial_year": {
@@ -13371,6 +13768,29 @@
               }
             ],
             "title": "Assigned Executive Name"
+          },
+          "assigned_manager_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Manager Id"
+          },
+          "assigned_manager_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Manager Name"
           },
           "initiated_at": {
             "type": "string",

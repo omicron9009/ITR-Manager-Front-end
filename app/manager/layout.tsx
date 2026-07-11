@@ -2,13 +2,14 @@
 
 import { useEffect } from 'react';
 import AppShell from '@/components/shared/AppShell';
-import { LayoutDashboard, Users, Shield, FileCheck, Layout, Bell, User, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, FileCheck, Layout, Bell, User, ClipboardList, UserPlus } from 'lucide-react';
 import { getIsElevated, getUser, setUser } from '@/lib/auth';
 
 const NAV = [
   { href: '/manager/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/manager/action-items', label: 'Action Items', icon: ClipboardList },
   { href: '/manager/clients', label: 'Clients', icon: Users },
+  { href: '/manager/create-client', label: 'Create Client', icon: UserPlus },
   { href: '/manager/executives', label: 'Executives', icon: Shield },
   { href: '/manager/document-types', label: 'Document Checklist', icon: FileCheck },
   { href: '/manager/form-builder', label: 'Form Builder', icon: Layout },

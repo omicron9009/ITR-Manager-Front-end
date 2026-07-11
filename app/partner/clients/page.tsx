@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { listClients, listExecutives, listFilings, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems, listManagers, assignClientToManager, getManagerTeam, listTags, setClientPartnerTag, getClient } from '@/lib/api';
+import { listClients, listExecutives, listFilings, assignExecutive, getPartnerAnalytics, getExecutiveAnalytics, getFilingsByStatus, getActionItems, listManagers, assignClientToManager, getManagerTeam, listTags, setClientPartnerTag } from '@/lib/api';
 import { Search, Users, Eye, IndianRupee, AlertTriangle, CircleDot, ArrowUpDown, Clock, ArrowUp, ArrowDown, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -59,14 +59,16 @@ function ClientsListPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [partnerTags, setPartnerTags] = useState<any[]>([]);
   const [partnerTagFilter, setPartnerTagFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const fyOptions = useMemo(() => getFYOptions(), []);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      const params: any = { page: 1, page_size: 100 };
+      const params: any = { page, page_size: 50 };
       if (search) params.search = search;
       if (accountStatus) params.account_status = accountStatus;
       if (filingStatus === 'ONBOARDED_PENDING_FILING') params.onboarded_pending_filing = true;
@@ -78,17 +80,11 @@ function ClientsListPage() {
         skipAnalytics ? Promise.resolve(null) : (routePrefix === '/executive' ? getExecutiveAnalytics() : getPartnerAnalytics()).catch(() => null),
       ]);
       const clientList = clientsRes?.items || clientsRes?.clients || clientsRes || [];
-
-      // Enrich clients with partner_tag_id/partner_tag_name from individual profiles
-      const enriched = await Promise.all(
-        clientList.map(async (c: any) => {
-          try {
-            const profile = await getClient(c.id);
-            return { ...c, partner_tag_id: profile.partner_tag_id || null, partner_tag_name: profile.partner_tag_name || null };
-          } catch { return c; }
-        })
-      );
-      setClients(enriched);
+      setClients(clientList);
+      // Update pagination from API response
+      const total = clientsRes?.total || clientList.length;
+      const pageSize = clientsRes?.page_size || 50;
+      setTotalPages(Math.max(1, Math.ceil(total / pageSize)));
 
       // Extract all filing rows from analytics filing_status_breakdown
       const rows: any[] = [];
@@ -125,7 +121,7 @@ function ClientsListPage() {
           setComputationFilings(compRes?.items || []);
         } catch { setComputationFilings([]); }
       }
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   };
   useEffect(() => {
     load();
@@ -154,25 +150,50 @@ function ClientsListPage() {
       listTags('PARTNER').then((r) => setPartnerTags((r?.items || r || []).filter((t: any) => t.is_active !== false))).catch(() => {});
     }
   }, []);
-  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus, filingStatus]);
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1); }, [search, accountStatus, filingStatus]);
+  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [search, accountStatus, filingStatus, page]);
+
+  // Poll every 10 seconds to keep data fresh from DB
+  useEffect(() => {
+    const interval = setInterval(() => { load(true); }, 10000);
+    return () => clearInterval(interval);
+  }, [search, accountStatus, filingStatus, page]);
 
   const onAssign = async (client_id: string, executive_id: string) => {
-    try { await assignExecutive(client_id, executive_id); toast.success('Executive assigned'); load(); } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+    try {
+      await assignExecutive(client_id, executive_id);
+      // Optimistic update
+      setClients((prev) => prev.map((c: any) => c.id === client_id ? { ...c, assigned_executive_id: executive_id } : c));
+      toast.success('Executive assigned');
+      load();
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail || 'Failed to assign executive';
+      toast.error(detail);
+    }
   };
 
   const onAssignManager = async (client_id: string, manager_id: string) => {
     try {
       await assignClientToManager(manager_id, client_id);
       toast.success('Manager assigned');
-      // Ensure we have this manager's team cached for the executive dropdown
-      if (!managerExecsMap.has(manager_id)) {
-        const team = await getManagerTeam(manager_id).catch(() => null);
-        if (team?.executives) {
-          setManagerExecsMap((prev) => new Map(prev).set(manager_id, team.executives));
-        }
+    } catch (e: any) {
+      // 409 = already assigned to this manager — treat as success, just refresh
+      if (e?.response?.status !== 409) {
+        toast.error(e?.response?.data?.detail || 'Failed');
+        return;
       }
-      load();
-    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
+    }
+    // Optimistic update — clear executive since old exec may not belong to new manager
+    setClients((prev) => prev.map((c: any) => c.id === client_id ? { ...c, assigned_manager_id: manager_id, assigned_executive_id: null, assigned_executive_name: null } : c));
+    // Ensure we have this manager's team cached for the executive dropdown
+    if (!managerExecsMap.has(manager_id)) {
+      const team = await getManagerTeam(manager_id).catch(() => null);
+      if (team?.executives) {
+        setManagerExecsMap((prev) => new Map(prev).set(manager_id, team.executives));
+      }
+    }
+    load();
   };
 
 
@@ -654,17 +675,25 @@ function ClientsListPage() {
                     )}
                     {routePrefix === '/partner' && (
                       <td className="px-5 py-3">
-                        <Select value={c.assigned_executive_id || ''} onValueChange={(v) => onAssign(c.id, v)}>
-                          <SelectTrigger className={`h-8 w-[160px] text-xs ${c.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
-                            <SelectValue placeholder="Unassigned" />
-                          </SelectTrigger>
-                          <SelectContent>{(() => {
-                            const mgrId = c.assigned_manager_id;
-                            const mgrExecs = mgrId ? managerExecsMap.get(mgrId) : null;
-                            const list = mgrExecs || execs;
-                            return list.filter((e) => e.is_active !== false).map((e) => <SelectItem key={e.executive_id || e.id} value={e.executive_id || e.id}>{e.executive_name || e.full_name || e.name}</SelectItem>);
-                          })()}</SelectContent>
-                        </Select>
+                        {c.assigned_manager_id ? (
+                          <Select value={c.assigned_executive_id || ''} onValueChange={(v) => onAssign(c.id, v)}>
+                            <SelectTrigger className={`h-8 w-[160px] text-xs ${c.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                              <SelectValue placeholder="Unassigned" />
+                            </SelectTrigger>
+                            <SelectContent>{(() => {
+                              const mgrId = c.assigned_manager_id;
+                              const mgrExecs = mgrId ? managerExecsMap.get(mgrId) : null;
+                              const list = mgrExecs || execs;
+                              return list.filter((e) => e.is_active !== false).map((e) => <SelectItem key={e.executive_id || e.id} value={e.executive_id || e.id}>{e.executive_name || e.full_name || e.name}</SelectItem>);
+                            })()}</SelectContent>
+                          </Select>
+                        ) : (
+                          <Select disabled>
+                            <SelectTrigger className="h-8 w-[160px] text-xs border-slate-200 bg-slate-50 text-slate-400">
+                              <SelectValue placeholder="Assign manager first" />
+                            </SelectTrigger>
+                          </Select>
+                        )}
                       </td>
                     )}
                     <td className="px-5 py-3">{(c.current_state || c.filing_state) ? <StatusBadge status={c.current_state || c.filing_state} /> : <span className="text-xs text-slate-400">—</span>}</td>
@@ -737,6 +766,14 @@ function ClientsListPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+          {/* Pagination */}
+          <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200">
+            <span className="text-xs text-slate-500">Page {page} of {totalPages}</span>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+            </div>
           </div>
           </>
         )}

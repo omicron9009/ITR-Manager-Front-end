@@ -83,6 +83,10 @@ function ManagerClientsPage() {
           financial_year: f.financial_year,
           filing_status: f.status,
           last_updated: f.updated_at,
+          assigned_manager_id: f.assigned_manager_id || null,
+          assigned_manager_name: f.assigned_manager_name || null,
+          assigned_executive_id: f.assigned_executive_id || null,
+          assigned_executive_name: f.assigned_executive_name || null,
         });
       }
       setFilingRows(fRows);
@@ -130,7 +134,8 @@ function ManagerClientsPage() {
       toast.success('Executive assigned');
       load();
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Failed to assign');
+      const detail = e?.response?.data?.detail || 'Failed to assign executive';
+      toast.error(detail);
     }
   };
 
@@ -150,6 +155,10 @@ function ManagerClientsPage() {
         current_state: fr.filing_status,
         _fy: fr.financial_year,
         _rowKey: key,
+        assigned_manager_id: c.assigned_manager_id || fr.assigned_manager_id || null,
+        assigned_manager_name: c.assigned_manager_name || fr.assigned_manager_name || null,
+        assigned_executive_id: c.assigned_executive_id || fr.assigned_executive_id || null,
+        assigned_executive_name: c.assigned_executive_name || fr.assigned_executive_name || null,
       });
     }
     // Include clients with no filings
@@ -227,6 +236,8 @@ function ManagerClientsPage() {
             email: ci?.email || '',
             phone_number: ci?.phone_number || null,
             account_status: ci?.account_status || 'ACTIVE',
+            assigned_manager_id: ci?.assigned_manager_id || null,
+            assigned_manager_name: ci?.assigned_manager_name || null,
             assigned_executive_id: ci?.assigned_executive_id || null,
             assigned_executive_name: ci?.assigned_executive_name || null,
             current_state: 'COMPUTATION',
@@ -497,18 +508,26 @@ function ManagerClientsPage() {
                       <td className="px-5 py-3 text-xs text-slate-700">{c.assigned_manager_name || <span className="text-slate-400">—</span>}</td>
                     )}
                     <td className="px-5 py-3">
-                      <Select value={c.assigned_executive_id || ''} onValueChange={(v) => onAssign(c.id, v)}>
-                        <SelectTrigger className={`h-8 w-[160px] text-xs ${c.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
-                          <SelectValue placeholder="Unassigned" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teamExecs.map((e: any) => (
-                            <SelectItem key={e.executive_id || e.id} value={e.executive_id || e.id}>
-                              {e.executive_name || e.full_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {c.assigned_manager_id ? (
+                        <Select value={c.assigned_executive_id || ''} onValueChange={(v) => onAssign(c.id, v)}>
+                          <SelectTrigger className={`h-8 w-[160px] text-xs ${c.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                            <SelectValue placeholder="Unassigned" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {teamExecs.map((e: any) => (
+                              <SelectItem key={e.executive_id || e.id} value={e.executive_id || e.id}>
+                                {e.executive_name || e.full_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select disabled>
+                          <SelectTrigger className="h-8 w-[160px] text-xs border-slate-200 bg-slate-50 text-slate-400">
+                            <SelectValue placeholder="Assign manager first" />
+                          </SelectTrigger>
+                        </Select>
+                      )}
                     </td>
                     <td className="px-5 py-3">
                       {c.current_state ? <StatusBadge status={c.current_state} /> : <span className="text-xs text-slate-400">—</span>}

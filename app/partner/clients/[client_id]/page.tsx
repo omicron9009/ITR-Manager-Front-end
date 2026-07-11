@@ -44,7 +44,6 @@ export default function ClientDetailPage() {
 
   const [managers, setManagers] = useState<any[]>([]);
   const [executives, setExecutives] = useState<any[]>([]);
-  const [clientManagerId, setClientManagerId] = useState<string | null>(null);
   const [partnerTags, setPartnerTags] = useState<any[]>([]);
 
   const [onboardingFields, setOnboardingFields] = useState<any[]>([]);
@@ -71,9 +70,22 @@ export default function ClientDetailPage() {
     setLoading(true);
     try {
       const c = await getClient(client_id);
-      setClient(c);
       const f = await listFilings({ client_id });
       const list = f?.items || f?.filings || f || [];
+      // Filing data is the most reliable source for manager/executive assignment.
+      // Merge it into the client object so dropdowns always reflect the truth.
+      if (list.length > 0) {
+        const fl = list[0];
+        if (fl.assigned_manager_id) {
+          c.assigned_manager_id = fl.assigned_manager_id;
+          c.assigned_manager_name = fl.assigned_manager_name;
+        }
+        if (fl.assigned_executive_id) {
+          c.assigned_executive_id = fl.assigned_executive_id;
+          c.assigned_executive_name = fl.assigned_executive_name;
+        }
+      }
+      setClient(c);
       setFilings(list);
       // load onboarding form
       try {
@@ -101,27 +113,13 @@ export default function ClientDetailPage() {
   // Load managers/executives for assignment dropdowns
   useEffect(() => {
     if (isPartner) {
-      listManagers().then(async (r) => {
-        const mgrList = r?.items || r?.managers || r || [];
-        setManagers(mgrList);
-        // Find which manager owns this client and load that manager's team
-        for (const m of mgrList) {
-          try {
-            const res = await getManagerClients(m.id, { page: 1, page_size: 100 });
-            const items = res?.items || [];
-            if (items.some((c: any) => c.id === client_id)) {
-              setClientManagerId(m.id);
-              // Load executives from this manager's team only
-              const team = await getManagerTeam(m.id).catch(() => null);
-              if (team?.executives) setExecutives(team.executives);
-              break;
-            }
-          } catch {}
-        }
-      }).catch(() => {});
+      // Only load the manager list here; actual assignment is synced from
+      // client.assigned_manager_id (source of truth) in a separate effect.
+      // We must NOT reconstruct the mapping via getManagerClients() because
+      // elevated managers see every client firm-wide, which would falsely
+      // show the first elevated manager as assigned to every client.
+      listManagers().then((r) => setManagers(r?.items || r?.managers || r || [])).catch(() => {});
     } else if (isElevatedManager) {
-      // Elevated managers can list all managers; use client's assigned_manager_id
-      // instead of looping (elevated manager can't access other managers' client lists)
       listManagers().then((r) => setManagers(r?.items || r?.managers || r || [])).catch(() => {});
       listExecutives().then((r) => {
         const execs = r?.items || r?.executives || r || [];
@@ -132,12 +130,15 @@ export default function ClientDetailPage() {
     }
   }, [isPartner, isManager, isElevatedManager, client_id]);
 
-  // For elevated managers, sync clientManagerId from client data once loaded
+  // When the assigned manager changes, load that manager's team for the executive dropdown
   useEffect(() => {
-    if (isElevatedManager && client?.assigned_manager_id) {
-      setClientManagerId(client.assigned_manager_id);
+    const mgId = client?.assigned_manager_id;
+    if ((isPartner || isElevatedManager) && mgId) {
+      getManagerTeam(mgId)
+        .then((team) => { if (team?.executives) setExecutives(team.executives); })
+        .catch(() => {});
     }
-  }, [isElevatedManager, client]);
+  }, [isPartner, isElevatedManager, client?.assigned_manager_id]);
 
   // Load partner tags
   useEffect(() => {
@@ -147,22 +148,34 @@ export default function ClientDetailPage() {
   const onAssignManager = async (manager_id: string) => {
     try {
       await assignClientToManager(manager_id, client_id);
-      setClientManagerId(manager_id);
-      // Refresh executives list to match new manager's team
-      const team = await getManagerTeam(manager_id).catch(() => null);
-      if (team?.executives) setExecutives(team.executives);
-      else setExecutives([]);
       toast.success('Manager assigned');
-      load();
-    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to assign manager'); }
+    } catch (e: any) {
+      // 409 = already assigned to this manager — treat as success, just refresh
+      if (e?.response?.status !== 409) {
+        toast.error(e?.response?.data?.detail || 'Failed to assign manager');
+        return;
+      }
+    }
+    // Optimistic update — clear executive since old exec may not belong to new manager
+    setClient((prev: any) => prev ? { ...prev, assigned_manager_id: manager_id, assigned_executive_id: null, assigned_executive_name: null } : prev);
+    // Refresh executives list to match new manager's team
+    const team = await getManagerTeam(manager_id).catch(() => null);
+    if (team?.executives) setExecutives(team.executives);
+    else setExecutives([]);
+    load();
   };
 
   const onAssignExecutive = async (executive_id: string) => {
     try {
       await assignExecutive(client_id, executive_id);
+      // Optimistic update so UI reflects immediately
+      setClient((prev: any) => prev ? { ...prev, assigned_executive_id: executive_id } : prev);
       toast.success('Executive assigned');
       load();
-    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed to assign executive'); }
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail || 'Failed to assign executive';
+      toast.error(detail);
+    }
   };
 
   const initials = (client?.full_name || 'C').split(' ').map((p: string) => p[0]).slice(0, 2).join('').toUpperCase();
@@ -211,8 +224,8 @@ export default function ClientDetailPage() {
             {(isPartner || isElevatedManager) && (
               <div>
                 <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Manager</div>
-                <Select value={clientManagerId || ''} onValueChange={(v) => onAssignManager(v)}>
-                  <SelectTrigger className={`h-9 w-full text-sm ${clientManagerId ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                <Select value={client?.assigned_manager_id || ''} onValueChange={(v) => onAssignManager(v)}>
+                  <SelectTrigger className={`h-9 w-full text-sm ${client?.assigned_manager_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
                     <SelectValue placeholder="Select Manager" />
                   </SelectTrigger>
                   <SelectContent>
@@ -248,16 +261,24 @@ export default function ClientDetailPage() {
             <div>
               <div className="text-xs uppercase text-slate-400 font-semibold mb-2">Assigned Executive</div>
               {(isPartner || isManager) ? (
-                <Select value={client.assigned_executive_id || ''} onValueChange={(v) => onAssignExecutive(v)}>
-                  <SelectTrigger className={`h-9 w-full text-sm ${client.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
-                    <SelectValue placeholder="Select Executive" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {executives.filter((e) => e.is_active !== false).map((e) => (
-                      <SelectItem key={e.executive_id || e.id} value={e.executive_id || e.id}>{e.executive_name || e.full_name || e.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                client?.assigned_manager_id ? (
+                  <Select value={client.assigned_executive_id || ''} onValueChange={(v) => onAssignExecutive(v)}>
+                    <SelectTrigger className={`h-9 w-full text-sm ${client.assigned_executive_id ? 'border-slate-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                      <SelectValue placeholder="Select Executive" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {executives.filter((e) => e.is_active !== false).map((e) => (
+                        <SelectItem key={e.executive_id || e.id} value={e.executive_id || e.id}>{e.executive_name || e.full_name || e.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select disabled>
+                    <SelectTrigger className="h-9 w-full text-sm border-slate-200 bg-slate-50 text-slate-400">
+                      <SelectValue placeholder="Assign manager first" />
+                    </SelectTrigger>
+                  </Select>
+                )
               ) : (
                 <div className="text-sm font-medium text-slate-800">{client.assigned_executive_name || client.executive_name || 'Unassigned'}</div>
               )}

@@ -84,7 +84,9 @@ export function AssignAfterActivationDialog({ client, managers, executives, part
   }, [client?.id]);
 
   useEffect(() => {
-    if (!selectedManager) { setManagerExecs([]); return; }
+    if (!selectedManager) { setManagerExecs([]); setSelectedExecutive(''); return; }
+    // Clear executive when manager changes (old exec may not belong to new manager)
+    setSelectedExecutive('');
     getManagerTeam(selectedManager)
       .then((r) => setManagerExecs(r?.executives || r?.items || []))
       .catch(() => setManagerExecs([]));
