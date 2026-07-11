@@ -3958,6 +3958,33 @@
               "type": "integer",
               "title": "Version"
             }
+          },
+          {
+            "name": "is_replacement",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Is Replacement"
+            }
+          },
+          {
+            "name": "existing_computation_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Existing Computation Id"
+            }
           }
         ],
         "responses": {
@@ -9000,6 +9027,7 @@
           "COMPUTATION_MANAGER_REJECTED",
           "COMPUTATION_REJECTED",
           "COMPUTATION_SUPERSEDED",
+          "COMPUTATION_REPLACED",
           "MANAGER_CREATED",
           "MANAGER_EXECUTIVE_ASSIGNED",
           "MANAGER_EXECUTIVE_UNASSIGNED",
@@ -11148,6 +11176,11 @@
           "content_type": {
             "type": "string",
             "title": "Content Type"
+          },
+          "replace": {
+            "type": "boolean",
+            "title": "Replace",
+            "default": false
           }
         },
         "type": "object",
@@ -11183,6 +11216,39 @@
           "object_key": {
             "type": "string",
             "title": "Object Key"
+          },
+          "is_replacement": {
+            "type": "boolean",
+            "title": "Is Replacement",
+            "default": false
+          },
+          "existing_computation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Computation Id"
+          },
+          "requires_confirmation": {
+            "type": "boolean",
+            "title": "Requires Confirmation",
+            "default": false
+          },
+          "confirmation_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation Message"
           }
         },
         "type": "object",
