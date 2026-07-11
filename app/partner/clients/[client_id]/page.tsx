@@ -1311,6 +1311,9 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
   const [rejectingComp, setRejectingComp] = useState<any>(null);
   const [rejectCompReason, setRejectCompReason] = useState('');
   const [bypassConfirmComp, setBypassConfirmComp] = useState<any>(null);
+  const [replaceConfirmation, setReplaceConfirmation] = useState<{ message: string; file: File } | null>(null);
+  const [replacing, setReplacing] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const userRole = typeof window !== 'undefined' ? getUser()?.role?.toUpperCase() : '';
 
   const load = async () => {
@@ -1324,22 +1327,70 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
 
   useEffect(() => { load(); }, [filingId]);
 
-  const handleUpload = async (file: File) => {
+  const handleUpload = async (file: File, replace = false) => {
     if (file.size > 10 * 1024 * 1024) { toast.error('File size must be less than 10 MB'); return; }
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !['pdf','doc','docx','xls','xlsx','csv','png','jpg','jpeg'].includes(ext)) { toast.error('Allowed types: PDF, Word, Excel, CSV, PNG, JPG'); return; }
     setUploading(true);
+    setUploadError(null);
     try {
-      const urlRes = await compUploadUrl({ filing_id: filingId, filename: file.name, content_type: file.type });
+      const urlRes = await compUploadUrl({ filing_id: filingId, filename: file.name, content_type: file.type, replace });
+      // If backend requires confirmation before replacing active computation
+      if (urlRes.requires_confirmation) {
+        setReplaceConfirmation({ message: urlRes.confirmation_message || 'An active computation already exists. Replace it?', file });
+        setUploading(false);
+        return;
+      }
       // Upload to presigned URL
       const axios = (await import('axios')).default;
       await axios.put(urlRes.upload_url, file, { headers: { 'Content-Type': file.type } });
-      // Confirm upload
-      await compConfirm({ filing_id: filingId, object_key: urlRes.object_key, filename: file.name, content_type: file.type, file_size: file.size, version: urlRes.version });
+      // Confirm upload with replacement params
+      await compConfirm({
+        filing_id: filingId, object_key: urlRes.object_key, filename: file.name, content_type: file.type, file_size: file.size, version: urlRes.version,
+        is_replacement: urlRes.is_replacement || false,
+        existing_computation_id: urlRes.existing_computation_id || null,
+      });
       toast.success(`Computation v${urlRes.version} uploaded successfully`);
       load();
-    } catch (e: any) { toast.error(e?.response?.data?.detail || 'Upload failed'); }
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const detail = e?.response?.data?.detail || 'Upload failed';
+      if (status === 409) {
+        setUploadError(detail);
+      } else {
+        toast.error(detail);
+      }
+    }
     finally { setUploading(false); }
+  };
+
+  const handleReplaceConfirm = async () => {
+    if (!replaceConfirmation) return;
+    const file = replaceConfirmation.file;
+    setReplacing(true);
+    setUploadError(null);
+    try {
+      const urlRes = await compUploadUrl({ filing_id: filingId, filename: file.name, content_type: file.type, replace: true });
+      const axios = (await import('axios')).default;
+      await axios.put(urlRes.upload_url, file, { headers: { 'Content-Type': file.type } });
+      await compConfirm({
+        filing_id: filingId, object_key: urlRes.object_key, filename: file.name, content_type: file.type, file_size: file.size, version: urlRes.version,
+        is_replacement: urlRes.is_replacement || false,
+        existing_computation_id: urlRes.existing_computation_id || null,
+      });
+      toast.success(`Computation v${urlRes.version} replaced successfully`);
+      setReplaceConfirmation(null);
+      load();
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const detail = e?.response?.data?.detail || 'Replace failed';
+      if (status === 409) {
+        setUploadError(detail);
+        setReplaceConfirmation(null);
+      } else {
+        toast.error(detail);
+      }
+    } finally { setReplacing(false); }
   };
 
   const download = async (compId: string) => {
@@ -1385,6 +1436,16 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
           )}
         </div>
       </div>
+
+      {uploadError && (
+        <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2">
+          <AlertTriangle className="h-4 w-4 text-rose-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs text-rose-800 font-medium">{uploadError}</p>
+          </div>
+          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-rose-400 hover:text-rose-600" onClick={() => setUploadError(null)}>✕</Button>
+        </div>
+      )}
 
       {computations.length === 0 ? (
         <div className="text-center py-6">
@@ -1513,6 +1574,32 @@ function ComputationPanel({ filingId, filingStatus, filing }: { filingId: string
               }}
             >
               {approving === bypassConfirmComp?.id && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Yes, Approve Anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Replace Computation Confirmation Dialog */}
+      <Dialog open={!!replaceConfirmation} onOpenChange={(o) => { if (!o && !replacing) setReplaceConfirmation(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle className="text-rose-700 flex items-center gap-2"><AlertTriangle className="h-5 w-5" /> Replace Computation</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700">{replaceConfirmation?.message}</p>
+            {replaceConfirmation?.file && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">New file</div>
+                <div className="text-sm font-medium text-slate-900 mt-0.5">{replaceConfirmation.file.name}</div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={replacing} onClick={() => setReplaceConfirmation(null)}>Cancel</Button>
+            <Button
+              disabled={replacing}
+              className="bg-rose-600 hover:bg-rose-700"
+              onClick={handleReplaceConfirm}
+            >
+              {replacing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Replace
             </Button>
           </DialogFooter>
         </DialogContent>
