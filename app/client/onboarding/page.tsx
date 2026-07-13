@@ -1,6 +1,7 @@
 // @ts-nocheck
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { toast } from 'sonner';
 import { Loader2, Upload, Eye, CheckCircle2, ClipboardList, ArrowRight, AlertTriangle } from 'lucide-react';
 
 export default function ClientOnboardingPage() {
+  const router = useRouter();
   const [fields, setFields] = useState<any[]>([]);
   const [values, setValues] = useState<Record<string, any>>({});
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
@@ -113,7 +115,7 @@ export default function ClientOnboardingPage() {
       // Get latest values after file uploads
       await submitOnboardingForm(values);
       toast.success('Onboarding form submitted!');
-      setSubmitted(true);
+      router.push('/client/dashboard');
     } catch (e: any) { toast.error(e?.response?.data?.detail || 'Failed'); }
     finally { setSaving(false); setUploadProgress(null); }
   };
@@ -139,10 +141,10 @@ export default function ClientOnboardingPage() {
           <CheckCircle2 className="h-8 w-8" />
         </div>
         <h2 className="text-xl font-bold text-slate-900">Onboarding Complete</h2>
-        <p className="text-sm text-slate-500 mt-2">Your onboarding form has already been filled. You can update your details from your profile.</p>
-        <Link href="/client/profile">
+        <p className="text-sm text-slate-500 mt-2">Your onboarding form has already been filled. You can now view and manage your filings.</p>
+        <Link href="/client/dashboard">
           <Button className="mt-5 bg-indigo-600 hover:bg-indigo-700">
-            Go to Profile <ArrowRight className="h-4 w-4 ml-1" />
+            Go to My Filings <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
         </Link>
       </div>
