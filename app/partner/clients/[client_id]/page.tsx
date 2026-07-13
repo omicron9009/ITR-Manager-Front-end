@@ -12,13 +12,21 @@ import { FileViewer } from '@/components/shared/FileViewer';
 import { getClient, listFilings, filingDocs, initiateFiling, transitionFiling, markPayment, moveToComputation, approveDoc, rejectDoc, deleteDoc, listDocTypes, assignDocs, compForFiling, compUploadUrl, compConfirm, compDownloadUrl, completedDocs, completedDocUploadUrl, completedDocConfirm, completedDocManagerApprove, completedDocPartnerApprove, completedDocManagerReject, storageDownloadUrl, docDownloadUrl, docUploadUrl, docReplaceUrl, docConfirmUpload, getClientOnboardingForm, getOnboardingFiles, managerApproveComp, managerRejectComp, partnerApproveComp, partnerRejectComp, listManagers, listExecutives, assignExecutive, assignClientToManager, getMyTeam, getManagerTeam, getManagerClients, setClientFee, updateFilingFee, otherDocUploadUrl, otherDocConfirm, listOtherDocs, deleteOtherDoc, internalWorkingUploadUrl, internalWorkingConfirm, listInternalWorkings, internalWorkingDownloadUrl, deleteInternalWorking, internalWorkingReplaceUploadUrl, internalWorkingReplaceConfirm, toggleNoFees, listTags, setClientPartnerTag, removeClientPartnerTag, getIncomeHeadsCatalog, listTextFieldTypes, assignTextFields, listFilingTextFields, updateTextFieldValue, deleteTextField, approveTextFields, rejectTextFields } from '@/lib/api';
 import { getUser, getIsElevated } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Mail, Phone, MapPin, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, XCircle, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save, Replace, History, AlertTriangle } from 'lucide-react';
+import { Mail, Phone, MapPin, FileText, FolderUp, Plus, Check, X, Loader2, Send, FileCheck, Upload, Download, Eye, Calculator, RefreshCw, FileArchive, CheckCircle2, XCircle, ChevronDown, ChevronRight, Clock, IndianRupee, Pencil, Tag, Search, Trash2, Type, Save, Replace, History, AlertTriangle, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const REFERRAL_SOURCE_LABELS: Record<string, string> = {
+  WEBSITE: 'Website',
+  FRIEND_RELATIVE: 'Friend / Relative',
+  PROFESSIONAL_REFERRAL: 'Professional Referral',
+  DIRECTED_BY_FIRM: 'Directed by Firm',
+  OTHER: 'Other',
+};
 
 const FILING_STAGES = ['INITIATED', 'DOCUMENT_UPLOAD', 'PROCESSING', 'COMPUTATION', 'FILING', 'PAYMENT', 'COMPLETED'];
 function getFilingPercent(status: string): number {
@@ -205,6 +213,7 @@ export default function ClientDetailPage() {
             <div className="flex items-center gap-2 text-slate-600"><Mail className="h-4 w-4" /> {client.email}</div>
             {client.phone_number && <div className="flex items-center gap-2 text-slate-600"><Phone className="h-4 w-4" /> {client.phone_number}</div>}
             {client.city && <div className="flex items-center gap-2 text-slate-600"><MapPin className="h-4 w-4" /> {client.city}</div>}
+            {client.referral_source && <div className="flex items-center gap-2 text-slate-600"><Users className="h-4 w-4" /> {client.referral_source === 'OTHER' && client.referral_source_other ? client.referral_source_other : (REFERRAL_SOURCE_LABELS[client.referral_source] || client.referral_source)}</div>}
           </div>
           {/* Professional Fee (Partner or Elevated Manager) */}
           {(isPartner || isElevatedManager) && (
@@ -661,7 +670,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                                 <div className="flex items-center gap-3 min-w-0">
                                   <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
                                   <div className="min-w-0">
-                                    <div className="text-sm font-medium text-slate-800 truncate">{d.original_filename || group.document_type_name}</div>
+                                    <div className="text-sm font-medium text-slate-800 truncate">{d.original_filename || 'Document'}</div>
                                     {d.uploaded_at && <div className="text-[10px] text-slate-400">{new Date(d.uploaded_at).toLocaleDateString()}</div>}
                                   </div>
                                 </div>
@@ -712,11 +721,7 @@ function FilingAccordionItem({ filing: f, docs, docGroups, load, viewDoc, isExec
                       <div className="flex items-start gap-3 min-w-0">
                         <FileText className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
                         <div className="min-w-0">
-                          <div className="text-sm font-medium text-slate-800 truncate">{d.document_type_name || d.original_filename}</div>
-                          {d.original_filename && <div className="text-xs text-slate-500 truncate">{d.original_filename}</div>}
-                          {d.document_type_description && (
-                            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{d.document_type_description}</div>
-                          )}
+                          <div className="text-sm font-medium text-slate-800 truncate">{d.original_filename || d.document_type_name || 'Document'}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
