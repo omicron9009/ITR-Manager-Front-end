@@ -932,12 +932,9 @@ function DocumentPlaceholder({ doc, uploading, onUpload, onReplace, onView, onDe
         {/* Text content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start flex-wrap gap-x-2 gap-y-1">
-            <p className="font-medium text-sm text-slate-900 break-words">{doc.original_filename || doc.document_type_name || 'Document'}</p>
+            <p className="font-medium text-sm text-slate-900 break-words">{doc.original_filename || 'Document'}</p>
             <StatusBadge status={status} size="sm" />
           </div>
-          {doc.document_type_description && (
-            <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{doc.document_type_description}</p>
-          )}
           {pendingFile && (
             <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-700 bg-amber-50 rounded px-2 py-0.5 border border-amber-200 w-fit">
               <Upload className="h-3 w-3" />
