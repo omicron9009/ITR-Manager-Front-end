@@ -1,11 +1,12 @@
 "use client";
 
 import AppShell from '@/components/shared/AppShell';
-import { LayoutDashboard, Users, Bell, User, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, Bell, BellRing, User, ClipboardList } from 'lucide-react';
 
 const NAV = [
   { href: '/executive/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/executive/action-items', label: 'Action Items', icon: ClipboardList },
+  { href: '/executive/reminders', label: 'Reminders', icon: BellRing },
   { href: '/executive/clients', label: 'My Clients', icon: Users },
   { href: '/executive/notifications', label: 'Notifications', icon: Bell },
   { href: '/executive/profile', label: 'Profile', icon: User },

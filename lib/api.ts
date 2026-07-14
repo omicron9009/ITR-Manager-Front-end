@@ -387,6 +387,38 @@ export const listInternalWorkings = (filing_id: string, include_history?: boolea
     .then((r) => r.data);
 export const internalWorkingDownloadUrl = (doc_id: string) =>
   api.get(`/api/v1/internal-workings/${doc_id}/download`).then((r) => r.data);
+
+// ---------- REMINDERS ----------
+export type ReminderChannels = { in_app?: boolean; email?: boolean; whatsapp?: boolean };
+export type ReminderConfigUpdate = {
+  is_enabled?: boolean;
+  threshold_days?: number;
+  repeat_interval_days?: number;
+  max_sends?: number;
+  channels?: ReminderChannels;
+  custom_title?: string | null;
+  custom_message?: string | null;
+};
+
+export const listReminderConfigs = () =>
+  api.get('/api/v1/reminders/configs').then((r) => r.data);
+export const getReminderConfig = (reminder_type: string) =>
+  api.get(`/api/v1/reminders/configs/${reminder_type}`).then((r) => r.data);
+export const updateReminderConfig = (reminder_type: string, body: ReminderConfigUpdate) =>
+  api.put(`/api/v1/reminders/configs/${reminder_type}`, body).then((r) => r.data);
+export const pauseReminderConfig = (reminder_type: string) =>
+  api.post(`/api/v1/reminders/configs/${reminder_type}/pause`).then((r) => r.data);
+export const resumeReminderConfig = (reminder_type: string) =>
+  api.post(`/api/v1/reminders/configs/${reminder_type}/resume`).then((r) => r.data);
+export const listReminderDispatchLog = (params: {
+  reminder_type?: string;
+  client_id?: string;
+  filing_id?: string;
+  page?: number;
+  page_size?: number;
+} = {}) => api.get('/api/v1/reminders/dispatch-log', { params }).then((r) => r.data);
+export const runRemindersNow = () =>
+  api.post('/api/v1/reminders/run-now').then((r) => r.data);
 export const deleteInternalWorking = (doc_id: string) =>
   api.delete(`/api/v1/internal-workings/${doc_id}`).then((r) => r.data);
 export const internalWorkingReplaceUploadUrl = (

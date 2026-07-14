@@ -8,10 +8,18 @@ import { listNotifications, getUnreadCount, markAllRead, markRead, getFiling } f
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 
-function getRoleFromPath(pathname: string): 'client' | 'partner' | 'executive' {
+function getRoleFromPath(pathname: string): 'client' | 'partner' | 'executive' | 'manager' {
   if (pathname.startsWith('/client')) return 'client';
   if (pathname.startsWith('/executive')) return 'executive';
+  if (pathname.startsWith('/manager')) return 'manager';
   return 'partner';
+}
+
+// Manager and Executive see reminder-notifications on their dashboards
+// (via <DashboardReminders/>) instead of in the bell — hide them here so
+// the notifications feed doesn't double-count reminders.
+function shouldHideReminders(role: string): boolean {
+  return role === 'manager' || role === 'executive';
 }
 
 async function resolveNotificationRoute(n: any, role: string): Promise<string | null> {
@@ -19,7 +27,7 @@ async function resolveNotificationRoute(n: any, role: string): Promise<string | 
     if (n.related_filing_id) return `/client/filings/${n.related_filing_id}`;
     return null;
   }
-  // partner or executive
+  // partner, executive, or manager — all use `/{role}/clients/:id` shape
   if (n.related_client_id) return `/${role}/clients/${n.related_client_id}`;
   if (n.related_filing_id) {
     try {
@@ -37,11 +45,21 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const role = getRoleFromPath(pathname);
+  const hideReminders = shouldHideReminders(role);
 
   const refresh = async () => {
     try {
-      const c = await getUnreadCount();
-      setCount(c?.count ?? c?.unread_count ?? 0);
+      if (hideReminders) {
+        // Server unread count includes reminders; compute a reminder-free count
+        // client-side by pulling recent unread and filtering.
+        const r = await listNotifications({ page: 1, page_size: 100, unread_only: true });
+        const list = r?.items ?? r?.notifications ?? r ?? [];
+        setCount(list.filter((n: any) => !n?.reminder_type).length);
+      } else {
+        const c = await getUnreadCount();
+        setCount(c?.count ?? c?.unread_count ?? 0);
+      }
     } catch {}
   };
 
@@ -49,12 +67,18 @@ export default function NotificationBell() {
     refresh();
     const i = setInterval(refresh, 30000);
     return () => clearInterval(i);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hideReminders]);
 
   const load = async () => {
     try {
-      const r = await listNotifications({ page: 1, page_size: 10 });
-      setItems(r?.items ?? r?.notifications ?? r ?? []);
+      // Pull a wider page when we need to filter locally so the popover still
+      // shows ~10 non-reminder items.
+      const pageSize = hideReminders ? 40 : 10;
+      const r = await listNotifications({ page: 1, page_size: pageSize });
+      let list = r?.items ?? r?.notifications ?? r ?? [];
+      if (hideReminders) list = list.filter((n: any) => !n?.reminder_type).slice(0, 10);
+      setItems(list);
     } catch { setItems([]); }
   };
 
@@ -78,7 +102,7 @@ export default function NotificationBell() {
             <div className="py-8 text-center text-sm text-slate-500">No notifications yet</div>
           )}
           {items.map((n: any) => (
-            <button key={n.id} onClick={async () => { await markRead([n.id]); refresh(); load(); const role = getRoleFromPath(pathname); const route = await resolveNotificationRoute(n, role); if (route) { setOpen(false); router.push(route); } }} className={`w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0 ${(n.related_filing_id || n.related_client_id) ? 'cursor-pointer' : ''}`}>
+            <button key={n.id} onClick={async () => { await markRead([n.id]); refresh(); load(); const route = await resolveNotificationRoute(n, role); if (route) { setOpen(false); router.push(route); } }} className={`w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0 ${(n.related_filing_id || n.related_client_id) ? 'cursor-pointer' : ''}`}>
               <div className="flex items-start gap-3">
                 <span className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${n.is_read ? 'bg-slate-300' : 'bg-indigo-500'}`} />
                 <div className="flex-1 min-w-0">
