@@ -125,26 +125,32 @@ function ClientsListPage() {
   };
   useEffect(() => {
     load();
-    listExecutives().then((r) => setExecs(r?.items || r?.executives || r || [])).catch(() => {});
-    listManagers().then(async (r) => {
-      const mgrList = r?.items || r?.managers || r || [];
-      setMgrs(mgrList);
-      // Build manager → executives map only. The client → manager mapping
-      // comes directly from each client's `assigned_manager_id` (returned by
-      // /api/v1/clients) — we must NOT reconstruct it from
-      // getManagerClients() because elevated managers see every client
-      // firm-wide, which would overwrite every client's true assignment.
-      const execMap = new Map<string, any[]>();
-      await Promise.all(mgrList.map(async (m: any) => {
-        try {
-          const teamRes = await getManagerTeam(m.id).catch(() => null);
-          if (teamRes?.executives) {
-            execMap.set(m.id, teamRes.executives);
-          }
-        } catch {}
-      }));
-      setManagerExecsMap(execMap);
-    }).catch(() => {});
+    // Manager/Partner-only lookups. Guard behind routePrefix so the shared
+    // page doesn't fire /api/v1/executives + /api/v1/managers when this
+    // module is re-exported for the Executive route — those endpoints 403
+    // for Executives and surface a global "Access denied" toast.
+    if (routePrefix === '/partner') {
+      listExecutives().then((r) => setExecs(r?.items || r?.executives || r || [])).catch(() => {});
+      listManagers().then(async (r) => {
+        const mgrList = r?.items || r?.managers || r || [];
+        setMgrs(mgrList);
+        // Build manager → executives map only. The client → manager mapping
+        // comes directly from each client's `assigned_manager_id` (returned by
+        // /api/v1/clients) — we must NOT reconstruct it from
+        // getManagerClients() because elevated managers see every client
+        // firm-wide, which would overwrite every client's true assignment.
+        const execMap = new Map<string, any[]>();
+        await Promise.all(mgrList.map(async (m: any) => {
+          try {
+            const teamRes = await getManagerTeam(m.id).catch(() => null);
+            if (teamRes?.executives) {
+              execMap.set(m.id, teamRes.executives);
+            }
+          } catch {}
+        }));
+        setManagerExecsMap(execMap);
+      }).catch(() => {});
+    }
     getActionItems().then((r) => setActionItems(r?.items || [])).catch(() => {});
     if (routePrefix === '/partner') {
       listTags('PARTNER').then((r) => setPartnerTags((r?.items || r || []).filter((t: any) => t.is_active !== false))).catch(() => {});

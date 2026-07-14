@@ -9,6 +9,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { getSummary, getExecutiveAnalytics, listFilings, listClients } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { TrendingUp, Users, ArrowRight, IndianRupee, AlertTriangle, UserCheck, UserX } from 'lucide-react';
+import DashboardReminders from '@/components/shared/DashboardReminders';
 
 const CARDS = [
   { key: 'INITIATED', label: 'Initiated', color: 'border-l-slate-400 bg-slate-50', text: 'text-slate-700' },
@@ -55,6 +56,7 @@ export default function ExecutiveDashboard() {
   const lineData = (analytics?.fy_distribution || []).map?.((x: any) => ({ month: x.financial_year, count: x.total_filings })) || [];
   return (
     <div className="space-y-6">
+      <DashboardReminders role="executive" />
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div><h1 className="text-2xl font-bold text-slate-900">Executive Dashboard</h1><p className="text-sm text-slate-500 mt-1">Your assigned clients &middot; {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
         <div className="flex items-center gap-2 flex-wrap">

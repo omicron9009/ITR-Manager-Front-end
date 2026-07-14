@@ -1,7 +1,7 @@
 "use client";
 
 import AppShell from '@/components/shared/AppShell';
-import { LayoutDashboard, Users, Shield, Layout, FileText, Bell, FileCheck, Mail, Tags, User, KeyRound, ClipboardList, UserCog, Star, MessageSquare, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Layout, FileText, Bell, FileCheck, Mail, Tags, User, KeyRound, ClipboardList, UserCog, Star, MessageSquare, UserPlus, BellRing } from 'lucide-react';
 
 const NAV = [
   { href: '/partner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,8 +14,11 @@ const NAV = [
   { href: '/partner/executives/tags', label: 'Management', icon: Tags },
   { href: '/partner/document-types', label: 'Document Checklist', icon: FileCheck },
   { href: '/partner/form-builder', label: 'Form Builder', icon: Layout },
+  { section: true, label: 'Settings' },
   { href: '/partner/email-config', label: 'Email Config', icon: Mail },
   { href: '/partner/whatsapp-config', label: 'WhatsApp Config', icon: MessageSquare },
+  { href: '/partner/settings/reminders', label: 'Reminders', icon: BellRing },
+  { section: true, label: 'Account' },
   { href: '/partner/notifications', label: 'Notifications', icon: Bell },
   { href: '/partner/audit', label: 'Audit Log', icon: FileText },
   { href: '/partner/recovery-codes', label: 'Recovery Codes', icon: KeyRound },

@@ -2,17 +2,17 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Menu, UserCheck, MapPin } from 'lucide-react';
+import { LogOut, Menu, UserCheck, MapPin, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { clearAuth, getUser, getIsElevated } from '@/lib/auth';
 import NotificationBell from '@/components/shared/NotificationBell';
 import GlobalFooter from '@/components/shared/GlobalFooter';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getMyTags, getActionItems } from '@/lib/api';
 
-export interface NavItem { href: string; label: string; icon: any; }
+export interface NavItem { href?: string; label: string; icon?: any; section?: boolean; }
 
 export default function AppShell({ nav, role, children }: { nav: NavItem[]; role: string; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -57,7 +57,44 @@ export default function AppShell({ nav, role, children }: { nav: NavItem[]; role
   };
 
   const initials = (user?.full_name || user?.name || user?.email || 'U').split(' ').map((p: string) => p[0]).slice(0, 2).join('').toUpperCase();
-  const currentNav = [...nav].sort((a, b) => b.href.length - a.href.length).find((n) => pathname === n.href || pathname.startsWith(n.href + '/'));
+  const linkNav = nav.filter((n) => !n.section && n.href);
+  const currentNav = [...linkNav].sort((a, b) => (b.href as string).length - (a.href as string).length).find((n) => pathname === n.href || pathname.startsWith((n.href as string) + '/'));
+
+  // Group nav into sections. Items before the first `section` marker live in the
+  // implicit root group (title === null, never collapsible).
+  const groups = useMemo(() => {
+    const out: { title: string | null; items: NavItem[] }[] = [{ title: null, items: [] }];
+    for (const item of nav) {
+      if (item.section) out.push({ title: item.label, items: [] });
+      else out[out.length - 1].items.push(item);
+    }
+    return out.filter((g) => g.items.length > 0 || g.title !== null);
+  }, [nav]);
+
+  // Collapsed state, keyed by section title. Sections default to expanded; the
+  // section containing the current route stays open. Toggling persists per session.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const isItemActive = (item: NavItem) => {
+    if (!item.href) return false;
+    return pathname === item.href || pathname.startsWith((item.href as string) + '/');
+  };
+  useEffect(() => {
+    // On first render (and whenever the route changes) make sure the section
+    // that owns the active link is expanded — never auto-collapse the others.
+    setCollapsed((prev) => {
+      const next = { ...prev };
+      for (const g of groups) {
+        if (g.title && g.items.some(isItemActive) && next[g.title]) {
+          next[g.title] = false;
+        }
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  const toggleSection = (title: string) =>
+    setCollapsed((s) => ({ ...s, [title]: !s[title] }));
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -69,22 +106,66 @@ export default function AppShell({ nav, role, children }: { nav: NavItem[]; role
           </Link>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {nav.map((item) => {
-            // Check if a more specific nav item matches — if so, don't highlight this one
-            const hasMoreSpecific = nav.some((other) => other.href !== item.href && other.href.startsWith(item.href + '/') && (pathname === other.href || pathname.startsWith(other.href + '/')));
-            const active = !hasMoreSpecific && (pathname === item.href || pathname.startsWith(item.href + '/'));
-            const Icon = item.icon;
-            const isActionItems = item.label === 'Action Items';
+          {groups.map((group, gIdx) => {
+            const isCollapsible = group.title !== null;
+            const isOpen = !isCollapsible || !collapsed[group.title as string];
             return (
-              <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={cn('flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors', active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}>
-                <Icon className="h-4 w-4" />
-                <span className="flex-1">{item.label}</span>
-                {isActionItems && actionItemCount > 0 && (
-                  <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">
-                    {actionItemCount > 99 ? '99+' : actionItemCount}
-                  </span>
+              <div key={`group-${gIdx}-${group.title ?? 'root'}`} className={cn(gIdx > 0 && 'pt-3')}>
+                {isCollapsible && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(group.title as string)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 select-none rounded-md hover:bg-slate-50 transition-colors"
+                    aria-expanded={isOpen}
+                  >
+                    <span className="flex-1 text-left">{group.title}</span>
+                    <ChevronDown
+                      className={cn(
+                        'h-3.5 w-3.5 transition-transform',
+                        isOpen ? 'rotate-0' : '-rotate-90'
+                      )}
+                    />
+                  </button>
                 )}
-              </Link>
+                {isOpen && (
+                  <div className="space-y-1 mt-1">
+                    {group.items.map((item) => {
+                      const hasMoreSpecific = linkNav.some(
+                        (other) =>
+                          other.href !== item.href &&
+                          (other.href as string).startsWith((item.href as string) + '/') &&
+                          (pathname === other.href || pathname.startsWith((other.href as string) + '/'))
+                      );
+                      const active =
+                        !hasMoreSpecific &&
+                        (pathname === item.href || pathname.startsWith((item.href as string) + '/'));
+                      const Icon = item.icon;
+                      const isActionItems = item.label === 'Action Items';
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href as string}
+                          onClick={() => setMobileOpen(false)}
+                          className={cn(
+                            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                            active
+                              ? 'bg-indigo-50 text-indigo-700'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          )}
+                        >
+                          {Icon && <Icon className="h-4 w-4" />}
+                          <span className="flex-1">{item.label}</span>
+                          {isActionItems && actionItemCount > 0 && (
+                            <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">
+                              {actionItemCount > 99 ? '99+' : actionItemCount}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

@@ -4900,7 +4900,7 @@
           "Notifications"
         ],
         "summary": "List Notifications",
-        "description": "Get notifications for the current user.",
+        "description": "Get notifications for the current user.\n\nEach response item includes a `reminder_type` field (nullable). It is\npopulated for notifications created by the reminders subsystem and NULL\nfor regular notifications — the frontend can filter on it to render a\ndedicated \"Reminders\" tab without a separate endpoint.",
         "operationId": "list_notifications_api_v1_notifications_get",
         "security": [
           {
@@ -8976,6 +8976,367 @@
         ]
       }
     },
+    "/api/v1/reminders/configs": {
+      "get": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "List Reminder Configs",
+        "operationId": "list_reminder_configs_api_v1_reminders_configs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReminderConfigResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Reminder Configs Api V1 Reminders Configs Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/reminders/configs/{reminder_type}": {
+      "get": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Get Reminder Config",
+        "operationId": "get_reminder_config_api_v1_reminders_configs__reminder_type__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reminder_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReminderType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Update Reminder Config",
+        "description": "Partial update of a reminder configuration (only non-None fields applied).",
+        "operationId": "update_reminder_config_api_v1_reminders_configs__reminder_type__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reminder_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReminderType"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderConfigUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reminders/configs/{reminder_type}/pause": {
+      "post": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Pause Reminder Config",
+        "operationId": "pause_reminder_config_api_v1_reminders_configs__reminder_type__pause_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reminder_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReminderType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reminders/configs/{reminder_type}/resume": {
+      "post": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Resume Reminder Config",
+        "operationId": "resume_reminder_config_api_v1_reminders_configs__reminder_type__resume_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reminder_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReminderType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reminders/dispatch-log": {
+      "get": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "List Dispatch Log",
+        "operationId": "list_dispatch_log_api_v1_reminders_dispatch_log_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reminder_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ReminderType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reminder Type"
+            }
+          },
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Client Id"
+            }
+          },
+          {
+            "name": "filing_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filing Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDispatchLogPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reminders/run-now": {
+      "post": {
+        "tags": [
+          "Reminders"
+        ],
+        "summary": "Run Reminders Now",
+        "description": "Force a single worker tick synchronously. Same rules as the scheduled worker.",
+        "operationId": "run_reminders_now_api_v1_reminders_run_now_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderRunNowResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/my-tax-filings": {
       "get": {
         "summary": "Read Filings",
@@ -9234,7 +9595,11 @@
           "MANAGER_ELEVATED",
           "MANAGER_DE_ELEVATED",
           "PASSWORD_RESET_REQUESTED",
-          "PASSWORD_RESET_VIA_LINK"
+          "PASSWORD_RESET_VIA_LINK",
+          "REMINDER_CONFIG_UPDATED",
+          "REMINDER_CONFIG_PAUSED",
+          "REMINDER_CONFIG_RESUMED",
+          "REMINDER_SENT"
         ],
         "title": "AuditEventType"
       },
@@ -16527,6 +16892,16 @@
             ],
             "title": "Related Client Id"
           },
+          "reminder_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReminderType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -17209,6 +17584,365 @@
           "message"
         ],
         "title": "RecoveryCodesResponse"
+      },
+      "ReminderChannels": {
+        "properties": {
+          "in_app": {
+            "type": "boolean",
+            "title": "In App",
+            "default": true
+          },
+          "email": {
+            "type": "boolean",
+            "title": "Email",
+            "default": true
+          },
+          "whatsapp": {
+            "type": "boolean",
+            "title": "Whatsapp",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "ReminderChannels",
+        "description": "Per-reminder channel flags stored on `reminder_configs.channels` (JSONB)."
+      },
+      "ReminderConfigResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reminder_type": {
+            "$ref": "#/components/schemas/ReminderType"
+          },
+          "is_enabled": {
+            "type": "boolean",
+            "title": "Is Enabled"
+          },
+          "threshold_days": {
+            "type": "integer",
+            "title": "Threshold Days"
+          },
+          "repeat_interval_days": {
+            "type": "integer",
+            "title": "Repeat Interval Days"
+          },
+          "max_sends": {
+            "type": "integer",
+            "title": "Max Sends"
+          },
+          "channels": {
+            "$ref": "#/components/schemas/ReminderChannels"
+          },
+          "custom_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Title"
+          },
+          "custom_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Message"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reminder_type",
+          "is_enabled",
+          "threshold_days",
+          "repeat_interval_days",
+          "max_sends",
+          "channels",
+          "updated_at",
+          "created_at"
+        ],
+        "title": "ReminderConfigResponse"
+      },
+      "ReminderConfigUpdate": {
+        "properties": {
+          "is_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Enabled"
+          },
+          "threshold_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Days"
+          },
+          "repeat_interval_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Interval Days"
+          },
+          "max_sends": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Sends"
+          },
+          "channels": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReminderChannels"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "custom_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Title"
+          },
+          "custom_message": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Message"
+          }
+        },
+        "type": "object",
+        "title": "ReminderConfigUpdate",
+        "description": "PATCH-style update body — only non-None fields are applied."
+      },
+      "ReminderDispatchLogPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReminderDispatchLogResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "ReminderDispatchLogPage"
+      },
+      "ReminderDispatchLogResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "reminder_type": {
+            "$ref": "#/components/schemas/ReminderType"
+          },
+          "subject_user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Subject User Id"
+          },
+          "related_client_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Client Id"
+          },
+          "related_filing_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Filing Id"
+          },
+          "dedup_key": {
+            "type": "string",
+            "title": "Dedup Key"
+          },
+          "notification_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notification Id"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "reminder_type",
+          "subject_user_id",
+          "dedup_key",
+          "sent_at"
+        ],
+        "title": "ReminderDispatchLogResponse"
+      },
+      "ReminderRunNowResponse": {
+        "properties": {
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          },
+          "dispatched": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Dispatched"
+          },
+          "skipped": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "started_at",
+          "finished_at",
+          "dispatched",
+          "skipped"
+        ],
+        "title": "ReminderRunNowResponse"
+      },
+      "ReminderType": {
+        "type": "string",
+        "enum": [
+          "UNASSIGNED_CLIENT",
+          "FILING_NOT_INITIATED",
+          "TAX_PAYMENT_PENDING",
+          "FILING_STAGNANT_PRE_FILING",
+          "INVOICE_PENDING_POST_FILING",
+          "CLIENT_DOCS_PENDING_UPLOAD",
+          "TEXT_FIELDS_PENDING_FILL",
+          "COMPUTATION_AWAITING_MANAGER_APPROVAL",
+          "COMPUTATION_AWAITING_PARTNER_APPROVAL",
+          "COMPUTATION_AWAITING_CLIENT_APPROVAL",
+          "COMPLETED_DOCS_PENDING",
+          "PAYMENT_NOT_MARKED_RECEIVED",
+          "FEEDBACK_NOT_SUBMITTED"
+        ],
+        "title": "ReminderType",
+        "description": "Type of reminder — one entry per configurable rule.\n\nNew reminder types are appended here as new prompts implement them.\nThe PG enum `reminder_type` is auto-synced by `_sync_pg_enums`."
       },
       "ResetPasswordWithLinkRequest": {
         "properties": {

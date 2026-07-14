@@ -15,6 +15,7 @@ import { getIsElevated } from '@/lib/auth';
 import { AssignAfterActivationDialog } from '@/components/shared/ClientActivationDialogs';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
+import DashboardReminders from '@/components/shared/DashboardReminders';
 import {
   Users, ArrowRight, Shield, IndianRupee, AlertTriangle,
   UserCheck, UserX, Loader2, UserPlus,
@@ -129,6 +130,7 @@ export default function ManagerDashboard() {
 
   return (
     <div className="space-y-6">
+      <DashboardReminders role="manager" />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Manager Dashboard</h1>
