@@ -35,7 +35,7 @@ export default function CreateClientPage() {
 
   // Create form state
   const [form, setForm] = useState({
-    email: '', full_name: '', phone_number: '', city: '',
+    email: '', first_name: '', last_name: '', phone_number: '', city: '',
     salary: false, esop: false, rental_income: false, more_than_2_properties: false,
     capital_gain_shares: false, capital_gain_land: false, business_profession: false,
     interest_dividend: false, foreign_assets: false, any_other: false, any_other_text: '',
@@ -62,8 +62,10 @@ export default function CreateClientPage() {
   useEffect(() => { loadClients(); }, [clientPage]);
 
   const handleCreate = async () => {
-    if (!form.email.trim() || !form.full_name.trim()) {
-      toast.error('Email and Full Name are required');
+    const first = form.first_name.trim();
+    const last = form.last_name.trim();
+    if (!form.email.trim() || !first || !last) {
+      toast.error('Email, First Name and Last Name are required');
       return;
     }
     if (form.any_other && !form.any_other_text.trim()) {
@@ -72,8 +74,12 @@ export default function CreateClientPage() {
     }
     setCreating(true);
     try {
+      // Backend expects a single `full_name` — concatenate first + last with
+      // a space, matching how /auth/register does it.
+      const { first_name, last_name, ...rest } = form;
       const payload = {
-        ...form,
+        ...rest,
+        full_name: `${first} ${last}`,
         phone_number: form.phone_number.trim() || null,
         city: form.city.trim() || null,
         any_other_text: form.any_other ? form.any_other_text.trim() : null,
@@ -87,7 +93,7 @@ export default function CreateClientPage() {
       });
       // Reset form
       setForm({
-        email: '', full_name: '', phone_number: '', city: '',
+        email: '', first_name: '', last_name: '', phone_number: '', city: '',
         salary: false, esop: false, rental_income: false, more_than_2_properties: false,
         capital_gain_shares: false, capital_gain_land: false, business_profession: false,
         interest_dividend: false, foreign_assets: false, any_other: false, any_other_text: '',
@@ -130,8 +136,12 @@ export default function CreateClientPage() {
                 <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Basic Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-slate-700">Full Name <span className="text-rose-500">*</span></Label>
-                    <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Rahul Sharma" className="mt-1.5" />
+                    <Label className="text-sm font-medium text-slate-700">First Name <span className="text-rose-500">*</span></Label>
+                    <Input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} placeholder="Rahul" className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-slate-700">Last Name <span className="text-rose-500">*</span></Label>
+                    <Input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} placeholder="Sharma" className="mt-1.5" />
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-slate-700">Email <span className="text-rose-500">*</span></Label>
